@@ -69,5 +69,37 @@
         ]
       }
     }
+  },
+  "2.1.170": {
+    "platforms": {
+      "darwin": {
+        "arm64": [
+          { "search": "AP_=200000,YP_=20000", "desc": "MODEL_CONTEXT_WINDOW_DEFAULT", "sourceValue": "200000" },
+          { "search": "u6O=200000,m6O=1536", "desc": "teamMemorySync", "sourceValue": "200000" },
+          { "search": "Z07=200000,Gh=50", "desc": "MAX_TOOL_RESULTS_PER_MESSAGE", "sourceValue": "200000" },
+          { "search": "xj3=200000,I8q=3", "desc": "skill tool budget", "sourceValue": "200000" },
+          { "search": "OpK=200000,N9q=3,v9q=3", "desc": "other context limit", "sourceValue": "200000" },
+          { "search": ">200000:!1}", "desc": "exceeds200k threshold", "sourceValue": "200000" }
+        ],
+        "x64": [
+          { "search": "$P6=200000,OP6=20000", "desc": "MODEL_CONTEXT_WINDOW_DEFAULT", "sourceValue": "200000" },
+          { "search": "p87=200000,U87=1536", "desc": "teamMemorySync", "sourceValue": "200000" },
+          { "search": "G09=200000,TV=50", "desc": "MAX_TOOL_RESULTS_PER_MESSAGE", "sourceValue": "200000" },
+          { "search": "mYf=200000,b_A=3", "desc": "skill tool budget", "sourceValue": "200000" },
+          { "search": "Lpq=200000,N1A=3,y1A=3", "desc": "other context limit", "sourceValue": "200000" },
+          { "search": ">200000:!1}", "desc": "exceeds200k threshold", "sourceValue": "200000" }
+        ]
+      },
+      "win32": {
+        "x64": [
+          { "search": "ZJ8=200000,GJ8=20000", "desc": "MODEL_CONTEXT_WINDOW_DEFAULT", "sourceValue": "200000" },
+          { "search": "v69=200000,k69=1536", "desc": "teamMemorySync", "sourceValue": "200000" },
+          { "search": "zL7=200000,Vv=50", "desc": "MAX_TOOL_RESULTS_PER_MESSAGE", "sourceValue": "200000" },
+          { "search": "hw5=200000,cqK=3", "desc": "skill tool budget", "sourceValue": "200000" },
+          { "search": "rm_=200000,m$K=3,B$K=3", "desc": "other context limit", "sourceValue": "200000" },
+          { "search": ">200000:!1}", "desc": "exceeds200k threshold", "sourceValue": "200000" }
+        ]
+      }
+    }
   }
 }
