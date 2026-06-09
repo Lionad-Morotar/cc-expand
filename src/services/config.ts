@@ -18,8 +18,16 @@ export interface PatchItem {
   sourceValue: string
 }
 
+export interface PlatformPatterns {
+  [arch: string]: PatchItem[]
+}
+
+export interface OsPatterns {
+  [platform: string]: PlatformPatterns
+}
+
 export interface VersionConfig {
-  patches: PatchItem[]
+  platforms: OsPatterns
 }
 
 export interface VersionsJson {
@@ -45,9 +53,21 @@ export class ConfigService {
     return patterns as VersionsJson
   }
 
-  /** 根据版本号获取搜索/替换配置 */
-  getPatternForVersion(version: string): VersionConfig | undefined {
-    return this.getPatterns()[version]
+  /** 根据版本号 + 平台获取 patch 列表 */
+  getPatternForVersion(version: string, os: string = process.platform, arch: string = process.arch): PatchItem[] | undefined {
+    const versionConfig = this.getPatterns()[version]
+    if (!versionConfig) return undefined
+
+    const osPatterns = versionConfig.platforms[os]
+    if (!osPatterns) return undefined
+
+    const archPatterns = osPatterns[arch]
+    if (!archPatterns) {
+      // 回退到通用模式（如果存在）
+      return osPatterns['universal']
+    }
+
+    return archPatterns
   }
 
   /** 读取用户配置 */

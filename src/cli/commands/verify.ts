@@ -14,17 +14,17 @@ export async function verifyCommand(): Promise<void> {
 
   console.log(`Claude Code ${version} at ${binaryPath}`)
 
-  const versionConfig = configService.getPatternForVersion(version)
-  if (!versionConfig) {
+  const patches = configService.getPatternForVersion(version)
+  if (!patches) {
     console.log(`⚠ No pattern data for version ${version}`)
     return
   }
 
   const content = readFileSync(binaryPath)
-  const sourceValue = versionConfig.patches[0]?.sourceValue ?? '200000'
+  const sourceValue = patches[0]?.sourceValue ?? '200000'
 
   let hasOriginal = false
-  for (const patch of versionConfig.patches) {
+  for (const patch of patches) {
     if (content.indexOf(Buffer.from(patch.search)) !== -1) {
       hasOriginal = true
       console.log(`✗ Not patched — still contains "${patch.search}"`)

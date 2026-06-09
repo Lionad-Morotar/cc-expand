@@ -41,8 +41,8 @@ export async function patchCommand(args: string[] = []): Promise<void> {
   console.log(`Found Claude Code ${version} at ${binaryPath}`)
 
   // 2. 获取版本对应的模式
-  const versionConfig = configService.getPatternForVersion(version)
-  if (!versionConfig) {
+  const patches = configService.getPatternForVersion(version)
+  if (!patches) {
     throw new CcxError(
       ErrorCode.PATTERN_NOT_FOUND,
       `No pattern found for version ${version}`,
@@ -51,7 +51,7 @@ export async function patchCommand(args: string[] = []): Promise<void> {
   }
 
   // 3. 获取目标 tokens
-  const sourceValue = versionConfig.patches[0]?.sourceValue ?? '200000'
+  const sourceValue = patches[0]?.sourceValue ?? '200000'
 
   if (targetTokens === undefined) {
     // 交互式模式
@@ -71,7 +71,7 @@ export async function patchCommand(args: string[] = []): Promise<void> {
   // 4. 确认
   if (!skipConfirm) {
     const confirmed = await confirm({
-      message: `Replace ${versionConfig.patches.length} constant(s) from ${sourceValue} to ${targetTokens}?`,
+      message: `Replace ${patches.length} constant(s) from ${sourceValue} to ${targetTokens}?`,
     })
 
     if (!confirmed) {
@@ -89,7 +89,7 @@ export async function patchCommand(args: string[] = []): Promise<void> {
   // 6. Patch
   const buffer = readFileSync(binaryPath)
   const engine = new PatchEngine()
-  const patchResult = engine.patch(buffer, versionConfig.patches, targetTokens)
+  const patchResult = engine.patch(buffer, patches, targetTokens)
 
   if (!patchResult.success) {
     throw patchResult.error ?? new CcxError(ErrorCode.PATCH_FAILED, 'Patch failed')
@@ -120,7 +120,7 @@ export async function patchCommand(args: string[] = []): Promise<void> {
     binaryPath,
     targetTokens,
     sourceValue,
-    patches: versionConfig.patches,
+    patches,
   })
 
   if (!verifyResult.success) {
