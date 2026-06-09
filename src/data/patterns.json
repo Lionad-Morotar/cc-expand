@@ -1,0 +1,29 @@
+{
+  "2.1.161": {
+    "patches": [
+      { "search": "Aj8=200000,Ij_=20000", "desc": "MODEL_CONTEXT_WINDOW_DEFAULT", "sourceValue": "200000" },
+      { "search": "X93=200000", "desc": "teamMemorySync", "sourceValue": "200000" },
+      { "search": "rt5=200000", "desc": "skill tool budget", "sourceValue": "200000" },
+      { "search": "200000,AL=50", "desc": "MAX_TOOL_RESULTS_PER_MESSAGE", "sourceValue": "200000" },
+      { "search": ">200000:!1}", "desc": "exceeds200k threshold", "sourceValue": "200000" }
+    ]
+  },
+  "2.1.162": {
+    "patches": [
+      { "search": "zJ8=200000,qJ_", "desc": "MODEL_CONTEXT_WINDOW_DEFAULT", "sourceValue": "200000" },
+      { "search": "Z43=200000", "desc": "teamMemorySync", "sourceValue": "200000" },
+      { "search": "oHO=200000", "desc": "skill tool budget", "sourceValue": "200000" },
+      { "search": "Nz7=200000", "desc": "MAX_TOOL_RESULTS_PER_MESSAGE", "sourceValue": "200000" },
+      { "search": ">200000:!1}", "desc": "exceeds200k threshold", "sourceValue": "200000" }
+    ]
+  },
+  "2.1.163": {
+    "patches": [
+      { "search": "Lf8=200000,nJ_", "desc": "MODEL_CONTEXT_WINDOW_DEFAULT", "sourceValue": "200000" },
+      { "search": "TVK=200000,Gs8", "desc": "teamMemorySync", "sourceValue": "200000" },
+      { "search": "dqO=200000,lqO", "desc": "skill tool budget", "sourceValue": "200000" },
+      { "search": "EY7=200000,hL", "desc": "MAX_TOOL_RESULTS_PER_MESSAGE", "sourceValue": "200000" },
+      { "search": ">200000:!1}", "desc": "exceeds200k threshold", "sourceValue": "200000" }
+    ]
+  }
+}
