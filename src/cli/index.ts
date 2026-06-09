@@ -64,7 +64,7 @@ Commands:
 
 Examples:
   cc-expand patch
-  cc-expand run 250000
+  cc-expand run 256000
   cc-expand restore
 `)
 }

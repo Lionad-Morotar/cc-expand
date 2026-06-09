@@ -14,7 +14,7 @@ describe('PatchEngine', () => {
       ]
 
       // Act
-      const result = engine.patch(buffer, patches, 250000)
+      const result = engine.patch(buffer, patches, 256000)
 
       // Assert: result indicates success
       expect(result.success).toBe(true)
@@ -24,7 +24,7 @@ describe('PatchEngine', () => {
 
       // Assert: the buffer content was actually mutated
       const mutatedText = buffer.toString('utf-8')
-      expect(mutatedText).toContain('Aj8=250000,Ij_=20000')
+      expect(mutatedText).toContain('Aj8=256000,Ij_=20000')
       expect(mutatedText).not.toContain('Aj8=200000,Ij_=20000')
     })
 
@@ -37,7 +37,7 @@ describe('PatchEngine', () => {
       ]
 
       // Act
-      const result = engine.patch(buffer, patches, 250000)
+      const result = engine.patch(buffer, patches, 256000)
 
       // Assert
       expect(result.success).toBe(false)
@@ -82,7 +82,7 @@ describe('PatchEngine', () => {
       ]
 
       // Act
-      const result = engine.patch(buffer, patches, 250000)
+      const result = engine.patch(buffer, patches, 256000)
 
       // Assert
       expect(result.success).toBe(true)
@@ -90,9 +90,9 @@ describe('PatchEngine', () => {
       expect(result.details).toHaveLength(3)
 
       const mutatedText = buffer.toString('utf-8')
-      expect(mutatedText).toContain('Aj8=250000,Ij_=20000')
-      expect(mutatedText).toContain('X93=250000')
-      expect(mutatedText).toContain('rt5=250000')
+      expect(mutatedText).toContain('Aj8=256000,Ij_=20000')
+      expect(mutatedText).toContain('X93=256000')
+      expect(mutatedText).toContain('rt5=256000')
     })
   })
 })

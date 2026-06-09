@@ -4,8 +4,8 @@
  *
  * 用法:
  *   cc-expand patch                    # 交互式模式
- *   cc-expand patch --target 250000    # 非交互式，直接指定目标值
- *   cc-expand patch --target 250000 --yes  # 非交互式，跳过确认
+ *   cc-expand patch --target 256000    # 非交互式，直接指定目标值
+ *   cc-expand patch --target 256000 --yes  # 非交互式，跳过确认
  */
 import { readFileSync, writeFileSync } from 'node:fs'
 import { input, confirm } from '@inquirer/prompts'
@@ -56,7 +56,7 @@ export async function patchCommand(args: string[] = []): Promise<void> {
   if (targetTokens === undefined) {
     // 交互式模式
     const targetInput = await input({
-      message: `Current context window: ${sourceValue}\nEnter target tokens (e.g. 250000):`,
+      message: `Current context window: ${sourceValue}\nEnter target tokens (e.g. 256000):`,
       validate: (value) => {
         if (!/^\d+$/.test(value)) return 'Please enter a valid number'
         if (value.length !== sourceValue.length) {

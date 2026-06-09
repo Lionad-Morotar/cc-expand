@@ -20,7 +20,7 @@ describe('Verifier', () => {
     it('should pass when all checks succeed', async () => {
       // Arrange: create a fake binary with the expected pattern
       const binaryPath = join(tempDir, 'claude')
-      writeFileSync(binaryPath, 'Aj8=250000,Ij_=20000_X93=250000')
+      writeFileSync(binaryPath, 'Aj8=256000,Ij_=20000_X93=256000')
       chmodSync(binaryPath, 0o755)
 
       const verifier = new Verifier()
@@ -28,7 +28,7 @@ describe('Verifier', () => {
       // Act
       const result = await verifier.verify({
         binaryPath,
-        targetTokens: 250000,
+        targetTokens: 256000,
         sourceValue: '200000',
         patches: [
           { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
@@ -52,7 +52,7 @@ describe('Verifier', () => {
 
       const result = await verifier.verify({
         binaryPath,
-        targetTokens: 250000,
+        targetTokens: 256000,
         sourceValue: '200000',
         patches: [
           { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
@@ -76,7 +76,7 @@ describe('Verifier', () => {
 
       const result = await verifier.verify({
         binaryPath,
-        targetTokens: 250000,
+        targetTokens: 256000,
         sourceValue: '200000',
         patches: [
           { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
@@ -92,14 +92,14 @@ describe('Verifier', () => {
 
     it('should fail when binary is not executable', async () => {
       const binaryPath = join(tempDir, 'claude')
-      writeFileSync(binaryPath, 'Aj8=250000,Ij_=20000')
+      writeFileSync(binaryPath, 'Aj8=256000,Ij_=20000')
       // No chmod - file is not executable
 
       const verifier = new Verifier()
 
       const result = await verifier.verify({
         binaryPath,
-        targetTokens: 250000,
+        targetTokens: 256000,
         sourceValue: '200000',
         patches: [
           { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },

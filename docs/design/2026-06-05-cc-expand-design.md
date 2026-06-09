@@ -27,7 +27,7 @@ Claude Code CLI 将 `MODEL_CONTEXT_WINDOW_DEFAULT` 硬编码为 200000 tokens。
 
 1. Claude Code 更新后，用户手动下载新二进制
 2. 使用 `patch-claude-context.js` 脚本在二进制中搜索已知的字节模式
-3. 将 `200000` 原地替换为目标值（如 `250000`）
+3. 将 `200000` 原地替换为目标值（如 `256000`）
 4. `codesign --sign - --force --deep` 自签名
 5. 通过 zsh 函数 `c 250` 启动补丁版本
 
@@ -44,7 +44,7 @@ Claude Code CLI 将 `MODEL_CONTEXT_WINDOW_DEFAULT` 硬编码为 200000 tokens。
 
 ```bash
 # 1. 字符串替换验证
-grep -a 'Lf8=250000' patched-binary >/dev/null || exit 1
+grep -a 'Lf8=256000' patched-binary >/dev/null || exit 1
 
 # 2. 二进制可执行验证
 ./patched-binary --version >/dev/null 2>&1 || exit 1
@@ -53,7 +53,7 @@ grep -a 'Lf8=250000' patched-binary >/dev/null || exit 1
 codesign --verify --deep patched-binary >/dev/null 2>&1 || exit 1
 
 # 4. 上下文窗口验证 (可选 smoke test)
-# 启动 Claude Code 后执行 /context 检查显示值是否为 250k
+# 启动 Claude Code 后执行 /context 检查显示值是否为 256k
 ```
 
 **验证失败处理**: 如任一步骤失败，自动从 backups/ 恢复原始二进制，向用户报告具体失败步骤。
@@ -178,7 +178,7 @@ codesign --verify --deep patched-binary >/dev/null 2>&1 || exit 1
 ├── backups/
 │   └── claude-v2.1.163-original      # 原始二进制备份
 ├── patches/
-│   └── claude-v2.1.163-250k          # 补丁二进制
+│   └── claude-v2.1.163-256k          # 补丁二进制
 ├── config.json                        # 用户配置（目标 tokens、自动 patch）
 └── versions.json                      # 已知的版本→常量映射索引
 
