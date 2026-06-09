@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+*.log
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Test output
+coverage/
+
+# IDE
+.vscode/
+.idea/
+
+# macOS
+.DS_Store
+
+# Config & backups (runtime generated)
+~/.cc-expand/
+
+# Reference sources
+zRefs/

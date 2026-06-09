@@ -1,0 +1,42 @@
+{
+  "name": "cc-expand",
+  "version": "0.1.0",
+  "description": "Expand Claude Code's context window beyond 200k tokens",
+  "bin": {
+    "cc-expand": "./dist/cli.js",
+    "ccx": "./dist/cli.js"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "src/data/patterns.json"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest",
+    "dev": "tsup --watch",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "keywords": [
+    "claude-code",
+    "context-window",
+    "cli",
+    "patch"
+  ],
+  "author": "Lionad Morotar",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  },
+  "dependencies": {
+    "@inquirer/prompts": "^7.0.0"
+  }
+}
