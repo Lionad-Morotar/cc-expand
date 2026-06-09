@@ -57,6 +57,16 @@
           { "search": "Quq=200000,RAA=3", "desc": "other context limit", "sourceValue": "200000" },
           { "search": ">200000:!1}", "desc": "exceeds200k threshold", "sourceValue": "200000" }
         ]
+      },
+      "win32": {
+        "x64": [
+          { "search": "qX8=200000,KX8=20000", "desc": "MODEL_CONTEXT_WINDOW_DEFAULT", "sourceValue": "200000" },
+          { "search": "w89=200000,j89=1536", "desc": "teamMemorySync", "sourceValue": "200000" },
+          { "search": "o27=200000,Gv=50", "desc": "MAX_TOOL_RESULTS_PER_MESSAGE", "sourceValue": "200000" },
+          { "search": "AM5=200000,a6K=3", "desc": "skill tool budget", "sourceValue": "200000" },
+          { "search": "Iu_=200000,gKK=3", "desc": "other context limit", "sourceValue": "200000" },
+          { "search": ">200000:!1}", "desc": "exceeds200k threshold", "sourceValue": "200000" }
+        ]
       }
     }
   }
