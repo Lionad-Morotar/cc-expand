@@ -1,134 +1,153 @@
-# cc-expand
+<p align="center">
+  <img src="assets/logo.webp" width="160" alt="cc-expand logo">
+</p>
 
-扩展 Claude Code 的上下文窗口（Context Window）——从 200K 突破到任意值。
+<h1 align="center">cc-expand</h1>
 
-当你使用国内模型代理（只支持 250K 上下文）时，Claude Code 原生 200K 的限制会成为瓶颈。`cc-expand` 通过修改 Claude Code 二进制中的硬编码常量，将上下文窗口提升到目标值。
+<p align="center">
+  Expand Claude Code's context window — break through the 200K hard limit.
+</p>
 
-## 安装
+<p align="center">
+  <a href="README.md">English</a> | <a href="README.zh.md">中文</a>
+</p>
+
+---
+
+Expand Claude Code's context window — from 200K to any value.
+
+When using a model that supports 256K context, Claude Code's native 200K limit becomes a bottleneck. `cc-expand` patches the Claude Code binary to raise this limit to your target value.
+
+## Install
 
 ```bash
 npm install -g cc-expand
 ```
 
-或直接使用 npx（无需安装）：
+Or use npx without installing:
 
 ```bash
 npx cc-expand <command>
 ```
 
-## 用法
+Or tell your agent to do it for you:
 
-### 交互式 Patch
+```
+1. Learn how to use this tool: https://github.com/Lionad-Morotar/cc-expand
+2. Patch my CC to <target> tokens
+3. Add a shell alias to ~/.zshrc so it auto-patches next time
+```
+
+## Usage
+
+### Interactive patch
 
 ```bash
 cc-expand patch
-# 提示输入目标 tokens，确认后自动 patch
+# Prompts for target tokens, confirms, then patches
 ```
 
-### 非交互式 Patch（CI / 脚本）
+### Non-interactive patch (CI / scripts)
 
 ```bash
-cc-expand patch --target 250000 --yes
+cc-expand patch --target 256000 --yes
 ```
 
-### 验证 Patch 状态
+> **Tip:** Claude Code respects the `COMPACT_WINDOW` env var, but it cannot exceed the hardcoded default. Raising the target delays compression. For example, Kimi-K2.6 supports 256K; I set my target to 270000.
+
+### Verify patch status
 
 ```bash
 cc-expand verify
 ```
 
-### 恢复到原始版本
+### Restore original binary
 
 ```bash
 cc-expand restore
 ```
 
-### 查看状态
+### Show status
 
 ```bash
 cc-expand status
 ```
 
-## CLI 命令
+## CLI Commands
 
-| 命令 | 说明 |
-|------|------|
-| `patch [options]` | Patch Claude Code 二进制 |
-| `restore` | 从备份恢复原始二进制 |
-| `verify` | 验证当前二进制是否已被 patch |
-| `status` | 显示 Claude Code 版本和 patch 状态 |
+| Command | Description |
+|---------|-------------|
+| `patch [options]` | Patch the Claude Code binary |
+| `restore` | Restore original binary from backup |
+| `verify` | Check whether the binary is patched |
+| `status` | Show version and patch status |
 
-### Patch 选项
+### Patch Options
 
 ```
--t, --target <number>   目标上下文窗口大小（默认：250000）
--y, --yes               跳过确认提示
+-t, --target <number>   Target context window size (default: 256000)
+-y, --yes               Skip confirmation prompt
 ```
 
-## 支持的版本
+## Supported Versions
 
-| 版本 | darwin-arm64 | darwin-x64 | win32-x64 | linux-arm64 | linux-x64 |
-|------|:------------:|:----------:|:---------:|:-----------:|:---------:|
+| Version | darwin-arm64 | darwin-x64 | win32-x64 | linux-arm64 | linux-x64 |
+|---------|:------------:|:----------:|:---------:|:-----------:|:---------:|
 | 2.1.161 | ✅ | — | — | — | — |
 | 2.1.162 | ✅ | — | — | — | — |
 | 2.1.163 | ✅ | — | — | — | — |
 | 2.1.169 | ✅ | ✅ | ✅ | — | — |
 | 2.1.170 | ✅ | ✅ | ✅ | — | — |
 
-> ⚠️ 版本号对应 Claude Code CLI 版本（`claude --version`）。如果运行 `patch` 时提示版本不支持，请更新到已支持的版本，或提交 issue 请求添加新版本。
+> ⚠️  Version numbers match `claude --version`. If `patch` reports an unsupported version, upgrade to a supported release or open an issue.
 
-## 原理
+## How it works
 
-Claude Code 的二进制文件将模型上下文窗口硬编码为 `200000`（20万 tokens）。每个版本的变量名通过代码混淆（obfuscation）生成，且不同平台（darwin/win32/linux）和不同架构（arm64/x64）使用不同的变量名。
+The Claude Code binary contains hard-coded model constants set to `200000`. Each release uses different obfuscated variable names, and each platform/architecture uses its own names.
 
-`cc-expand` 的工作流程：
+`cc-expand` follows this pipeline:
 
-1. **发现**：自动定位 Claude Code 二进制（`/usr/local/bin/claude` 或 npm 全局安装路径）
-2. **识别版本**：读取 `claude --version` 确定版本号
-3. **匹配模式**：根据 `版本 + 平台 + 架构` 查找预置的 patch 模式
-4. **备份**：将原始二进制复制到 `~/.cc-expand/backups/`
-5. **Patch**：在二进制中定位目标常量并原地替换（保持文件大小不变）
-6. **重签名**：macOS 上执行 `codesign --sign - --force --deep`
-7. **验证**：确认原始模式已消失、目标值已写入
-8. **回滚**：验证失败时自动从备份恢复
+1. **Discover** — Locates the Claude Code binary (`/usr/local/bin/claude` or npm global path)
+2. **Identify version** — Reads `claude --version`
+3. **Match patterns** — Looks up pre-built patch patterns by `version + platform + arch`
+4. **Backup** — Copies the original binary to `~/.cc-expand/backups/`
+5. **Patch** — Replaces constants in-place (file size unchanged)
+6. **Re-sign** — macOS: `codesign --sign - --force --deep`
+7. **Verify** — Confirms original patterns are gone and target values are written
+8. **Rollback** — Auto-restores from backup if verification fails
 
-## 注意事项
+## Notes
 
-- **macOS**：patch 后会自动重新签名（codesign）。如果签名失败，二进制可能无法运行，此时可用 `restore` 恢复。
-- **Windows**：无需额外操作，直接替换 `claude.exe` 即可。
-- **Linux**：暂不支持（缺少二进制样本，欢迎提供）。
-- **位数限制**：目标值必须与原始值位数相同（200000 → 250000，都是 6 位）。如果位数不同，会收到错误提示。
+- **macOS**: Re-signs automatically after patching. If codesign fails, the binary may not run; use `restore` to recover.
+- **Windows**: No extra steps; `claude.exe` is replaced directly.
+- **Linux**: Not yet supported (need binary samples, PRs welcome).
+- **Digit limit**: Target must have the same digit count as the original (`200000` → `256000`, both 6 digits). A mismatch produces an error.
 
-## 常见问题
+## FAQ
 
-### Patch 后 Claude Code 无法启动
+**Claude Code won't start after patching**
 
-运行 `cc-expand restore` 恢复原始二进制，然后检查：
+Run `cc-expand restore`, then check:
+- Was codesign successful on macOS?
+- Does the target value have the same digit count?
+- Is the version supported?
 
-- macOS 上 codesign 是否成功
-- 目标值位数是否与原始值一致
-- 是否使用了不支持的版本
-
-### 版本不支持
+**Version not supported**
 
 ```
 No pattern found for version 2.1.xxx
 ```
 
-这意味着当前 Claude Code 版本的常量名尚未被收录。你可以：
+Either upgrade to a supported version, or discover new patterns and submit a PR.
 
-1. 更新 Claude Code 到已支持的版本
-2. 参考源码中的 `src/data/patterns.json`，自行发现新模式后提交 PR
+**How to discover new patterns**
 
-### 如何发现新模式
-
-对于已知版本但新平台/架构：
+For a known version on a new platform/arch:
 
 ```bash
-# 在二进制中搜索 200000 的上下文
 grep -ao '.{0,25}200000.{0,15}' /path/to/claude | grep '=200000'
 ```
 
-## 许可证
+## License
 
 MIT © Lionad Morotar
