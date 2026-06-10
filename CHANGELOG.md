@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.4] - 2026-06-10
+
+### Added
+
+- Windows 平台支持：PowerShell 函数生成、`.exe` 二进制文件处理、`npm.cmd` 调用适配
+- CLI 全局 `--version` 标志
+- `install` 命令支持 `latest` 标签自动解析为最新 semver 版本
+- `install.js` Windows 环境适配（npm 命令和配置文件路径提示）
+
+### Changed
+
+- 重写 README 文档，优化 Agent 驱动的模式发现说明和压缩性能影响提示
+
 ## [0.0.3] - 2026-06-10
 
 ### Changed
