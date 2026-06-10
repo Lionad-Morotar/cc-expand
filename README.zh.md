@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://mgear-image.oss-cn-shanghai.aliyuncs.com/image/other/20260610143352565.webp" width="160" alt="cc-expand logo">
+  <img src="https://mgear-image.oss-cn-shanghai.aliyuncs.com/image/other/20260610223551529.webp" width="800" alt="cc-expand logo">
 </p>
 
 <h1 align="center">cc-expand</h1>
@@ -19,6 +19,11 @@
 当使用某些模型（只支持 256K 上下文）时，Claude Code 原生 200K 的限制会成为瓶颈。`cc-expand` 通过修改 Claude Code 二进制中的硬编码常量，将上下文窗口大小提升到目标值。
 
 > **提示：** CC 的环境变量允许设置 `COMPACT_WINDOW`，但不能高于硬编码默认值。所以提高 target 可以推迟压缩时机。例如，我日常使用的 Kimi-K2.6 支持 256k，所以我会把 target 设为 270000 以便将压缩时机从约 17k 提升至 23k
+
+| 使用前 | 使用后 |
+|--------|--------|
+| 200K 限制，约 110K 可用上下文 | 270K 限制，约 180K 可用上下文 |
+| ![](https://mgear-image.oss-cn-shanghai.aliyuncs.com/image/other/20260610211249243.png) | ![](https://mgear-image.oss-cn-shanghai.aliyuncs.com/image/other/20260610211422491.png) |
 
 ## 安装
 

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://mgear-image.oss-cn-shanghai.aliyuncs.com/image/other/20260610143352565.webp" width="160" alt="cc-expand logo">
+  <img src="https://mgear-image.oss-cn-shanghai.aliyuncs.com/image/other/20260610223551529.webp" width="800" alt="cc-expand logo">
 </p>
 
 <h1 align="center">cc-expand</h1>
@@ -20,9 +20,10 @@ When using certain models (which only support 256K context), Claude Code's nativ
 
 > **Tip:** Claude Code's environment variable allows setting `COMPACT_WINDOW`, but it cannot exceed the hard-coded default. So raising the target delays compression. For example, the Kimi-K2.6 I use daily supports 256K, so I set my target to 270000 to push compression from around 17K to 23K.
 
-![](https://mgear-image.oss-cn-shanghai.aliyuncs.com/image/other/20260610211249243.png)
-
-![](https://mgear-image.oss-cn-shanghai.aliyuncs.com/image/other/20260610211422491.png)
+| Before | After |
+|--------|-------|
+| 200K limit, ~110K free context | 270K limit, ~180K free context |
+| ![](https://mgear-image.oss-cn-shanghai.aliyuncs.com/image/other/20260610211249243.png) | ![](https://mgear-image.oss-cn-shanghai.aliyuncs.com/image/other/20260610211422491.png) |
 
 ## Install
 
