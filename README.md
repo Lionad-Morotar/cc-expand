@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.webp" width="160" alt="cc-expand logo">
+  <img src="https://mgear-image.oss-cn-shanghai.aliyuncs.com/image/other/20260610143352565.webp" width="160" alt="cc-expand logo">
 </p>
 
 <h1 align="center">cc-expand</h1>
@@ -30,12 +30,15 @@ Or use npx without installing:
 npx cc-expand <command>
 ```
 
-Or tell your agent to do it for you:
+Or run the installer for one-command setup:
 
+```bash
+curl -fsSL https://raw.githubusercontent.com/Lionad-Morotar/cc-expand/main/install.sh | bash
 ```
-1. Learn how to use this tool: https://github.com/Lionad-Morotar/cc-expand
-2. Patch my CC to <target> tokens
-3. Add a shell alias to ~/.zshrc so it auto-patches next time
+
+With options:
+```bash
+curl -fsSL https://raw.githubusercontent.com/Lionad-Morotar/cc-expand/main/install.sh | bash -s -- --target 256000 --version 2.1.170
 ```
 
 ## Usage
@@ -54,6 +57,8 @@ cc-expand patch --target 256000 --yes
 ```
 
 > **Tip:** Claude Code respects the `COMPACT_WINDOW` env var, but it cannot exceed the hardcoded default. Raising the target delays compression. For example, Kimi-K2.6 supports 256K; I set my target to 270000.
+
+![](https://mgear-image.oss-cn-shanghai.aliyuncs.com/image/other/20260610105949399.png)
 
 ### Verify patch status
 

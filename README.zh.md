@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.webp" width="160" alt="cc-expand logo">
+  <img src="https://mgear-image.oss-cn-shanghai.aliyuncs.com/image/other/20260610143352565.webp" width="160" alt="cc-expand logo">
 </p>
 
 <h1 align="center">cc-expand</h1>
@@ -30,12 +30,15 @@ npm install -g cc-expand
 npx cc-expand <command>
 ```
 
-或让你的 Agent 直接帮你处理：
+或使用一键安装脚本：
 
+```bash
+curl -fsSL https://raw.githubusercontent.com/Lionad-Morotar/cc-expand/main/install.sh | bash
 ```
-1. 学习如何使用这个工具 https://github.com/Lionad-Morotar/cc-expand
-2. 帮我给 CC 扩容到 xxx tokens
-3. 在 ~/.zshrc 添加快捷指令以便之后自动 patch
+
+带参数：
+```bash
+curl -fsSL https://raw.githubusercontent.com/Lionad-Morotar/cc-expand/main/install.sh | bash -s -- --target 256000 --version 2.1.170
 ```
 
 ## 用法
@@ -54,6 +57,8 @@ cc-expand patch --target 256000 --yes
 ```
 
 > **提示：** CC 的环境变量允许设置 `COMPACT_WINDOW`，但不能高于硬编码默认值。提高 target 可以推迟压缩时机。比如我日常使用的 Kimi-K2.6 支持 256k，我会把 target 设为 270000。
+
+![](https://mgear-image.oss-cn-shanghai.aliyuncs.com/image/other/20260610105949399.png)
 
 ### 验证 Patch 状态
 

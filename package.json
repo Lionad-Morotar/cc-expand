@@ -11,7 +11,8 @@
   "types": "./dist/index.d.ts",
   "files": [
     "dist",
-    "src/data/patterns.json"
+    "src/data/patterns.json",
+    "install.sh"
   ],
   "engines": {
     "node": ">=18.0.0"
