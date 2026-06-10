@@ -3,6 +3,8 @@
  * Routes commands to respective handlers
  */
 
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { CcxError } from '../types/index.js'
 import { patchCommand } from './commands/patch.js'
 import { restoreCommand } from './commands/restore.js'
@@ -24,11 +26,26 @@ const COMMANDS: Record<string, (args: string[]) => Promise<void>> = {
   install: installCommand,
 }
 
+function getVersion(): string {
+  try {
+    const pkgPath = join(__dirname, '..', 'package.json')
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'))
+    return pkg.version ?? 'unknown'
+  } catch {
+    return 'unknown'
+  }
+}
+
 async function main(): Promise<void> {
   const [cmd, ...args] = process.argv.slice(2)
 
   if (!cmd || cmd === '--help' || cmd === '-h') {
     showHelp()
+    return
+  }
+
+  if (cmd === '--version' || cmd === '-v') {
+    console.log(getVersion())
     return
   }
 

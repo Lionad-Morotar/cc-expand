@@ -18,6 +18,17 @@ describe('CLI Integration', () => {
     expect(output).toContain('verify')
   })
 
+  it('should show version for --version flag', () => {
+    const pkgPath = join(__dirname, '..', '..', 'package.json')
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'))
+
+    const output = execFileSync('node', [CLI_PATH, '--version'], {
+      encoding: 'utf-8',
+    })
+
+    expect(output.trim()).toBe(pkg.version)
+  })
+
   it('should show help when no command given', () => {
     const output = execFileSync('node', [CLI_PATH], {
       encoding: 'utf-8',
