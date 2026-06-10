@@ -101,5 +101,55 @@
         ]
       }
     }
+  },
+  "2.1.172": {
+    "platforms": {
+      "darwin": {
+        "arm64": [
+          { "search": "HP_=200000,oyH=200000", "desc": "MODEL_CONTEXT_WINDOW_DEFAULT", "sourceValue": "200000" },
+          { "search": "oyH=200000,_P_=20000", "desc": "other context limit", "sourceValue": "200000" },
+          { "search": "D7O=200000,M7O=1536", "desc": "teamMemorySync", "sourceValue": "200000" },
+          { "search": "_R7=200000,Uh=50", "desc": "MAX_TOOL_RESULTS_PER_MESSAGE", "sourceValue": "200000" },
+          { "search": "BM3=200000,u9q=3", "desc": "skill tool budget", "sourceValue": "200000" },
+          { "search": ">200000:!1}", "desc": "exceeds200k threshold", "sourceValue": "200000" }
+        ],
+        "x64": [
+          { "search": "H26=200000,oIH=200000", "desc": "MODEL_CONTEXT_WINDOW_DEFAULT", "sourceValue": "200000" },
+          { "search": "oIH=200000,_26=20000", "desc": "other context limit", "sourceValue": "200000" },
+          { "search": "J9L=200000,X9L=1536", "desc": "teamMemorySync", "sourceValue": "200000" },
+          { "search": "_E9=200000,BV=50", "desc": "MAX_TOOL_RESULTS_PER_MESSAGE", "sourceValue": "200000" },
+          { "search": "FJ7=200000,u1A=3", "desc": "skill tool budget", "sourceValue": "200000" },
+          { "search": ">200000:!1}", "desc": "exceeds200k threshold", "sourceValue": "200000" }
+        ]
+      },
+      "win32": {
+        "x64": [
+          { "search": "w28=200000,nhH=200000", "desc": "MODEL_CONTEXT_WINDOW_DEFAULT", "sourceValue": "200000" },
+          { "search": "nhH=200000,j28=20000", "desc": "other context limit", "sourceValue": "200000" },
+          { "search": "K79=200000,$79=1536", "desc": "teamMemorySync", "sourceValue": "200000" },
+          { "search": "dG7=200000,Fv=50", "desc": "MAX_TOOL_RESULTS_PER_MESSAGE", "sourceValue": "200000" },
+          { "search": "IW5=200000,n$K=3", "desc": "skill tool budget", "sourceValue": "200000" },
+          { "search": ">200000:!1}", "desc": "exceeds200k threshold", "sourceValue": "200000" }
+        ]
+      },
+      "linux": {
+        "arm64": [
+          { "search": "qZ8=200000,oyq=200000", "desc": "MODEL_CONTEXT_WINDOW_DEFAULT", "sourceValue": "200000" },
+          { "search": "oyq=200000,KZ8=20000", "desc": "other context limit", "sourceValue": "200000" },
+          { "search": "K41=200000,_41=1536", "desc": "teamMemorySync", "sourceValue": "200000" },
+          { "search": "lA4=200000,pV=50", "desc": "MAX_TOOL_RESULTS_PER_MESSAGE", "sourceValue": "200000" },
+          { "search": "RP3=200000,I_7=3", "desc": "skill tool budget", "sourceValue": "200000" },
+          { "search": ">200000:!1}", "desc": "exceeds200k threshold", "sourceValue": "200000" }
+        ],
+        "x64": [
+          { "search": "HW$=200000,ohH=200000", "desc": "MODEL_CONTEXT_WINDOW_DEFAULT", "sourceValue": "200000" },
+          { "search": "ohH=200000,$W$=20000", "desc": "other context limit", "sourceValue": "200000" },
+          { "search": "$75=200000,q75=1536", "desc": "teamMemorySync", "sourceValue": "200000" },
+          { "search": "l07=200000,pv=50", "desc": "MAX_TOOL_RESULTS_PER_MESSAGE", "sourceValue": "200000" },
+          { "search": "yXf=200000,xKq=3", "desc": "skill tool budget", "sourceValue": "200000" },
+          { "search": ">200000:!1}", "desc": "exceeds200k threshold", "sourceValue": "200000" }
+        ]
+      }
+    }
   }
 }
