@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-06-10
+
+### Added
+
+- CLI 输出格式化器（支持成功/错误/信息/警告等带 emoji 的富文本输出）
+- Shell profile 自动检测器（自动识别 .zshrc / .bashrc / PowerShell $PROFILE）
+- `install`、`supports`、`setup`、`patch` 命令支持富文本输出
+- `restore`、`status`、`verify` 命令支持富文本输出
+
+### Changed
+
+- 移除 `install.js`，改为直接通过 CLI 进行安装和配置
+
 ## [0.0.4] - 2026-06-10
 
 ### Added
