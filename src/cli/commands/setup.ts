@@ -45,7 +45,7 @@ function detectConfigFile(homeDir: string): string {
  * 生成 cc 函数和 c alias 的 shell 代码
  * 渠道无关：直接从 ~/.cc-expand/bin/ 运行 patched binary
  */
-function generateShellFunction(): string {
+function generateBashFunction(): string {
   const lines = [
     '',
     '# --- cc-expand generated start ---',
@@ -83,6 +83,49 @@ function generateShellFunction(): string {
     '',
   ]
   return lines.join('\n')
+}
+
+/**
+ * 生成 PowerShell 函数（Windows 专用）
+ * 注意：不使用 $args 作为参数名（PowerShell 保留变量）
+ */
+function generatePowerShellFunction(): string {
+  const lines = [
+    '',
+    '# --- cc-expand generated start ---',
+    'function cc {',
+    '    param([string]$ctx = "270000")',
+    '',
+    '    $default_flags = "--dangerously-skip-permissions"',
+    '    $binary = Join-Path $env:USERPROFILE ".cc-expand/bin/claude-${ctx}.exe"',
+    '',
+    '    if (-not (Test-Path $binary)) {',
+    '        Write-Host "→ Installing Claude Code ${ctx}..." -ForegroundColor Yellow',
+    '        cc-expand patch --target $ctx --yes',
+    '        if ($LASTEXITCODE -ne 0) {',
+    '            Write-Error "Error: Failed to patch Claude Code ${ctx}"',
+    '            return 1',
+    '        }',
+    '    }',
+    '',
+    '    & $binary $default_flags @args',
+    '}',
+    '',
+    'function c {',
+    '    cc 270000 @args',
+    '}',
+    '',
+    'Set-Alias -Name cc-expand-cc -Value cc',
+    '# --- cc-expand generated end ---',
+    '',
+  ]
+  return lines.join('\n')
+}
+
+function generateShellFunction(): string {
+  return process.platform === 'win32'
+    ? generatePowerShellFunction()
+    : generateBashFunction()
 }
 
 /**
