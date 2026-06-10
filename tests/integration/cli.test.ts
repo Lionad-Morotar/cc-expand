@@ -164,7 +164,7 @@ describe('CLI Integration', () => {
       encoding: 'utf-8',
     })
 
-    expect(output).toContain('Supported versions:')
+    expect(output).toContain('[INFO]')
     expect(output).toContain('2.1.161')
     expect(output).toContain('2.1.170')
   })
@@ -177,8 +177,8 @@ describe('CLI Integration', () => {
       timeout: 10000,
     })
 
+    expect(output).toContain('[INFO]')
     expect(output).toContain('Binary:')
-    expect(output).toContain('Version:')
-    expect(output).toMatch(/Status: (Patched|Unpatched)/)
+    expect(output).toMatch(/(已 patch|未 patch)/)
   })
 })

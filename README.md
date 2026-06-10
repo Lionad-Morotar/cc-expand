@@ -5,7 +5,7 @@
 <h1 align="center">cc-expand</h1>
 
 <p align="center">
-  <bold>Compression is one of the main causes of performance degradation. Use cc-expand to break through Claude Code's 200K context window limit.</bold>
+  <bold>Compression is one of the main causes of performance degradation. Use cc-expand to break through Claude Code's 200K context window limit and delay auto-compaction.</bold>
 </p>
 
 <p align="center">

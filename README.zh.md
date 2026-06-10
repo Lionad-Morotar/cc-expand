@@ -5,7 +5,7 @@
 <h1 align="center">cc-expand</h1>
 
 <p align="center">
-  <bold>压缩是性能下降的主要原因之一，使用 cc-expand 让你的 CC 上下文窗口——突破 200K 的限制。</bold>
+  <bold>压缩是性能下降的主要原因之一，使用 cc-expand 让你的 CC 上下文窗口突破 200K 的限制，推迟自动压缩的时机</bold>
 </p>
 
 <p align="center">
