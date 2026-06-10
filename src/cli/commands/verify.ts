@@ -4,34 +4,54 @@
 import { readFileSync } from 'node:fs'
 import { DiscoveryService } from '../../services/discovery.js'
 import { ConfigService } from '../../services/config.js'
+import { formatSummary, highlight } from '../output.js'
 
-export async function verifyCommand(): Promise<void> {
-  const discovery = new DiscoveryService()
-  const configService = new ConfigService()
+export interface VerifyOptions {
+  discoveryService?: DiscoveryService
+  configService?: ConfigService
+}
+
+export async function verifyCommand(options?: VerifyOptions): Promise<string> {
+  const discovery = options?.discoveryService ?? new DiscoveryService()
+  const configService = options?.configService ?? new ConfigService()
 
   const binaryPath = await discovery.findClaudeBinary()
   const version = await discovery.getBinaryVersion(binaryPath)
 
-  console.log(`Claude Code ${version} at ${binaryPath}`)
-
   const patches = configService.getPatternForVersion(version)
   if (!patches) {
-    console.log(`⚠ No pattern data for version ${version}`)
-    return
+    return formatSummary('WARN', `无 pattern 数据: ${highlight(version)}`)
   }
 
   const content = readFileSync(binaryPath)
   const sourceValue = patches[0]?.sourceValue ?? '200000'
 
-  let hasOriginal = false
+  const foundOriginals: string[] = []
   for (const patch of patches) {
     if (content.indexOf(Buffer.from(patch.search)) !== -1) {
-      hasOriginal = true
-      console.log(`✗ Not patched — still contains "${patch.search}"`)
+      foundOriginals.push(patch.desc)
     }
   }
 
-  if (!hasOriginal) {
-    console.log(`✓ Binary appears patched (no original patterns found)`)
+  if (foundOriginals.length > 0) {
+    const lines = [
+      formatSummary('WARN', `Claude Code ${highlight(version)} — 未 patch（发现 ${foundOriginals.length} 处原始常量）`),
+      '',
+      `Binary: ${highlight(binaryPath)}`,
+      `源值: ${highlight(sourceValue)}`,
+      '',
+      '未替换项:',
+    ]
+    for (const desc of foundOriginals) {
+      lines.push(`  ✗ ${desc}`)
+    }
+    return lines.join('\n')
   }
+
+  return [
+    formatSummary('OK', `Claude Code ${highlight(version)} — 已 patch（无原始常量残留）`),
+    '',
+    `Binary: ${highlight(binaryPath)}`,
+    `源值: ${highlight(sourceValue)}`,
+  ].join('\n')
 }
