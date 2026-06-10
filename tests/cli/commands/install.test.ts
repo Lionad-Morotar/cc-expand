@@ -7,35 +7,31 @@ import { PackageService } from '../../../src/services/package.js'
 
 describe('install command', () => {
   let tempDir: string
-  let logSpy: ReturnType<typeof vi.spyOn>
-  let errorSpy: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
     tempDir = mkdtempSync(join(tmpdir(), 'cc-expand-install-'))
-    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-    errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
   })
 
   afterEach(() => {
     rmSync(tempDir, { recursive: true, force: true })
-    logSpy.mockRestore()
-    errorSpy.mockRestore()
   })
 
-  it('should report already installed if binary exists', async () => {
+  it('returns [INFO] when binary is already installed', async () => {
     // 创建假的已安装目录结构
     const versionDir = join(tempDir, '.cc-expand', 'packages', '2.1.170')
     mkdirSync(join(versionDir, 'bin'), { recursive: true })
     writeFileSync(join(versionDir, 'bin', 'claude'), 'fake-binary')
 
-    await installCommand(['2.1.170'], {
+    const output = await installCommand(['2.1.170'], {
       homeDir: tempDir,
     } as any)
 
-    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('already installed'))
+    expect(output.startsWith('[INFO]')).toBe(true)
+    expect(output).toContain('2.1.170')
+    expect(output).toContain('已安装')
   })
 
-  it('should resolve latest to actual version before checking installed', async () => {
+  it('returns [INFO] when latest resolves to already installed version', async () => {
     // 创建假的已安装目录结构（模拟 latest 已解析为 2.1.170）
     const versionDir = join(tempDir, '.cc-expand', 'packages', '2.1.170')
     mkdirSync(join(versionDir, 'bin'), { recursive: true })
@@ -46,11 +42,12 @@ describe('install command', () => {
     PackageService.prototype.resolveVersion = vi.fn().mockResolvedValue('2.1.170')
 
     try {
-      await installCommand(['latest'], {
+      const output = await installCommand(['latest'], {
         homeDir: tempDir,
       } as any)
 
-      expect(logSpy).toHaveBeenCalledWith('Claude Code 2.1.170 is already installed.')
+      expect(output.startsWith('[INFO]')).toBe(true)
+      expect(output).toContain('2.1.170')
     } finally {
       PackageService.prototype.resolveVersion = originalResolveVersion
     }

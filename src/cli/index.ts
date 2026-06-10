@@ -15,12 +15,12 @@ import { supportsCommand } from './commands/supports.js'
 import { setupCommand } from './commands/setup.js'
 import { installCommand } from './commands/install.js'
 
-const COMMANDS: Record<string, (args: string[]) => Promise<void>> = {
+const COMMANDS: Record<string, (args: string[]) => Promise<string | void>> = {
   patch: patchCommand,
-  restore: restoreCommand,
-  verify: verifyCommand,
+  restore: async (_args) => restoreCommand(),
+  verify: async (_args) => verifyCommand(),
   run: (args) => runCommand(args[0]),
-  status: statusCommand,
+  status: async (_args) => statusCommand(),
   supports: supportsCommand,
   setup: setupCommand,
   install: installCommand,
@@ -57,7 +57,10 @@ async function main(): Promise<void> {
   }
 
   try {
-    await handler(args)
+    const output = await handler(args)
+    if (typeof output === 'string') {
+      console.log(output)
+    }
   } catch (error) {
     if (error instanceof CcxError) {
       console.error(`\n❌ Error [${error.code}]: ${error.message}`)

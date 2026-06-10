@@ -8,6 +8,7 @@ import { join } from 'node:path'
 import { CcxError, ErrorCode } from '../../types/index.js'
 import { ChannelConfig } from '../../services/channel-config.js'
 import { PackageService } from '../../services/package.js'
+import { formatSummary, highlight, formatNextSteps } from '../output.js'
 
 export interface SetupOptions {
   /** 覆盖默认的 home 目录（用于测试） */
@@ -166,7 +167,7 @@ function backupExistingDefinitions(content: string): string {
 export async function setupCommand(
   args: string[] = [],
   options?: SetupOptions,
-): Promise<void> {
+): Promise<string | void> {
   // 解析参数
   let skipConfirm = false
   for (const arg of args) {
@@ -238,9 +239,6 @@ export async function setupCommand(
   const shellCode = generateShellFunction()
   writeFileSync(configFile, content + shellCode, 'utf-8')
 
-  console.log(`✓ cc-expand shell integration installed to ${configFile}`)
-  console.log(`  Run 'source ${configFile}' or restart your terminal to use 'cc' and 'c'`)
-
   // 保存版本到 channel.json，供后续 patch 命令使用
   if (version) {
     const channelConfig = new ChannelConfig(configDir)
@@ -257,7 +255,20 @@ export async function setupCommand(
       console.log(`\nDownloading Claude Code ${version}...`)
       await packageService.install(version)
     }
-
-    console.log(`\n→ Run 'cc-expand patch --target 270000 --yes' to create your first patched binary`)
   }
+
+  const nextSteps: string[] = [
+    `source ${configFile}   # 使快捷方式生效`,
+  ]
+  if (version) {
+    nextSteps.push(`cc-expand patch --target 270000 --yes   # 创建默认 patch 版本`)
+  }
+
+  return [
+    formatSummary('OK', 'Shell 快捷方式已安装'),
+    '',
+    `配置文件: ${highlight(configFile)}`,
+    ...(version ? [`版本: ${highlight(version)}`] : []),
+    formatNextSteps(nextSteps),
+  ].join('\n')
 }

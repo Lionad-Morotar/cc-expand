@@ -4,6 +4,7 @@
 
 import { ConfigService } from '../../services/config.js'
 import { DiscoveryService } from '../../services/discovery.js'
+import { formatSummary, highlight, formatWarnings } from '../output.js'
 
 export async function supportsCommand(
   _args: string[] = [],
@@ -11,7 +12,7 @@ export async function supportsCommand(
     discoveryService?: DiscoveryService
     configService?: ConfigService
   },
-): Promise<void> {
+): Promise<string> {
   const config = options?.configService ?? new ConfigService()
   const discovery = options?.discoveryService ?? new DiscoveryService()
   const patterns = config.getPatterns()
@@ -28,11 +29,14 @@ export async function supportsCommand(
     // 未安装 Claude Code，不显示高亮
   }
 
-  console.log('Supported versions:')
-
   const versions = Object.keys(patterns).sort((a, b) =>
     a.localeCompare(b, undefined, { numeric: true }),
   )
+
+  const lines: string[] = [
+    formatSummary('INFO', `支持的 Claude Code 版本 (${versions.length} 个)`),
+    '',
+  ]
 
   for (const version of versions) {
     const versionConfig = patterns[version]
@@ -45,15 +49,18 @@ export async function supportsCommand(
     }
 
     const isCurrent = currentVersion === version
-    const suffix = isCurrent ? '  ← current' : ''
-    console.log(`  ${version} (${platforms.join(', ')})${suffix}`)
+    const versionText = isCurrent ? highlight(version) : version
+    const suffix = isCurrent ? '  ← 当前版本' : ''
+    lines.push(`  ${versionText} (${platforms.join(', ')})${suffix}`)
   }
 
-  // 如果当前版本不在支持列表中，输出警告
+  // 如果当前版本不在支持列表中，添加警告
   if (currentVersion && !patterns[currentVersion]) {
     const currentPlatform = `${process.platform}-${process.arch}`
-    console.error(
-      `⚠️  Current Claude Code ${currentVersion} is NOT supported on ${currentPlatform}`,
-    )
+    lines.push(formatWarnings([
+      `当前 Claude Code ${highlight(currentVersion)} 在 ${currentPlatform} 上不受支持`,
+    ]))
   }
+
+  return lines.join('\n')
 }

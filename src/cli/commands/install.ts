@@ -6,6 +6,7 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { PackageService } from '../../services/package.js'
 import { CcxError, ErrorCode } from '../../types/index.js'
+import { formatSummary, highlight, formatNextSteps } from '../output.js'
 
 export interface InstallOptions {
   /** 覆盖默认的 home 目录（用于测试） */
@@ -15,7 +16,7 @@ export interface InstallOptions {
 export async function installCommand(
   args: string[] = [],
   options?: InstallOptions,
-): Promise<void> {
+): Promise<string> {
   // 解析版本号：支持位置参数或 --version
   let version = 'latest'
   // 第一轮：找 --version 标志
@@ -45,22 +46,26 @@ export async function installCommand(
 
   // 检查是否已安装（使用解析后的实际版本）
   if (service.isInstalled(resolvedVersion)) {
-    console.log(`Claude Code ${resolvedVersion} is already installed.`)
-    console.log(`  ${service.getBinaryPath(resolvedVersion)}`)
-    return
+    return [
+      formatSummary('INFO', `Claude Code ${resolvedVersion} 已安装`),
+      '',
+      `Binary: ${highlight(service.getBinaryPath(resolvedVersion))}`,
+    ].join('\n')
   }
-
-  const displayVersion = version === 'latest'
-    ? `${resolvedVersion} (latest)`
-    : resolvedVersion
-  console.log(`Downloading Claude Code ${displayVersion}...`)
 
   try {
     const { targetDir, version: installedVersion } = await service.install(version)
     const binaryName = process.platform === 'win32' ? 'claude.exe' : 'claude'
     const binaryPath = join(targetDir, 'bin', binaryName)
-    console.log(`✓ Claude Code ${installedVersion} installed`)
-    console.log(`  Binary: ${binaryPath}`)
+
+    return [
+      formatSummary('OK', `Claude Code ${installedVersion} 安装成功`),
+      '',
+      `Binary: ${highlight(binaryPath)}`,
+      formatNextSteps([
+        `cc-expand patch --target 270000 --yes   # 创建 patch 版本`,
+      ]),
+    ].join('\n')
   } catch (error) {
     throw new CcxError(
       ErrorCode.BINARY_NOT_FOUND,

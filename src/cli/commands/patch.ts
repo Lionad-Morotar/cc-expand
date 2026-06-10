@@ -17,6 +17,7 @@ import { PackageService } from '../../services/package.js'
 import { ChannelConfig } from '../../services/channel-config.js'
 import { ConfigService } from '../../services/config.js'
 import { CcxError, ErrorCode } from '../../types/index.js'
+import { formatSummary, highlight, formatNextSteps } from '../output.js'
 
 /** 获取 patched binary 文件名（Windows 需 .exe 扩展名） */
 export function getPatchedBinaryName(targetTokens: number): string {
@@ -24,7 +25,7 @@ export function getPatchedBinaryName(targetTokens: number): string {
   return `claude-${targetTokens}${ext}`
 }
 
-export async function patchCommand(args: string[] = []): Promise<void> {
+export async function patchCommand(args: string[] = []): Promise<string> {
   const configService = new ConfigService()
   configService.ensureDirs()
 
@@ -144,7 +145,7 @@ export async function patchCommand(args: string[] = []): Promise<void> {
 
     if (!confirmed) {
       console.log('Patch cancelled.')
-      return
+      return ''
     }
   }
 
@@ -204,5 +205,15 @@ export async function patchCommand(args: string[] = []): Promise<void> {
 
   // 记录
   configService.recordPatchedVersion(version, targetTokens)
-  console.log(`Done! Claude Code ${version} now uses ${targetTokens} tokens context window.`)
+
+  return [
+    formatSummary('OK', `Patched Claude Code ${highlight(version)} to ${highlight(String(targetTokens))} tokens`),
+    '',
+    `替换: ${highlight(String(patchResult.replaceCount))} 处常量`,
+    `Binary: ${highlight(patchedBinaryPath)}`,
+    formatNextSteps([
+      `cc-expand run ${targetTokens}    # 启动 patch 版本`,
+      `cc ${targetTokens}               # 快捷方式（如已 setup）`,
+    ]),
+  ].join('\n')
 }
