@@ -35,7 +35,7 @@ export interface VersionsJson {
 }
 
 export interface UserConfig {
-  patchedVersions: Record<string, { targetTokens: number; patchedAt: string }>
+  patchedVersions: Record<string, { targets: number[]; patchedAt: string }>
 }
 
 export class ConfigService {
@@ -89,9 +89,17 @@ export class ConfigService {
   /** 记录已 patch 的版本 */
   recordPatchedVersion(version: string, targetTokens: number): void {
     const config = this.getUserConfig()
-    config.patchedVersions[version] = {
-      targetTokens,
-      patchedAt: new Date().toISOString(),
+    const existing = config.patchedVersions[version]
+    if (existing) {
+      if (!existing.targets.includes(targetTokens)) {
+        existing.targets.push(targetTokens)
+      }
+      existing.patchedAt = new Date().toISOString()
+    } else {
+      config.patchedVersions[version] = {
+        targets: [targetTokens],
+        patchedAt: new Date().toISOString(),
+      }
     }
     this.setUserConfig(config)
   }
