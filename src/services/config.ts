@@ -89,6 +89,9 @@ export class ConfigService {
   /** 记录已 patch 的版本 */
   recordPatchedVersion(version: string, targetTokens: number): void {
     const config = this.getUserConfig()
+    if (!config.patchedVersions) {
+      config.patchedVersions = {}
+    }
     const existing = config.patchedVersions[version]
     if (existing) {
       if (!existing.targets.includes(targetTokens)) {
