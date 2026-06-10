@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.2] - 2026-06-10
+
+### Added
+
+- `install.sh` 一键安装脚本，支持自动检测平台并安装 Claude Code
+
+### Fixed
+
+- 修复 `recordPatchedVersion` 中 `patchedVersions` 可能为 `undefined` 时的崩溃问题
+- 优化 README 中一键安装脚本的说明文档
+
 ## [0.0.1] - 2026-06-10
 
 ### Added
