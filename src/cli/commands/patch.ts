@@ -18,6 +18,12 @@ import { ChannelConfig } from '../../services/channel-config.js'
 import { ConfigService } from '../../services/config.js'
 import { CcxError, ErrorCode } from '../../types/index.js'
 
+/** 获取 patched binary 文件名（Windows 需 .exe 扩展名） */
+export function getPatchedBinaryName(targetTokens: number): string {
+  const ext = process.platform === 'win32' ? '.exe' : ''
+  return `claude-${targetTokens}${ext}`
+}
+
 export async function patchCommand(args: string[] = []): Promise<void> {
   const configService = new ConfigService()
   configService.ensureDirs()
@@ -145,7 +151,7 @@ export async function patchCommand(args: string[] = []): Promise<void> {
   // 创建 patched binary 目录
   const patchBinDir = join(homedir(), '.cc-expand', 'bin')
   mkdirSync(patchBinDir, { recursive: true })
-  const patchedBinaryPath = join(patchBinDir, `claude-${targetTokens}`)
+  const patchedBinaryPath = join(patchBinDir, getPatchedBinaryName(targetTokens))
 
   // 复制原始 binary（不修改原始包）
   copyFileSync(sourceBinaryPath, patchedBinaryPath)
