@@ -30,7 +30,7 @@ npm install -g cc-expand
 npx cc-expand <command>
 ```
 
-或使用一键安装脚本：
+或告诉你的 Agent 使用一键安装脚本：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Lionad-Morotar/cc-expand/main/install.sh | bash

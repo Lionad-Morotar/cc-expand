@@ -30,7 +30,7 @@ Or use npx without installing:
 npx cc-expand <command>
 ```
 
-Or run the installer for one-command setup:
+Or tell your Agent run the installer for one-command setup:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Lionad-Morotar/cc-expand/main/install.sh | bash
