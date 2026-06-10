@@ -5,7 +5,6 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import { confirm } from '@inquirer/prompts'
 import { CcxError, ErrorCode } from '../../types/index.js'
 import { ChannelConfig } from '../../services/channel-config.js'
 import { PackageService } from '../../services/package.js'
@@ -176,7 +175,10 @@ export async function setupCommand(
   if (!skipConfirm) {
     const doConfirm =
       options?.confirm ??
-      (async (msg: string) => confirm({ message: msg }))
+      (async (msg: string) => {
+        const { confirm } = await import('@inquirer/prompts')
+        return confirm({ message: msg })
+      })
     const confirmed = await doConfirm(
       `Install cc-expand shell integration to ${configFile}?`,
     )

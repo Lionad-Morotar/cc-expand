@@ -10,7 +10,6 @@
 import { readFileSync, writeFileSync, copyFileSync, chmodSync, mkdirSync, rmSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import { input, confirm } from '@inquirer/prompts'
 import { execSync } from 'node:child_process'
 import { PatchEngine } from '../../core/patch-engine.js'
 import { Verifier } from '../../core/verifier.js'
@@ -116,9 +115,10 @@ export async function patchCommand(args: string[] = []): Promise<void> {
 
   if (targetTokens === undefined) {
     // 交互式模式
+    const { input } = await import('@inquirer/prompts')
     const targetInput = await input({
       message: `Current context window: ${sourceValue}\nEnter target tokens (e.g. 256000):`,
-      validate: (value) => {
+      validate: (value: string) => {
         if (!/^\d+$/.test(value)) return 'Please enter a valid number'
         if (value.length !== sourceValue.length) {
           return `Must be ${sourceValue.length} digits`
@@ -131,6 +131,7 @@ export async function patchCommand(args: string[] = []): Promise<void> {
 
   // 确认
   if (!skipConfirm) {
+    const { confirm } = await import('@inquirer/prompts')
     const confirmed = await confirm({
       message: `Replace ${patches.length} constant(s) from ${sourceValue} to ${targetTokens}?`,
     })

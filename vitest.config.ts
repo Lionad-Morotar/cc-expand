@@ -5,8 +5,5 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     pool: 'forks',
-    fileParallelism: false,
-    teardownTimeout: 5000,
-    reporters: ['default', 'hanging-process'],
   },
 })
