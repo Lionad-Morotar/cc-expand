@@ -116,6 +116,10 @@ function checkNodeJs() {
   ok(`Node.js ${nodeVersion}`)
 }
 
+function getNpmCommand() {
+  return process.platform === 'win32' ? 'npm.cmd' : 'npm'
+}
+
 function findPatternsJson() {
   const scriptDir = join(__dirname)
   const candidates = [
@@ -128,7 +132,7 @@ function findPatternsJson() {
   }
 
   try {
-    const globalRoot = execSync('npm root -g', { encoding: 'utf-8' }).trim()
+    const globalRoot = execSync(`${getNpmCommand()} root -g`, { encoding: 'utf-8' }).trim()
     const globalCandidates = [
       join(globalRoot, 'cc-expand', 'src', 'data', 'patterns.json'),
       join(globalRoot, 'cc-expand', 'dist', 'data', 'patterns.json'),
@@ -183,7 +187,7 @@ function installCcExpand() {
     return
   } catch { /* not installed */ }
 
-  execFileSync('npm', ['install', '-g', 'cc-expand'], { stdio: 'inherit' })
+  execFileSync(getNpmCommand(), ['install', '-g', 'cc-expand'], { stdio: 'inherit' })
   ok('cc-expand installed')
 }
 
@@ -254,7 +258,11 @@ async function main() {
   console.log(`\n${G}Done!${X}`)
   if (shouldSetup) {
     console.log(`Run ${C}cc${X} or ${C}c${X} to start Claude Code with ${C}${finalTarget}${X} tokens`)
-    console.log(`Restart your terminal or run: ${C}source ~/.zshrc${X}`)
+    if (process.platform === 'win32') {
+      console.log(`Reload your profile: ${C}. $PROFILE${X}`)
+    } else {
+      console.log(`Restart your terminal or run: ${C}source ~/.zshrc${X}`)
+    }
   } else {
     console.log(`Run ${C}cc-expand run ${finalTarget}${X} to start with expanded context`)
     console.log(`Or run ${C}cc-expand setup --yes${X} to install shell shortcuts (cc, c)`)
