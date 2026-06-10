@@ -83,9 +83,9 @@ npx cc-expand <command>
 
 **Version Update Mechanism**
 
-Every half hour, my lobster automatically runs the `watch-patch` skill inside the project to patch new versions and release them.
+Every half hour, my claw automatically runs the `watch-patch` skill inside the project to patch new versions and release them.
 
-But my lobster crashes in many situations. If you encounter a version newer than what cc-expand supports, please use an older CC version for a moment (e.g. `npx @anthropic-ai/claude-code@2.1.148`).
+But my claw crashes in many situations. If you encounter a version newer than what cc-expand supports, please use an older CC version for a moment (e.g. `npx @anthropic-ai/claude-code@2.1.148`).
 
 Advanced users can also ask your Agent:
 
