@@ -33,6 +33,15 @@ export async function patchCommand(args: string[] = []): Promise<void> {
     }
   }
 
+  // --yes 必须配合 --target 使用
+  if (skipConfirm && targetTokens === undefined) {
+    throw new CcxError(
+      ErrorCode.INVALID_TARGET,
+      '--yes requires --target',
+      'Usage: cc-expand patch --target 256000 --yes',
+    )
+  }
+
   // 1. 发现 Claude Code
   const discovery = new DiscoveryService()
   const binaryPath = await discovery.findClaudeBinary()
