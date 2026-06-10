@@ -1,6 +1,6 @@
 {
   "name": "cc-expand",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Expand Claude Code's context window beyond 200k tokens",
   "bin": {
     "cc-expand": "dist/cli.js",

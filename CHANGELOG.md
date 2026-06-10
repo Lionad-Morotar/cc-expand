@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.3] - 2026-06-10
+
+### Changed
+
+- `install.sh` 重构为跨平台的 `install.js`，支持非 TTY 环境安全运行
+- `setup` / `patch` 命令的交互式提示改为按需动态导入，避免 stdin 监听器残留导致 publish 时进程 hang
+
+### Fixed
+
+- 修复 `npm publish` 时 `prepublishOnly` 中的 `vitest --run` 卡死问题
+
 ## [0.0.2] - 2026-06-10
 
 ### Added
