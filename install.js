@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-// install.js — One-command setup for cc-expand (cross-platform)
+// install.js — Interactive one-command setup for cc-expand (cross-platform)
 
 const { execFileSync, execSync } = require('node:child_process')
 const { existsSync, readFileSync } = require('node:fs')
 const { join } = require('node:path')
+const readline = require('node:readline')
 
 const DEFAULT_TARGET = '270000'
 const DEFAULT_VERSION = 'latest'
@@ -22,8 +23,10 @@ function fail(msg) { console.log(`   ${R}✗${X} ${msg}`) }
 function warn(msg) { console.log(`   ${Y}⚠${X} ${msg}`) }
 
 function parseArgs(argv) {
-  let target = DEFAULT_TARGET
-  let version = DEFAULT_VERSION
+  let target = process.env.CC_EXPAND_TARGET || DEFAULT_TARGET
+  let version = process.env.CC_EXPAND_VERSION || DEFAULT_VERSION
+  let yes = false
+  let skipSetup = false
 
   for (let i = 2; i < argv.length; i++) {
     const arg = argv[i]
@@ -31,10 +34,22 @@ function parseArgs(argv) {
       target = argv[++i]
     } else if (arg === '--version' || arg === '-v') {
       version = argv[++i]
+    } else if (arg === '--yes' || arg === '-y') {
+      yes = true
+    } else if (arg === '--skip-setup') {
+      skipSetup = true
     } else if (arg === '--help' || arg === '-h') {
       console.log('Usage: node install.js [options]')
-      console.log('  -t, --target <n>   Target context window (default: 270000)')
-      console.log('  -v, --version <v>  Claude Code version (default: latest)')
+      console.log('')
+      console.log('Options:')
+      console.log('  -t, --target <n>    Target context window (default: 270000)')
+      console.log('  -v, --version <v>   Claude Code version (default: latest)')
+      console.log('  -y, --yes           Skip all prompts (non-interactive mode)')
+      console.log('  --skip-setup        Do not install shell integration')
+      console.log('')
+      console.log('Environment variables:')
+      console.log('  CC_EXPAND_TARGET    Set default target (overridden by --target)')
+      console.log('  CC_EXPAND_VERSION   Set default version (overridden by --version)')
       process.exit(0)
     } else if (arg.startsWith('-')) {
       console.log(`Unknown option: ${arg}`)
@@ -42,7 +57,42 @@ function parseArgs(argv) {
     }
   }
 
-  return { target, version }
+  return { target, version, yes, skipSetup }
+}
+
+function askQuestion(prompt) {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
+  return new Promise((resolve) => {
+    rl.question(prompt, (answer) => {
+      rl.close()
+      resolve(answer.trim())
+    })
+  })
+}
+
+async function askTarget() {
+  console.log('\nChoose your context window size:')
+  console.log(`  ${C}[1]${X} 200k — Restore to default (no expansion)`)
+  console.log(`  ${C}[2]${X} 250k — Safe expansion`)
+  console.log(`  ${C}[3]${X} 270k — Aggressive expansion (recommended)`)
+
+  const answer = await askQuestion('Enter 1, 2, or 3 [3]: ')
+  switch (answer) {
+    case '1': return '200000'
+    case '2': return '250000'
+    case '3': case '': return DEFAULT_TARGET
+    default: return answer || DEFAULT_TARGET
+  }
+}
+
+async function askSetup() {
+  console.log('\nShell integration:')
+  console.log('  This will add a cc() function and c alias to your shell config (~/.zshrc or ~/.bashrc).')
+  console.log('  After setup, you can type cc or c to launch Claude Code with expanded context.')
+  console.log('  Without it, you will need to run cc-expand run <tokens> each time.')
+
+  const answer = await askQuestion('Install shell integration? [Y/n]: ')
+  return answer === '' || answer.toLowerCase() === 'y'
 }
 
 function checkNodeJs() {
@@ -77,7 +127,6 @@ function findPatternsJson() {
     if (existsSync(c)) return c
   }
 
-  // Fallback: global npm package
   try {
     const globalRoot = execSync('npm root -g', { encoding: 'utf-8' }).trim()
     const globalCandidates = [
@@ -145,6 +194,11 @@ function installClaudeCode(version) {
 }
 
 function patchClaudeCode(target, version) {
+  if (target === '200000') {
+    step('Skipping patch (default 200k context window)')
+    return
+  }
+
   step(`Patching to ${target} tokens`)
   const args = ['patch', '--target', target, '--yes']
   if (version !== 'latest') {
@@ -156,22 +210,54 @@ function patchClaudeCode(target, version) {
 
 function setupShell() {
   step('Setting up shell integration')
-  execFileSync('cc-expand', ['setup', '--yes'], { stdio: 'inherit' })
-  ok('Shell integration installed')
+  try {
+    execFileSync('cc-expand', ['setup', '--yes'], { stdio: 'inherit' })
+    ok('Shell integration installed')
+  } catch (err) {
+    const msg = String(err.stderr || err.stdout || err.message || '')
+    if (msg.includes('already installed')) {
+      ok('Shell integration already installed')
+      return
+    }
+    throw err
+  }
 }
 
-function main() {
-  const { target, version } = parseArgs(process.argv)
+async function main() {
+  const { target, version, yes, skipSetup } = parseArgs(process.argv)
+  const isInteractive = process.stdin.isTTY && !yes
+
+  let finalTarget = target
+  let shouldSetup = !skipSetup
 
   checkNodeJs()
+
+  if (isInteractive) {
+    finalTarget = await askTarget()
+    if (!skipSetup) {
+      shouldSetup = await askSetup()
+    }
+  }
+
   checkVersionCompatibility(version)
   installCcExpand()
   installClaudeCode(version)
-  patchClaudeCode(target, version)
-  setupShell()
+  patchClaudeCode(finalTarget, version)
 
-  console.log(`\n${G}Done!${X} Run '${C}cc${X}' or '${C}c${X}' to start Claude Code with ${C}${target}${X} tokens`)
-  console.log(`   Restart terminal or run: ${C}source ~/.zshrc${X}`)
+  if (shouldSetup) {
+    setupShell()
+  }
+
+  console.log(`\n${G}Done!${X}`)
+  if (shouldSetup) {
+    console.log(`Run ${C}cc${X} or ${C}c${X} to start Claude Code with ${C}${finalTarget}${X} tokens`)
+    console.log(`Restart your terminal or run: ${C}source ~/.zshrc${X}`)
+  } else {
+    console.log(`Run ${C}cc-expand run ${finalTarget}${X} to start with expanded context`)
+  }
 }
 
-main()
+main().catch((err) => {
+  console.error(`\n${R}Error:${X}`, err.message)
+  process.exit(1)
+})

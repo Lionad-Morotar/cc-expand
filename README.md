@@ -20,6 +20,12 @@ When using a model that supports 256K context, Claude Code's native 200K limit b
 
 ## Install
 
+**For Agent users**, paste this:
+
+> Help me expand my Claude Code context window using https://github.com/Lionad-Morotar/cc-expand
+
+**Manual install:**
+
 ```bash
 npm install -g cc-expand
 ```
@@ -28,17 +34,6 @@ Or use npx without installing:
 
 ```bash
 npx cc-expand <command>
-```
-
-Or tell your Agent run the installer for one-command setup:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/Lionad-Morotar/cc-expand/main/install.js | bash
-```
-
-With options:
-```bash
-curl -fsSL https://raw.githubusercontent.com/Lionad-Morotar/cc-expand/main/install.js | bash -s -- --target 256000 --version 2.1.170
 ```
 
 ## Usage

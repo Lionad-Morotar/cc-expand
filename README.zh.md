@@ -20,6 +20,12 @@
 
 ## 安装
 
+**Agent 用户**直接发送：
+
+> 帮我扩展 Claude Code 的上下文窗口 https://github.com/Lionad-Morotar/cc-expand
+
+**手动安装：**
+
 ```bash
 npm install -g cc-expand
 ```
@@ -28,17 +34,6 @@ npm install -g cc-expand
 
 ```bash
 npx cc-expand <command>
-```
-
-或告诉你的 Agent 使用一键安装脚本：
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/Lionad-Morotar/cc-expand/main/install.js | bash
-```
-
-带参数：
-```bash
-curl -fsSL https://raw.githubusercontent.com/Lionad-Morotar/cc-expand/main/install.js | bash -s -- --target 256000 --version 2.1.170
 ```
 
 ## 用法
