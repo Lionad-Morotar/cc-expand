@@ -61,15 +61,22 @@ function generateShellFunction(): string {
     '',
     '    if [[ ! -x "$binary" ]]; then',
     '      echo "→ Installing Claude Code ${ctx}..." >&2',
-    '      cc-expand patch --target "$ctx" --yes',
+    '      cc-expand patch --target "$ctx" --yes || {',
+    '        echo "Error: Failed to patch Claude Code ${ctx}" >&2',
+    '        return 1',
+    '      }',
     '    fi',
     '',
     '    "$binary" $default_flags "$@"',
     '    return $?',
     '  fi',
     '',
-    '  # 默认启动 270k',
+    '  # 默认启动 270k（检查是否存在）',
     '  local default_binary="$HOME/.cc-expand/bin/claude-270000"',
+    '  if [[ ! -x "$default_binary" ]]; then',
+    '    echo "Error: Default binary not found. Run: cc-expand patch --target 270000 --yes" >&2',
+    '    return 1',
+    '  fi',
     '  "$default_binary" $default_flags "$@"',
     '}',
     "alias c='cc 270000'",
@@ -82,26 +89,36 @@ function generateShellFunction(): string {
 /**
  * 备份已存在的 cc() 函数和 alias 定义
  * 将 cc() 重命名为 cc_backup()，alias c= 重命名为 alias c_backup=
+ * 支持多行函数定义（如 cc()\n{\n}）
  */
 function backupExistingDefinitions(content: string): string {
-  return content
-    .split('\n')
-    .map((line) => {
-      // cc() 函数定义（排除已备份的 cc_backup）
-      if (/^\s*cc\s*\(\s*\)\s*\{/.test(line) && !line.includes('cc_backup')) {
-        return line.replace(/cc\s*\(\s*\)\s*\{/, 'cc_backup() {')
-      }
-      // alias c=（排除已备份的 c_backup）
-      if (/^\s*alias\s+c\s*=/.test(line) && !line.includes('c_backup')) {
-        return line.replace(/alias\s+c\s*=/, 'alias c_backup=')
-      }
-      // alias cc=（排除已备份的 cc_backup）
-      if (/^\s*alias\s+cc\s*=/.test(line) && !line.includes('cc_backup')) {
-        return line.replace(/alias\s+cc\s*=/, 'alias cc_backup=')
-      }
-      return line
-    })
-    .join('\n')
+  // 排除已备份的内容块
+  if (content.includes('cc_backup') || content.includes('c_backup')) {
+    return content
+  }
+
+  let result = content
+
+  // 备份 alias c=（单行）
+  result = result.replace(
+    /^\s*alias\s+c\s*=/gm,
+    'alias c_backup=',
+  )
+
+  // 备份 alias cc=（单行）
+  result = result.replace(
+    /^\s*alias\s+cc\s*=/gm,
+    'alias cc_backup=',
+  )
+
+  // 备份 cc() 函数定义（支持单行和多行）
+  // 匹配 "cc()" 后面可选空白，然后 "{" 开始的内容
+  result = result.replace(
+    /\bcc\s*\(\s*\)\s*(?:\n\s*)?\{/g,
+    'cc_backup() {',
+  )
+
+  return result
 }
 
 export async function setupCommand(
@@ -179,8 +196,15 @@ export async function setupCommand(
   console.log(`✓ cc-expand shell integration installed to ${configFile}`)
   console.log(`  Run 'source ${configFile}' or restart your terminal to use 'cc' and 'c'`)
 
-  // 如果指定了版本，下载并 patch
+  // 保存版本到 channel.json，供后续 patch 命令使用
   if (version) {
+    const channelConfig = new ChannelConfig(configDir)
+    channelConfig.saveChannel({
+      channel: 'local',
+      path: join(configDir, 'packages', version),
+      version,
+    })
+
     const packagesDir = join(configDir, 'packages')
     const packageService = new PackageService(packagesDir)
 

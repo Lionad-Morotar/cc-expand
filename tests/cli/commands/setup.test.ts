@@ -51,6 +51,10 @@ describe('setup command', () => {
     // 渠道无关的 shell 函数
     expect(content).toContain('$HOME/.cc-expand/bin/claude-${ctx}')
     expect(content).toContain('$HOME/.cc-expand/bin/claude-270000')
+    // patch 失败时返回错误
+    expect(content).toContain('cc-expand patch --target "$ctx" --yes || {')
+    // 默认 binary 不存在时检查
+    expect(content).toContain('if [[ ! -x "$default_binary" ]]; then')
   })
 
   it('should install with --yes without confirm', async () => {
@@ -73,6 +77,17 @@ describe('setup command', () => {
     const content = readFileSync(zshrc, 'utf-8')
     expect(content).toContain('cc_backup()')
     expect(content).toContain('alias c_backup=')
+    expect(content).toContain('cc()')
+  })
+
+  it('should backup multiline cc function', async () => {
+    const zshrc = join(tempDir, '.zshrc')
+    writeFileSync(zshrc, 'cc()\n{\n  echo old\n}\n')
+
+    await setupCommand(['--yes'], { homeDir: tempDir })
+
+    const content = readFileSync(zshrc, 'utf-8')
+    expect(content).toContain('cc_backup()')
     expect(content).toContain('cc()')
   })
 
