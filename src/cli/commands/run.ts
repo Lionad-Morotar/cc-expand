@@ -8,7 +8,8 @@ import { join } from 'node:path'
 import { CcxError, ErrorCode } from '../../types/index.js'
 
 export async function runCommand(targetTokens?: string): Promise<void> {
-  const target = targetTokens ?? '270000'
+  // parseInt 确保前导零被去除，与 patch 命令生成的文件名一致
+  const target = targetTokens ? String(parseInt(targetTokens, 10)) : '270000'
   const binaryPath = join(homedir(), '.cc-expand', 'bin', `claude-${target}`)
 
   if (!existsSync(binaryPath)) {

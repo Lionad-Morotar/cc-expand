@@ -18,13 +18,21 @@ export async function installCommand(
 ): Promise<void> {
   // 解析版本号：支持位置参数或 --version
   let version = 'latest'
+  // 第一轮：找 --version 标志
   for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--version' || args[i] === '-v') {
-      version = args[i + 1] ?? 'latest'
+    if ((args[i] === '--version' || args[i] === '-v') && args[i + 1]) {
+      version = args[i + 1]
       i++
-    } else if (!args[i].startsWith('-') && i === 0) {
-      // 第一个非选项参数作为版本号
-      version = args[i]
+      break
+    }
+  }
+  // 第二轮：找第一个非选项位置参数（如果 --version 未指定）
+  if (version === 'latest') {
+    for (const arg of args) {
+      if (!arg.startsWith('-')) {
+        version = arg
+        break
+      }
     }
   }
 
