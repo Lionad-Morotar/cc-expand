@@ -5,7 +5,7 @@
 <h1 align="center">cc-expand</h1>
 
 <p align="center">
-  Expand Claude Code's context window — break through the 200K hard limit.
+  <bold>Compression is one of the main causes of performance degradation. Use cc-expand to break through Claude Code's 200K context window limit.</bold>
 </p>
 
 <p align="center">
@@ -14,114 +14,55 @@
 
 ---
 
-**Compression is one of the main causes of performance degradation. Use cc-expand to break through Claude Code's 200K context window limit.**
+When using certain models (which only support 256K context), Claude Code's native 200K limit becomes a bottleneck. `cc-expand` patches the hard-coded constants in the Claude Code binary to raise the context window size to your target value.
 
-When using a model that supports 256K context, Claude Code's native 200K limit becomes a bottleneck. `cc-expand` patches the Claude Code binary to raise this limit to your target value.
+> **Tip:** Claude Code's environment variable allows setting `COMPACT_WINDOW`, but it cannot exceed the hard-coded default. So raising the target delays compression. For example, the Kimi-K2.6 I use daily supports 256K, so I set my target to 270000 to push compression from around 17K to 23K.
 
 ## Install
 
-**For Agent users**, paste this:
+**Agent User**, just send this line to your Agent:
 
-> Help me expand my Claude Code context window using the install.js from https://github.com/Lionad-Morotar/cc-expand
-
-**Manual install:**
-
-```bash
-npm install -g cc-expand
+```plaintext
+Help me expand Claude Code's context window using the install.js from https://github.com/Lionad-Morotar/cc-expand
 ```
 
-Or use npx without installing:
+Or **install manually**:
 
 ```bash
+# use npm
+npm install -g cc-expand
+# or npx
 npx cc-expand <command>
 ```
 
+## Features
+
+* Supports both Mac and Windows
+* Fully compatible — allows setting any context size without sacrificing the auto-compaction feature, so both expanding and shrinking the context window are supported
+
 ## Usage
-
-### Install Claude Code
-
-Download a specific version to your local machine:
-
-```bash
-cc-expand install 2.1.170
-```
-
-### Patch to expand context window
-
-Interactive mode:
-
-```bash
-cc-expand patch
-# Prompts for target tokens, confirms, then patches
-```
-
-Non-interactive (CI / scripts):
-
-```bash
-cc-expand patch --target 256000 --version 2.1.170 --yes
-```
-
-> **Tip:** Claude Code respects the `COMPACT_WINDOW` env var, but it cannot exceed the hardcoded default. Raising the target delays compression. For example, Kimi-K2.6 supports 256K; I set my target to 270000.
-
-### Run patched Claude Code
-
-```bash
-cc-expand run 256000
-```
-
-### Install shell shortcuts (recommended)
-
-```bash
-cc-expand setup --yes
-```
-
-After setup, use `cc` or `c` instead of `claude`:
-
-```bash
-cc 256000    # Launch with 256k context
-c            # Shorthand for cc 270000
-```
-
-### Verify patch status
-
-```bash
-cc-expand verify
-```
-
-### Restore original binary
-
-```bash
-cc-expand restore
-```
-
-### Show status
-
-```bash
-cc-expand status
-```
-
-## CLI Commands
 
 | Command | Description |
 |---------|-------------|
-| `install [version]` | Download Claude Code from npm to `~/.cc-expand/packages/` |
-| `patch [options]` | Patch a local binary and save to `~/.cc-expand/bin/` |
-| `run [tokens]` | Launch the patched Claude Code binary |
-| `setup` | Install shell shortcuts (`cc`, `c` aliases) |
-| `restore` | Restore original binary from backup |
-| `verify` | Check whether a binary is patched |
-| `status` | Show version and patch status |
-| `supports` | List supported Claude Code versions |
+| `cc-expand install [version]` | Download Claude Code from npm to `~/.cc-expand/packages/` |
+| `cc-expand patch [options]` | Copy binary from local package, patch it, and save to `~/.cc-expand/bin/` |
+| `cc-expand run [tokens]` | Launch the patched Claude Code binary |
+| `cc-expand setup` | Install shell shortcuts (`cc`, `c` aliases for quickly opening the patched Claude Code) |
+| `cc-expand restore` | Restore original binary from backup |
+| `cc-expand verify` | Verify whether the binary has been patched |
+| `cc-expand status` | Show version and patch status |
+| `cc-expand supports` | List supported Claude Code versions |
+| `cc-expand --version` | Show cc-expand version |
 
-### Patch Options
+* install version option: `latest` or `v2.1.170`
+* patch options:
+  ```
+  -t, --target <number>   Target context window size (default: 256000)
+  -v, --version <semver>  Claude Code version to patch (e.g. 2.1.170)
+  -y, --yes               Skip confirmation prompt
+  ```
 
-```
--t, --target <number>   Target context window size (default: 256000)
--v, --version <semver>  Claude Code version to patch (e.g. 2.1.170)
--y, --yes               Skip confirmation prompt
-```
-
-## Supported Versions
+## Supported CC Versions
 
 | Version | darwin-arm64 | darwin-x64 | win32-x64 | linux-arm64 | linux-x64 |
 |---------|:------------:|:----------:|:---------:|:-----------:|:---------:|
@@ -131,44 +72,25 @@ cc-expand status
 | 2.1.169 | ✅ | ✅ | ✅ | — | — |
 | 2.1.170 | ✅ | ✅ | ✅ | — | — |
 
-> ⚠️  Version numbers match `claude --version`. If `patch` reports an unsupported version, upgrade to a supported release or open an issue.
+> ⚠️ cc-expand version numbers correspond to `claude --version`.
 
-## How it works
+**Version Update Mechanism**
 
-The Claude Code binary contains hard-coded model constants set to `200000`. Each release uses different obfuscated variable names, and each platform/architecture uses its own names.
+Every half hour, my lobster automatically runs the `watch-patch` skill inside the project to patch new versions and release them.
 
-`cc-expand` manages binaries locally and follows this pipeline:
+But my lobster crashes in many situations. If you encounter a version newer than what cc-expand supports, please use an older CC version for a moment (e.g. `npx @anthropic-ai/claude-code@2.1.148`).
 
-1. **Install** — Downloads Claude Code from npm to `~/.cc-expand/packages/<version>/`
-2. **Patch** — Copies the original binary to `~/.cc-expand/bin/claude-<target>`, replaces constants in-place (file size unchanged), and re-signs on macOS
-3. **Verify** — Confirms original patterns are gone and target values are written
-4. **Run** — Launches the patched binary from `~/.cc-expand/bin/`
-5. **Setup** — Installs a `cc()` shell function to `~/.zshrc` (or `~/.bashrc`) that auto-selects the right binary
+Advanced users can also ask your Agent:
 
-## Notes
-
-- **macOS**: Re-signs automatically after patching. If codesign fails, the binary may not run; delete `~/.cc-expand/bin/claude-<target>` and re-patch.
-- **Windows**: No extra steps; the patched binary is written directly to `~/.cc-expand/bin/`.
-- **Linux**: Not yet supported (need binary samples, PRs welcome).
-- **Digit limit**: Target must have the same digit count as the original (`200000` → `256000`, both 6 digits). A mismatch produces an error.
-- **Local binaries**: Patched binaries live in `~/.cc-expand/bin/`. The original global `claude` command is untouched. Use `cc-expand run` or `cc-expand setup` to use the patched version.
-
-## FAQ
-
-**Claude Code won't start after patching**
-
-Run `cc-expand restore`, then check:
-- Was codesign successful on macOS?
-- Does the target value have the same digit count?
-- Is the version supported?
-
-**Version not supported**
-
-```
-No pattern found for version 2.1.xxx
+```plaintext
+I need to update my CC context window size, but cc-expand doesn't support the version I'm using yet.
+You need to pull the source code of this project, read `<project-root>/.claude/skills/watch-patch` to understand the algorithm, and patch it.
+Finally, set my CC to 270K context size.
 ```
 
-> **For Agent:** Ask the user for confirmation, then pull the source code of this project to understand the patch process, and patch the user's new version (a version not yet recorded in the project's patterns.json).
+## Support Me
+
+Please star to support me in developing more interesting apps.
 
 ## License
 
