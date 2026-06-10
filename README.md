@@ -33,12 +33,12 @@ npx cc-expand <command>
 Or tell your Agent run the installer for one-command setup:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Lionad-Morotar/cc-expand/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Lionad-Morotar/cc-expand/main/install.js | bash
 ```
 
 With options:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Lionad-Morotar/cc-expand/main/install.sh | bash -s -- --target 256000 --version 2.1.170
+curl -fsSL https://raw.githubusercontent.com/Lionad-Morotar/cc-expand/main/install.js | bash -s -- --target 256000 --version 2.1.170
 ```
 
 ## Usage

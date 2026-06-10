@@ -33,12 +33,12 @@ npx cc-expand <command>
 或告诉你的 Agent 使用一键安装脚本：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Lionad-Morotar/cc-expand/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Lionad-Morotar/cc-expand/main/install.js | bash
 ```
 
 带参数：
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Lionad-Morotar/cc-expand/main/install.sh | bash -s -- --target 256000 --version 2.1.170
+curl -fsSL https://raw.githubusercontent.com/Lionad-Morotar/cc-expand/main/install.js | bash -s -- --target 256000 --version 2.1.170
 ```
 
 ## 用法

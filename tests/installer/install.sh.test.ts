@@ -4,16 +4,16 @@ import { join } from 'node:path'
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 
-const INSTALL_SH = join(__dirname, '..', '..', 'install.sh')
+const INSTALL_JS = join(__dirname, '..', '..', 'install.js')
 const ZSHRC = join(homedir(), '.zshrc')
 
-describe('install.sh', () => {
+describe('install.js', () => {
   it('should show help for --help flag', () => {
-    const output = execFileSync('bash', [INSTALL_SH, '--help'], {
+    const output = execFileSync('node', [INSTALL_JS, '--help'], {
       encoding: 'utf-8',
     })
 
-    expect(output).toContain('Usage: install.sh')
+    expect(output).toContain('Usage: node install.js')
     expect(output).toContain('--target')
     expect(output).toContain('--version')
   })
@@ -22,7 +22,7 @@ describe('install.sh', () => {
     let threw = false
     let combined = ''
     try {
-      execFileSync('bash', [INSTALL_SH, '--version', '2.1.156'], {
+      execFileSync('node', [INSTALL_JS, '--version', '2.1.156'], {
         encoding: 'utf-8',
         stdio: ['pipe', 'pipe', 'pipe'],
       })
@@ -47,7 +47,7 @@ describe('install.sh', () => {
     writeFileSync(versionsJson, '{"patchedVersions": {}}', { flag: 'w' })
 
     try {
-      const output = execFileSync('bash', [INSTALL_SH, '--version', '2.1.170', '--target', '270000'], {
+      const output = execFileSync('node', [INSTALL_JS, '--version', '2.1.170', '--target', '270000'], {
         encoding: 'utf-8',
         stdio: ['pipe', 'pipe', 'pipe'],
         timeout: 300000, // 5 minutes for npm install + download
