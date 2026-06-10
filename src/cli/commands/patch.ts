@@ -30,12 +30,28 @@ export async function patchCommand(args: string[] = []): Promise<void> {
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--target' || args[i] === '-t') {
-      targetTokens = parseInt(args[i + 1], 10)
+      const next = args[i + 1]
+      if (next === undefined || !/^\d+$/.test(next)) {
+        throw new CcxError(
+          ErrorCode.INVALID_TARGET,
+          `--target requires a valid positive integer`,
+          `Usage: cc-expand patch --target 256000`,
+        )
+      }
+      targetTokens = parseInt(next, 10)
       i++
     } else if (args[i] === '--yes' || args[i] === '-y') {
       skipConfirm = true
     } else if (args[i] === '--version' || args[i] === '-v') {
-      version = args[i + 1]
+      const next = args[i + 1]
+      if (next === undefined || next.startsWith('-')) {
+        throw new CcxError(
+          ErrorCode.INVALID_TARGET,
+          `--version requires a value`,
+          `Usage: cc-expand patch --version 2.1.170`,
+        )
+      }
+      version = next
       i++
     }
   }
@@ -46,6 +62,15 @@ export async function patchCommand(args: string[] = []): Promise<void> {
       ErrorCode.INVALID_TARGET,
       '--yes requires --target',
       'Usage: cc-expand patch --target 256000 --yes',
+    )
+  }
+
+  // 验证 target tokens 有效（提前拒绝，避免不必要的 I/O）
+  if (targetTokens !== undefined && targetTokens <= 0) {
+    throw new CcxError(
+      ErrorCode.INVALID_TARGET,
+      `Invalid target tokens: ${targetTokens}`,
+      `Target must be a positive integer (e.g. 256000)`,
     )
   }
 
