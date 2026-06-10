@@ -30,6 +30,11 @@ function getBinaryName(): string {
   return process.platform === 'win32' ? 'claude.exe' : 'claude'
 }
 
+/** 获取平台相关的 npm 命令 */
+export function getNpmCommand(): string {
+  return process.platform === 'win32' ? 'npm.cmd' : 'npm'
+}
+
 export class PackageService {
   constructor(private packagesDir: string) {}
 
@@ -142,7 +147,7 @@ export class PackageService {
   ): Promise<string> {
     return new Promise((resolve, reject) => {
       execFile(
-        'npm',
+        getNpmCommand(),
         ['pack', `${name}@${version}`, '--pack-destination', destDir, '--json'],
         { timeout: 300000 },
         (error: Error | null, stdout: string) => {
