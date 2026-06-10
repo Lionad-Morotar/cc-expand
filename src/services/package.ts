@@ -16,6 +16,20 @@ import { existsSync, mkdirSync, copyFileSync, chmodSync, readFileSync, rmSync } 
 import { join } from 'node:path'
 import { extract } from 'tar'
 
+/** 验证版本号格式：semver 或 latest */
+function validateVersion(version: string): void {
+  if (version === 'latest') return
+  if (/^\d+\.\d+\.\d+/.test(version)) return
+  throw new Error(
+    `Invalid version format: ${version}. Expected semver (e.g. 2.1.170) or "latest"`,
+  )
+}
+
+/** 获取平台相关的 binary 文件名 */
+function getBinaryName(): string {
+  return process.platform === 'win32' ? 'claude.exe' : 'claude'
+}
+
 export class PackageService {
   constructor(private packagesDir: string) {}
 
@@ -25,8 +39,11 @@ export class PackageService {
    * @returns 安装目录路径（包含 bin/claude）
    */
   async install(version: string): Promise<string> {
+    validateVersion(version)
+
     const targetDir = join(this.packagesDir, version)
-    const binaryPath = join(targetDir, 'bin', 'claude')
+    const binaryName = getBinaryName()
+    const binaryPath = join(targetDir, 'bin', binaryName)
 
     // 如果已安装，直接返回
     if (existsSync(binaryPath)) {
@@ -59,34 +76,42 @@ export class PackageService {
         throw new Error(`Unsupported platform: ${platform}`)
       }
 
-      // 3. 下载平台特定包
+      // 3. 下载平台特定包（download 失败时也清理临时目录）
       const platformDir = join(targetDir, '.platform')
-      mkdirSync(platformDir, { recursive: true })
-      const platformTarball = await this.downloadPackage(
-        platformPkgName,
-        platformVersion,
-        platformDir,
-      )
+      let platformTarball: string | undefined
 
       try {
+        mkdirSync(platformDir, { recursive: true })
+        platformTarball = await this.downloadPackage(
+          platformPkgName,
+          platformVersion,
+          platformDir,
+        )
+
         await extract({
           file: platformTarball,
           cwd: platformDir,
           strip: 1,
         })
 
-        // 4. 复制 binary 到目标位置
-        const sourceBinary = join(platformDir, 'claude')
+        // 4. 复制 binary 到目标位置（带竞态保护：再次检查是否已存在）
+        const sourceBinary = join(platformDir, binaryName)
         if (!existsSync(sourceBinary)) {
           throw new Error(`Binary not found in platform package: ${sourceBinary}`)
         }
 
         mkdirSync(join(targetDir, 'bin'), { recursive: true })
-        copyFileSync(sourceBinary, binaryPath)
-        chmodSync(binaryPath, 0o755)
+
+        // 竞态条件保护：另一个并发进程可能已创建 binary
+        if (!existsSync(binaryPath)) {
+          copyFileSync(sourceBinary, binaryPath)
+          chmodSync(binaryPath, 0o755)
+        }
       } finally {
         rmSync(platformDir, { recursive: true, force: true })
-        rmSync(platformTarball, { force: true })
+        if (platformTarball) {
+          rmSync(platformTarball, { force: true })
+        }
       }
     } finally {
       rmSync(wrapperDir, { recursive: true, force: true })
@@ -98,12 +123,12 @@ export class PackageService {
 
   /** 检查指定版本是否已安装 */
   isInstalled(version: string): boolean {
-    return existsSync(join(this.packagesDir, version, 'bin', 'claude'))
+    return existsSync(join(this.packagesDir, version, 'bin', getBinaryName()))
   }
 
   /** 获取已安装版本的 binary 路径 */
   getBinaryPath(version: string): string {
-    return join(this.packagesDir, version, 'bin', 'claude')
+    return join(this.packagesDir, version, 'bin', getBinaryName())
   }
 
   private async downloadWrapper(version: string, destDir: string): Promise<string> {
@@ -118,16 +143,33 @@ export class PackageService {
     return new Promise((resolve, reject) => {
       execFile(
         'npm',
-        ['pack', `${name}@${version}`, '--pack-destination', destDir],
+        ['pack', `${name}@${version}`, '--pack-destination', destDir, '--json'],
         { timeout: 300000 },
         (error: Error | null, stdout: string) => {
           if (error) {
             reject(error)
             return
           }
-          const lines = stdout.trim().split('\n')
-          const tarballName = lines[lines.length - 1].trim()
-          resolve(join(destDir, tarballName))
+          try {
+            const result = JSON.parse(stdout)
+            const tarballName = Array.isArray(result)
+              ? result[0]?.filename
+              : result?.filename
+            if (!tarballName) {
+              reject(new Error('npm pack did not return tarball filename'))
+              return
+            }
+            resolve(join(destDir, tarballName))
+          } catch {
+            // Fallback: parse last non-empty line from stdout
+            const lines = stdout.trim().split('\n').filter(Boolean)
+            const tarballName = lines[lines.length - 1]?.trim()
+            if (!tarballName) {
+              reject(new Error('Could not determine tarball name from npm pack output'))
+              return
+            }
+            resolve(join(destDir, tarballName))
+          }
         },
       )
     })
