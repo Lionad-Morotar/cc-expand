@@ -26,7 +26,7 @@ When using certain models (which only support 256K context), Claude Code's nativ
 
 ## Install
 
-**Agent User**, just send this line to your Agent:
+Ask your AI agent to run this:
 
 ```plaintext
 Help me expand Claude Code's context window to 270k using cc-expand (npx -y cc-expand@latest)

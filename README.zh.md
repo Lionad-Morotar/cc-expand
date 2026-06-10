@@ -22,7 +22,7 @@
 
 ## 安装
 
-**Agent User**，直接发送这一行给你的 Agent：
+让 AI agent 执行这句：
 
 ```plaintext
 帮我扩展 Claude Code 的上下文窗口到 270k，使用 cc-expand（npx -y cc-expand@latest）
