@@ -48,6 +48,9 @@ describe('setup command', () => {
     const content = readFileSync(zshrc, 'utf-8')
     expect(content).toContain('cc()')
     expect(content).toContain("alias c='cc 270000'")
+    // 渠道无关的 shell 函数
+    expect(content).toContain('$HOME/.cc-expand/bin/claude-${ctx}')
+    expect(content).toContain('$HOME/.cc-expand/bin/claude-270000')
   })
 
   it('should install with --yes without confirm', async () => {

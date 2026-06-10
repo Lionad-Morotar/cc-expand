@@ -11,6 +11,7 @@ import { runCommand } from './commands/run.js'
 import { statusCommand } from './commands/status.js'
 import { supportsCommand } from './commands/supports.js'
 import { setupCommand } from './commands/setup.js'
+import { installCommand } from './commands/install.js'
 
 const COMMANDS: Record<string, (args: string[]) => Promise<void>> = {
   patch: patchCommand,
@@ -20,6 +21,7 @@ const COMMANDS: Record<string, (args: string[]) => Promise<void>> = {
   status: statusCommand,
   supports: supportsCommand,
   setup: setupCommand,
+  install: installCommand,
 }
 
 async function main(): Promise<void> {
@@ -60,7 +62,8 @@ Usage:
   cc-expand <command> [options]
 
 Commands:
-  patch            Interactive patch wizard
+  install [ver]    Download Claude Code via npm
+  patch            Patch local Claude Code binary
   restore          Restore original binary
   verify           Check patch status
   run [tokens]     Launch patched Claude Code
@@ -69,10 +72,9 @@ Commands:
   setup            Install shell shortcuts (cc, c)
 
 Examples:
-  cc-expand patch
+  cc-expand install 2.1.170
+  cc-expand patch --target 256000
   cc-expand run 256000
-  cc-expand restore
-  cc-expand supports
   cc-expand setup --yes
 `)
 }

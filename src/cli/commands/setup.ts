@@ -2,17 +2,21 @@
  * setup command — 向 shell 配置文件安装 cc 快捷函数和 c alias
  */
 
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { confirm } from '@inquirer/prompts'
 import { CcxError, ErrorCode } from '../../types/index.js'
+import { ChannelConfig } from '../../services/channel-config.js'
+import { PackageService } from '../../services/package.js'
 
 export interface SetupOptions {
   /** 覆盖默认的 home 目录（用于测试） */
   homeDir?: string
   /** 覆盖默认的 confirm 函数（用于测试） */
   confirm?: (message: string) => Promise<boolean>
+  /** 直接指定版本（用于测试，跳过检测） */
+  version?: string
 }
 
 /**
@@ -40,12 +44,7 @@ function detectConfigFile(homeDir: string): string {
 
 /**
  * 生成 cc 函数和 c alias 的 shell 代码
- *
- * 工程计划中的完整设计：
- * - 数字参数：指定 context window 大小，自动 patch 并启动
- * - 非数字参数：直接传给 npx claude
- * - 预构建二进制缓存于 ~/.claude/bin/claude-${ctx}
- * - 版本检查：对比 npx 缓存版本 vs 已 patch 版本
+ * 渠道无关：直接从 ~/.cc-expand/bin/ 运行 patched binary
  */
 function generateShellFunction(): string {
   const lines = [
@@ -53,80 +52,25 @@ function generateShellFunction(): string {
     '# --- cc-expand generated start ---',
     'cc() {',
     '  local default_flags="--dangerously-skip-permissions"',
-    '  local ctx_bin_dir="$HOME/.claude/bin"',
-    '',
-    '  # Helper: get latest npx cached claude version',
-    '  _cc_expand_latest_npx_version() {',
-    '    local latest=""',
-    '    local pkg',
-    '    for pkg in "$HOME/.npm/_npx"/*/node_modules/@anthropic-ai/claude-code/package.json; do',
-    '      [[ -f "$pkg" ]] || continue',
-    '      local v=$(grep \'"version"\' "$pkg" | head -1 | sed \'s/.*"\\([0-9.]*\\)".*/\\1/\')',
-    '      [[ -n "$v" ]] || continue',
-    '      if [[ -z "$latest" ]] || [[ "$v" > "$latest" ]]; then',
-    '        latest="$v"',
-    '      fi',
-    '    done',
-    '    echo "$latest"',
-    '  }',
     '',
     '  # 数字参数：指定 context window 大小',
     '  if [[ "$1" =~ ^[0-9]+$ ]]; then',
     '    local ctx="$1"',
     '    shift',
+    '    local binary="$HOME/.cc-expand/bin/claude-${ctx}"',
     '',
-    '    local prebuilt="${ctx_bin_dir}/claude-${ctx}"',
-    '    local version_file="${ctx_bin_dir}/claude-${ctx}.version"',
-    '',
-    '    # 检查预构建二进制是否存在且版本匹配',
-    '    if [[ -x "$prebuilt" && -f "$version_file" ]]; then',
-    '      local npx_version=$(_cc_expand_latest_npx_version)',
-    '      local patch_version=$(cat "$version_file" 2>/dev/null | tr -d \'[:space:]\')',
-    '',
-    '      if [[ -n "$npx_version" && "$npx_version" != "$patch_version" && -z "$_CC_SKIP_VERSION_CHECK" ]]; then',
-    '        echo "⚠️  Claude Code version mismatch detected" >&2',
-    '        echo "   Patched binary: $patch_version" >&2',
-    '        echo "   Current npx:    $npx_version" >&2',
-    '        echo -n "   Re-patch for ${ctx} context? [Y/n/o] " >&2',
-    '        read -r answer < /dev/tty',
-    '        if [[ "$answer" =~ ^[Nn]$ ]]; then',
-    '          echo "→ Falling back to npx default (200k context)" >&2',
-    '          npx -y @anthropic-ai/claude-code@latest $default_flags "$@"',
-    '          return $?',
-    '        elif [[ "$answer" =~ ^[Oo]$ ]]; then',
-    '          echo "→ Using old patched binary for this terminal only" >&2',
-    '          export _CC_SKIP_VERSION_CHECK=1',
-    '          "$prebuilt" $default_flags "$@"',
-    '          return $?',
-    '        else',
-    '          # Y 或回车：重新 patch',
-    '          echo "→ Re-patching ${ctx} context..." >&2',
-    '          rm -f "$prebuilt"',
-    '        fi',
-    '      else',
-    '        "$prebuilt" $default_flags "$@"',
-    '        return $?',
-    '      fi',
+    '    if [[ ! -x "$binary" ]]; then',
+    '      echo "→ Installing Claude Code ${ctx}..." >&2',
+    '      cc-expand patch --target "$ctx" --yes',
     '    fi',
     '',
-    '    # 没有预构建二进制，或用户选择重新 patch',
-    '    echo "→ Generating patched binary for ${ctx} context..." >&2',
-    '    npx -y cc-expand@latest patch --target "$ctx" --yes',
-    '    if [[ $? -ne 0 ]]; then',
-    '      echo "Error: patch failed" >&2',
-    '      return 1',
-    '    fi',
-    '',
-    '    # 记录版本',
-    '    _cc_expand_latest_npx_version > "$version_file"',
-    '',
-    '    # 启动',
-    '    npx -y cc-expand@latest run --yes',
+    '    "$binary" $default_flags "$@"',
     '    return $?',
     '  fi',
     '',
-    '  # 非数字参数：直接传给 npx claude',
-    '  npx -y @anthropic-ai/claude-code@latest $default_flags "$@"',
+    '  # 默认启动 270k',
+    '  local default_binary="$HOME/.cc-expand/bin/claude-270000"',
+    '  "$default_binary" $default_flags "$@"',
     '}',
     "alias c='cc 270000'",
     '# --- cc-expand generated end ---',
@@ -173,6 +117,13 @@ export async function setupCommand(
   }
 
   const homeDir = options?.homeDir ?? homedir()
+  const configDir = join(homeDir, '.cc-expand')
+
+  // 确保配置目录存在
+  if (!existsSync(configDir)) {
+    mkdirSync(configDir, { recursive: true })
+  }
+
   const configFile = detectConfigFile(homeDir)
 
   // 读取现有配置
@@ -190,9 +141,25 @@ export async function setupCommand(
     )
   }
 
+  // 版本选择
+  let version: string | undefined
+
+  if (options?.version) {
+    version = options.version
+  } else {
+    const channelConfig = new ChannelConfig(configDir)
+
+    if (channelConfig.hasChannel()) {
+      version = channelConfig.getChannel()?.version
+      console.log(`Using saved version: ${version}`)
+    }
+  }
+
   // 交互式确认
   if (!skipConfirm) {
-    const doConfirm = options?.confirm ?? (async (msg: string) => confirm({ message: msg }))
+    const doConfirm =
+      options?.confirm ??
+      (async (msg: string) => confirm({ message: msg }))
     const confirmed = await doConfirm(
       `Install cc-expand shell integration to ${configFile}?`,
     )
@@ -211,4 +178,17 @@ export async function setupCommand(
 
   console.log(`✓ cc-expand shell integration installed to ${configFile}`)
   console.log(`  Run 'source ${configFile}' or restart your terminal to use 'cc' and 'c'`)
+
+  // 如果指定了版本，下载并 patch
+  if (version) {
+    const packagesDir = join(configDir, 'packages')
+    const packageService = new PackageService(packagesDir)
+
+    if (!packageService.isInstalled(version)) {
+      console.log(`\nDownloading Claude Code ${version}...`)
+      await packageService.install(version)
+    }
+
+    console.log(`\n→ Run 'cc-expand patch --target 270000 --yes' to create your first patched binary`)
+  }
 }

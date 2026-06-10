@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { execFileSync } from 'node:child_process'
 import { join } from 'node:path'
-import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, writeFileSync, readFileSync, rmSync, mkdirSync, chmodSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 
 const CLI_PATH = join(__dirname, '..', '..', 'dist', 'cli.js')
@@ -58,12 +58,28 @@ describe('CLI Integration', () => {
     expect(threw).toBe(true)
   })
 
+  it('should show install command in help', () => {
+    const output = execFileSync('node', [CLI_PATH, '--help'], {
+      encoding: 'utf-8',
+    })
+
+    expect(output).toContain('install')
+  })
+
   it('should append cc function to zshrc with --yes', () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'cc-expand-setup-'))
+
+    // Create fake claude binary for channel detection
+    const fakeBinDir = join(tempDir, 'bin')
+    mkdirSync(fakeBinDir, { recursive: true })
+    const fakeClaude = join(fakeBinDir, 'claude')
+    writeFileSync(fakeClaude, '#!/bin/bash\necho "2.1.170 (Claude Code)"')
+    chmodSync(fakeClaude, 0o755)
+
     const zshrc = join(tempDir, '.zshrc')
     writeFileSync(zshrc, '# existing config\n')
 
-    const env = { ...process.env, HOME: tempDir }
+    const env = { ...process.env, HOME: tempDir, PATH: `${fakeBinDir}:${process.env.PATH}` }
     execFileSync('node', [CLI_PATH, 'setup', '--yes'], {
       encoding: 'utf-8',
       env,
@@ -78,20 +94,25 @@ describe('CLI Integration', () => {
 
   it('should backup existing cc function and alias in zshrc', () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'cc-expand-setup-'))
+
+    const fakeBinDir = join(tempDir, 'bin')
+    mkdirSync(fakeBinDir, { recursive: true })
+    const fakeClaude = join(fakeBinDir, 'claude')
+    writeFileSync(fakeClaude, '#!/bin/bash\necho "2.1.170"')
+    chmodSync(fakeClaude, 0o755)
+
     const zshrc = join(tempDir, '.zshrc')
     writeFileSync(zshrc, `existing config\ncc() { echo old; }\nalias c='oldcmd'\n`)
 
-    const env = { ...process.env, HOME: tempDir }
+    const env = { ...process.env, HOME: tempDir, PATH: `${fakeBinDir}:${process.env.PATH}` }
     execFileSync('node', [CLI_PATH, 'setup', '--yes'], {
       encoding: 'utf-8',
       env,
     })
 
     const content = readFileSync(zshrc, 'utf-8')
-    // 旧定义被备份
     expect(content).toContain('cc_backup()')
     expect(content).toContain('alias c_backup=')
-    // 新定义存在
     expect(content).toContain("alias c='cc 270000'")
 
     rmSync(tempDir, { recursive: true, force: true })
@@ -99,10 +120,17 @@ describe('CLI Integration', () => {
 
   it('should error when cc-expand block already exists', () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'cc-expand-setup-'))
+
+    const fakeBinDir = join(tempDir, 'bin')
+    mkdirSync(fakeBinDir, { recursive: true })
+    const fakeClaude = join(fakeBinDir, 'claude')
+    writeFileSync(fakeClaude, '#!/bin/bash\necho "2.1.170"')
+    chmodSync(fakeClaude, 0o755)
+
     const zshrc = join(tempDir, '.zshrc')
     writeFileSync(zshrc, '# --- cc-expand generated start ---\ncc() {}\n# --- cc-expand generated end ---\n')
 
-    const env = { ...process.env, HOME: tempDir }
+    const env = { ...process.env, HOME: tempDir, PATH: `${fakeBinDir}:${process.env.PATH}` }
     let threw = false
     try {
       execFileSync('node', [CLI_PATH, 'setup', '--yes'], {

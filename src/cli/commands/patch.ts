@@ -1,18 +1,21 @@
 /**
  * cc-expand patch — 交互式 patch 命令
- * 自动发现 Claude Code → 备份 → patch → 验证
+ * 从本地包复制 binary → patch → 保存到 ~/.cc-expand/bin/
  *
  * 用法:
  *   cc-expand patch                    # 交互式模式
  *   cc-expand patch --target 256000    # 非交互式，直接指定目标值
  *   cc-expand patch --target 256000 --yes  # 非交互式，跳过确认
  */
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync, copyFileSync, chmodSync, mkdirSync, rmSync } from 'node:fs'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
 import { input, confirm } from '@inquirer/prompts'
+import { execSync } from 'node:child_process'
 import { PatchEngine } from '../../core/patch-engine.js'
 import { Verifier } from '../../core/verifier.js'
-import { DiscoveryService } from '../../services/discovery.js'
-import { BackupService } from '../../services/backup.js'
+import { PackageService } from '../../services/package.js'
+import { ChannelConfig } from '../../services/channel-config.js'
 import { ConfigService } from '../../services/config.js'
 import { CcxError, ErrorCode } from '../../types/index.js'
 
@@ -23,6 +26,7 @@ export async function patchCommand(args: string[] = []): Promise<void> {
   // 解析命令行参数
   let targetTokens: number | undefined
   let skipConfirm = false
+  let version: string | undefined
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--target' || args[i] === '-t') {
@@ -30,6 +34,9 @@ export async function patchCommand(args: string[] = []): Promise<void> {
       i++
     } else if (args[i] === '--yes' || args[i] === '-y') {
       skipConfirm = true
+    } else if (args[i] === '--version' || args[i] === '-v') {
+      version = args[i + 1]
+      i++
     }
   }
 
@@ -42,24 +49,44 @@ export async function patchCommand(args: string[] = []): Promise<void> {
     )
   }
 
-  // 1. 发现 Claude Code
-  const discovery = new DiscoveryService()
-  const binaryPath = await discovery.findClaudeBinary()
-  const version = await discovery.getBinaryVersion(binaryPath)
+  // 确定版本：命令行 > channel.json > 报错
+  if (!version) {
+    const channelConfig = new ChannelConfig()
+    const channel = channelConfig.getChannel()
+    version = channel?.version
+  }
 
-  console.log(`Found Claude Code ${version} at ${binaryPath}`)
+  if (!version) {
+    throw new CcxError(
+      ErrorCode.BINARY_NOT_FOUND,
+      'No version specified',
+      'Use --version or run setup first to select a version',
+    )
+  }
 
-  // 2. 获取版本对应的模式
+  // 确保包已安装
+  const packagesDir = join(homedir(), '.cc-expand', 'packages')
+  const packageService = new PackageService(packagesDir)
+
+  if (!packageService.isInstalled(version)) {
+    console.log(`Claude Code ${version} not installed. Downloading...`)
+    await packageService.install(version)
+  }
+
+  const sourceBinaryPath = packageService.getBinaryPath(version)
+  console.log(`Using Claude Code ${version}`)
+
+  // 获取版本对应的模式
   const patches = configService.getPatternForVersion(version)
   if (!patches) {
     throw new CcxError(
       ErrorCode.PATTERN_NOT_FOUND,
       `No pattern found for version ${version}`,
-      `Check patterns.json for supported versions or run: grep -ao "200000" "${binaryPath}"`,
+      `Check patterns.json for supported versions`,
     )
   }
 
-  // 3. 获取目标 tokens
+  // 获取目标 tokens
   const sourceValue = patches[0]?.sourceValue ?? '200000'
 
   if (targetTokens === undefined) {
@@ -77,7 +104,7 @@ export async function patchCommand(args: string[] = []): Promise<void> {
     targetTokens = parseInt(targetInput, 10)
   }
 
-  // 4. 确认
+  // 确认
   if (!skipConfirm) {
     const confirmed = await confirm({
       message: `Replace ${patches.length} constant(s) from ${sourceValue} to ${targetTokens}?`,
@@ -89,18 +116,23 @@ export async function patchCommand(args: string[] = []): Promise<void> {
     }
   }
 
-  // 5. 备份
-  const backupService = new BackupService()
-  const backupDir = configService.getBackupDir()
-  await backupService.backup(binaryPath, backupDir)
-  console.log(`Backup created at ${backupDir}`)
+  // 创建 patched binary 目录
+  const patchBinDir = join(homedir(), '.cc-expand', 'bin')
+  mkdirSync(patchBinDir, { recursive: true })
+  const patchedBinaryPath = join(patchBinDir, `claude-${targetTokens}`)
 
-  // 6. Patch
-  const buffer = readFileSync(binaryPath)
+  // 复制原始 binary（不修改原始包）
+  copyFileSync(sourceBinaryPath, patchedBinaryPath)
+  chmodSync(patchedBinaryPath, 0o755)
+  console.log(`Created patched binary: ${patchedBinaryPath}`)
+
+  // Patch
+  const buffer = readFileSync(patchedBinaryPath)
   const engine = new PatchEngine()
   const patchResult = engine.patch(buffer, patches, targetTokens)
 
   if (!patchResult.success) {
+    rmSync(patchedBinaryPath, { force: true })
     throw patchResult.error ?? new CcxError(ErrorCode.PATCH_FAILED, 'Patch failed')
   }
 
@@ -109,38 +141,36 @@ export async function patchCommand(args: string[] = []): Promise<void> {
     console.log(`  - ${detail.desc} at offset ${detail.offset}`)
   }
 
-  // 7. 写入修改后的二进制
-  writeFileSync(binaryPath, buffer)
+  // 写入修改后的二进制
+  writeFileSync(patchedBinaryPath, buffer)
 
-  // 8. macOS codesign（重新签名）
+  // macOS codesign（重新签名）
   if (process.platform === 'darwin') {
     try {
-      const { execSync } = await import('node:child_process')
-      execSync(`codesign --sign - --force --deep "${binaryPath}"`, { stdio: 'ignore' })
+      execSync(`codesign --sign - --force --deep "${patchedBinaryPath}"`, { stdio: 'ignore' })
       console.log('Self-signed with codesign ✓')
     } catch {
       console.warn('⚠ codesign failed — binary may not be executable')
     }
   }
 
-  // 9. 验证
+  // 验证
   const verifier = new Verifier()
   const verifyResult = await verifier.verify({
-    binaryPath,
+    binaryPath: patchedBinaryPath,
     targetTokens,
     sourceValue,
     patches,
   })
 
   if (!verifyResult.success) {
-    // 自动恢复
-    await backupService.restore(binaryPath, backupDir)
-    throw verifyResult.error ?? new CcxError(ErrorCode.VERIFICATION_FAILED, 'Verification failed, auto-restored')
+    rmSync(patchedBinaryPath, { force: true })
+    throw verifyResult.error ?? new CcxError(ErrorCode.VERIFICATION_FAILED, 'Verification failed')
   }
 
   console.log('Verification passed ✓')
 
-  // 9. 记录
+  // 记录
   configService.recordPatchedVersion(version, targetTokens)
   console.log(`Done! Claude Code ${version} now uses ${targetTokens} tokens context window.`)
 }
