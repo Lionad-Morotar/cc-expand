@@ -5,7 +5,7 @@
 <h1 align="center">cc-expand</h1>
 
 <p align="center">
-  <bold>压缩是性能下降的主要原因之一，使用 cc-expand 让你的 CC 上下文窗口突破 200K 的限制，推迟自动压缩的时机</bold>
+  <span>把你的 CC 可用上下文窗口扩大 60%，甚至更多</span>
 </p>
 
 <p align="center">
@@ -13,6 +13,8 @@
 </p>
 
 ---
+
+**压缩是性能下降的主要原因之一，使用 cc-expand 让你的 CC 上下文窗口突破 200K 的限制，推迟自动压缩的时机**
 
 当使用某些模型（只支持 256K 上下文）时，Claude Code 原生 200K 的限制会成为瓶颈。`cc-expand` 通过修改 Claude Code 二进制中的硬编码常量，将上下文窗口大小提升到目标值。
 
@@ -78,7 +80,7 @@ npx cc-expand <command>
 
 每半小时我的龙虾会自动执行项目内 `watch-patch` 技能给新版打补丁并发版。
 
-但我的龙虾在许多情况会宕机。如果遇到使用的版本比 cc-expand 版本号更新的情况，请使用旧版 CC 稍后片刻（如 `npx @anthropic-ai/claude-code@2.1.148`）。
+但我的龙虾在许多情况会宕机。如果遇到使用的版本比 cc-expand 版本号更新的情况，请暂时使用旧版 CC（如 `npx @anthropic-ai/claude-code@2.1.148`）。
 
 进阶用户也可以选择让你的 Agent：
 

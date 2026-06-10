@@ -9,13 +9,14 @@ description: 定时检索 Claude Code 新包，Patch 并发版
 
 * CC：Claude Code
 * pattern: `<project-root>/src/data/patterns.json`
+* watch-patch: 即本技能，`<project-root>/.claude/skills/watch-patch/SKILL.md`
 
 ## Workflow
 
-1. **interval**：每 5 分钟使用 `pnpm view @anthropic-ai/claude-code` 获取 latest 的 CC 版本：
+1. **interval**：每半小时使用 `pnpm view @anthropic-ai/claude-code` 获取 latest 的 CC 版本：
   1.1 pattern 包含当前版本则忽略，等待下一次扫描
   1.2 不包含则准备开始任务，允许越过版本执行，比如 latest v2.1.180 而 pattern 只包含 v2.1.160 那么直接从 180 开始
-  1.3 暂停 interval，并创建通用子代理完成下列所有步骤（你需要维持干净的 interval monitor 上下文）
+  1.3 暂停 interval，并创建通用子代理读取 `watch-patch` 技能并完成下列所有步骤（而你自己需要维持干净的 interval monitor 上下文）
 2. 下载平台 tarball
   - 目标目录：`zRefs/claude-codes/tarballs/v{X.Y.Z}/`
   - 下载包：
