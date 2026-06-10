@@ -20,8 +20,9 @@
   "scripts": {
     "build": "tsup",
     "test": "vitest",
+    "test:unit": "vitest run --exclude tests/integration",
     "dev": "tsup --watch",
-    "prepublishOnly": "npm run build && vitest run"
+    "prepublishOnly": "npm run build && npm run test:unit"
   },
   "keywords": [
     "claude-code",

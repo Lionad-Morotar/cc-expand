@@ -51,6 +51,7 @@ describe('install.js', () => {
         encoding: 'utf-8',
         stdio: ['pipe', 'pipe', 'pipe'],
         timeout: 300000, // 5 minutes for npm install + download
+        env: { ...process.env, CC_EXPAND_SETUP: '1' },
       })
 
       expect(output).toContain('Done!')

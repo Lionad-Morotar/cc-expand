@@ -22,7 +22,7 @@ When using a model that supports 256K context, Claude Code's native 200K limit b
 
 **For Agent users**, paste this:
 
-> Help me expand my Claude Code context window using https://github.com/Lionad-Morotar/cc-expand
+> Help me expand my Claude Code context window using the install.js from https://github.com/Lionad-Morotar/cc-expand
 
 **Manual install:**
 
@@ -38,22 +38,49 @@ npx cc-expand <command>
 
 ## Usage
 
-### Interactive patch
+### Install Claude Code
+
+Download a specific version to your local machine:
+
+```bash
+cc-expand install 2.1.170
+```
+
+### Patch to expand context window
+
+Interactive mode:
 
 ```bash
 cc-expand patch
 # Prompts for target tokens, confirms, then patches
 ```
 
-### Non-interactive patch (CI / scripts)
+Non-interactive (CI / scripts):
 
 ```bash
-cc-expand patch --target 256000 --yes
+cc-expand patch --target 256000 --version 2.1.170 --yes
 ```
 
 > **Tip:** Claude Code respects the `COMPACT_WINDOW` env var, but it cannot exceed the hardcoded default. Raising the target delays compression. For example, Kimi-K2.6 supports 256K; I set my target to 270000.
 
-![](https://mgear-image.oss-cn-shanghai.aliyuncs.com/image/other/20260610105949399.png)
+### Run patched Claude Code
+
+```bash
+cc-expand run 256000
+```
+
+### Install shell shortcuts (recommended)
+
+```bash
+cc-expand setup --yes
+```
+
+After setup, use `cc` or `c` instead of `claude`:
+
+```bash
+cc 256000    # Launch with 256k context
+c            # Shorthand for cc 270000
+```
 
 ### Verify patch status
 
@@ -77,15 +104,20 @@ cc-expand status
 
 | Command | Description |
 |---------|-------------|
-| `patch [options]` | Patch the Claude Code binary |
+| `install [version]` | Download Claude Code from npm to `~/.cc-expand/packages/` |
+| `patch [options]` | Patch a local binary and save to `~/.cc-expand/bin/` |
+| `run [tokens]` | Launch the patched Claude Code binary |
+| `setup` | Install shell shortcuts (`cc`, `c` aliases) |
 | `restore` | Restore original binary from backup |
-| `verify` | Check whether the binary is patched |
+| `verify` | Check whether a binary is patched |
 | `status` | Show version and patch status |
+| `supports` | List supported Claude Code versions |
 
 ### Patch Options
 
 ```
 -t, --target <number>   Target context window size (default: 256000)
+-v, --version <semver>  Claude Code version to patch (e.g. 2.1.170)
 -y, --yes               Skip confirmation prompt
 ```
 
@@ -105,23 +137,21 @@ cc-expand status
 
 The Claude Code binary contains hard-coded model constants set to `200000`. Each release uses different obfuscated variable names, and each platform/architecture uses its own names.
 
-`cc-expand` follows this pipeline:
+`cc-expand` manages binaries locally and follows this pipeline:
 
-1. **Discover** — Locates the Claude Code binary (`/usr/local/bin/claude` or npm global path)
-2. **Identify version** — Reads `claude --version`
-3. **Match patterns** — Looks up pre-built patch patterns by `version + platform + arch`
-4. **Backup** — Copies the original binary to `~/.cc-expand/backups/`
-5. **Patch** — Replaces constants in-place (file size unchanged)
-6. **Re-sign** — macOS: `codesign --sign - --force --deep`
-7. **Verify** — Confirms original patterns are gone and target values are written
-8. **Rollback** — Auto-restores from backup if verification fails
+1. **Install** — Downloads Claude Code from npm to `~/.cc-expand/packages/<version>/`
+2. **Patch** — Copies the original binary to `~/.cc-expand/bin/claude-<target>`, replaces constants in-place (file size unchanged), and re-signs on macOS
+3. **Verify** — Confirms original patterns are gone and target values are written
+4. **Run** — Launches the patched binary from `~/.cc-expand/bin/`
+5. **Setup** — Installs a `cc()` shell function to `~/.zshrc` (or `~/.bashrc`) that auto-selects the right binary
 
 ## Notes
 
-- **macOS**: Re-signs automatically after patching. If codesign fails, the binary may not run; use `restore` to recover.
-- **Windows**: No extra steps; `claude.exe` is replaced directly.
+- **macOS**: Re-signs automatically after patching. If codesign fails, the binary may not run; delete `~/.cc-expand/bin/claude-<target>` and re-patch.
+- **Windows**: No extra steps; the patched binary is written directly to `~/.cc-expand/bin/`.
 - **Linux**: Not yet supported (need binary samples, PRs welcome).
 - **Digit limit**: Target must have the same digit count as the original (`200000` → `256000`, both 6 digits). A mismatch produces an error.
+- **Local binaries**: Patched binaries live in `~/.cc-expand/bin/`. The original global `claude` command is untouched. Use `cc-expand run` or `cc-expand setup` to use the patched version.
 
 ## FAQ
 
@@ -138,15 +168,9 @@ Run `cc-expand restore`, then check:
 No pattern found for version 2.1.xxx
 ```
 
-Either upgrade to a supported version, or discover new patterns and submit a PR.
+Upgrade to a supported version.
 
-**How to discover new patterns**
-
-For a known version on a new platform/arch:
-
-```bash
-grep -ao '.{0,25}200000.{0,15}' /path/to/claude | grep '=200000'
-```
+> **For Agent:** Ask the user which supported version they want to install, then run `cc-expand install <version>` followed by `cc-expand patch --target <target> --yes`.
 
 ## License
 

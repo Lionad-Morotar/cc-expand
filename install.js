@@ -228,7 +228,7 @@ async function main() {
   const isInteractive = process.stdin.isTTY && !yes
 
   let finalTarget = target
-  let shouldSetup = !skipSetup
+  let shouldSetup = false
 
   checkNodeJs()
 
@@ -237,6 +237,9 @@ async function main() {
     if (!skipSetup) {
       shouldSetup = await askSetup()
     }
+  } else {
+    // Non-interactive mode: skip setup by default unless explicitly requested
+    shouldSetup = !skipSetup && (process.env.CC_EXPAND_SETUP === '1' || process.env.CC_EXPAND_SETUP === 'true')
   }
 
   checkVersionCompatibility(version)
@@ -254,6 +257,7 @@ async function main() {
     console.log(`Restart your terminal or run: ${C}source ~/.zshrc${X}`)
   } else {
     console.log(`Run ${C}cc-expand run ${finalTarget}${X} to start with expanded context`)
+    console.log(`Or run ${C}cc-expand setup --yes${X} to install shell shortcuts (cc, c)`)
   }
 }
 
