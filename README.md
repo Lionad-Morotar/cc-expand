@@ -14,7 +14,7 @@
 
 ---
 
-Expand Claude Code's context window — from 200K to any value.
+Compression is one of the main causes of performance degradation. Use cc-expand to break through Claude Code's 200K context window limit.
 
 When using a model that supports 256K context, Claude Code's native 200K limit becomes a bottleneck. `cc-expand` patches the Claude Code binary to raise this limit to your target value.
 
