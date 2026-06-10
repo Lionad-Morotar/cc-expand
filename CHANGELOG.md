@@ -1,0 +1,25 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+## [0.0.1] - 2026-06-10
+
+### Added
+
+- 首次发布
+- `install` 命令：下载并安装指定版本的 Claude Code 本地二进制文件
+- `setup` 命令：生成渠道无关的 Shell 包装函数，自动路由到本地二进制文件
+- `supports` 命令：列出所有支持的平台和版本
+- `patch` 命令：对本地二进制文件进行上下文窗口扩容 patch
+- `run` 命令：启动已 patch 的本地二进制文件
+- 本地二进制架构：将 Claude Code 管理在 `~/.cc-expand/` 目录下，避免触碰系统二进制文件
+- 渠道发现服务：自动检测 brew、npx、direct 等安装渠道并按优先级排序
+- 渠道配置持久化：记录用户选择的安装渠道
+- 跨平台模式支持：根据 OS/arch 自动匹配对应的 patch 模式
+- 平台特定二进制提取：从 npm 包中解析并提取平台原生二进制文件
+- 内置 Claude Code 版本模式数据库（v2.1.169 / v2.1.170）
