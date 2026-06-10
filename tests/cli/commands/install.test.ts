@@ -3,6 +3,7 @@ import { mkdtempSync, writeFileSync, rmSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { installCommand } from '../../../src/cli/commands/install.js'
+import { PackageService } from '../../../src/services/package.js'
 
 describe('install command', () => {
   let tempDir: string
@@ -32,5 +33,26 @@ describe('install command', () => {
     } as any)
 
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('already installed'))
+  })
+
+  it('should resolve latest to actual version before checking installed', async () => {
+    // 创建假的已安装目录结构（模拟 latest 已解析为 2.1.170）
+    const versionDir = join(tempDir, '.cc-expand', 'packages', '2.1.170')
+    mkdirSync(join(versionDir, 'bin'), { recursive: true })
+    writeFileSync(join(versionDir, 'bin', 'claude'), 'fake-binary')
+
+    // Mock PackageService.resolveVersion 以注入版本解析行为
+    const originalResolveVersion = PackageService.prototype.resolveVersion
+    PackageService.prototype.resolveVersion = vi.fn().mockResolvedValue('2.1.170')
+
+    try {
+      await installCommand(['latest'], {
+        homeDir: tempDir,
+      } as any)
+
+      expect(logSpy).toHaveBeenCalledWith('Claude Code 2.1.170 is already installed.')
+    } finally {
+      PackageService.prototype.resolveVersion = originalResolveVersion
+    }
   })
 })

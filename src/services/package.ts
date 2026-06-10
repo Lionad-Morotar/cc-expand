@@ -35,32 +35,82 @@ export function getNpmCommand(): string {
   return process.platform === 'win32' ? 'npm.cmd' : 'npm'
 }
 
+/** 安装结果 */
+export interface InstallResult {
+  /** 安装目录路径 */
+  targetDir: string
+  /** 解析后的实际版本号 */
+  version: string
+}
+
 export class PackageService {
-  constructor(private packagesDir: string) {}
+  constructor(
+    private packagesDir: string,
+    private execFileImpl: typeof execFile = execFile,
+  ) {}
+
+  /**
+   * 解析版本号，将 "latest" 转换为实际的 semver 版本
+   * @param version 版本号，如 "2.1.170" 或 "latest"
+   * @returns 解析后的版本号（失败时返回原值）
+   */
+  async resolveVersion(version: string): Promise<string> {
+    if (version !== 'latest') return version
+
+    return new Promise((resolve) => {
+      this.execFileImpl(
+        getNpmCommand(),
+        ['view', '@anthropic-ai/claude-code@latest', 'version', '--json'],
+        { timeout: 30000 },
+        (error: Error | null, stdout: string) => {
+          if (error) {
+            resolve(version)
+            return
+          }
+          try {
+            const resolved = JSON.parse(stdout.trim())
+            if (typeof resolved === 'string' && /^\d+\.\d+\.\d+/.test(resolved)) {
+              resolve(resolved)
+              return
+            }
+          } catch {
+            // Fallback: treat raw stdout as version
+          }
+          const fallback = stdout.trim().replace(/^["']|["']$/g, '')
+          if (/^\d+\.\d+\.\d+/.test(fallback)) {
+            resolve(fallback)
+            return
+          }
+          resolve(version)
+        },
+      )
+    })
+  }
 
   /**
    * 安装指定版本的 Claude Code
    * @param version 版本号，如 "2.1.170" 或 "latest"
-   * @returns 安装目录路径（包含 bin/claude）
+   * @returns 安装目录路径（包含 bin/claude）和解析后的实际版本号
    */
-  async install(version: string): Promise<string> {
+  async install(version: string): Promise<InstallResult> {
     validateVersion(version)
 
-    const targetDir = join(this.packagesDir, version)
+    const resolvedVersion = await this.resolveVersion(version)
+    const targetDir = join(this.packagesDir, resolvedVersion)
     const binaryName = getBinaryName()
     const binaryPath = join(targetDir, 'bin', binaryName)
 
     // 如果已安装，直接返回
     if (existsSync(binaryPath)) {
-      return targetDir
+      return { targetDir, version: resolvedVersion }
     }
 
     mkdirSync(targetDir, { recursive: true })
 
-    // 1. 下载 wrapper 包
+    // 1. 下载 wrapper 包（使用解析后的实际版本）
     const wrapperDir = join(targetDir, '.wrapper')
     mkdirSync(wrapperDir, { recursive: true })
-    const wrapperTarball = await this.downloadWrapper(version, wrapperDir)
+    const wrapperTarball = await this.downloadWrapper(resolvedVersion, wrapperDir)
 
     try {
       await extract({
@@ -123,7 +173,7 @@ export class PackageService {
       rmSync(wrapperTarball, { force: true })
     }
 
-    return targetDir
+    return { targetDir, version: resolvedVersion }
   }
 
   /** 检查指定版本是否已安装 */
@@ -146,7 +196,7 @@ export class PackageService {
     destDir: string,
   ): Promise<string> {
     return new Promise((resolve, reject) => {
-      execFile(
+      this.execFileImpl(
         getNpmCommand(),
         ['pack', `${name}@${version}`, '--pack-destination', destDir, '--json'],
         { timeout: 300000 },

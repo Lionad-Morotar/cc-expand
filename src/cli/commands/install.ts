@@ -40,19 +40,26 @@ export async function installCommand(
   const packagesDir = join(homeDir, '.cc-expand', 'packages')
   const service = new PackageService(packagesDir)
 
-  // 检查是否已安装
-  if (service.isInstalled(version)) {
-    console.log(`Claude Code ${version} is already installed.`)
-    console.log(`  ${service.getBinaryPath(version)}`)
+  // 解析 latest 到实际版本号，以便后续检查、输出和 patch 匹配 patterns.json
+  const resolvedVersion = await service.resolveVersion(version)
+
+  // 检查是否已安装（使用解析后的实际版本）
+  if (service.isInstalled(resolvedVersion)) {
+    console.log(`Claude Code ${resolvedVersion} is already installed.`)
+    console.log(`  ${service.getBinaryPath(resolvedVersion)}`)
     return
   }
 
-  console.log(`Downloading Claude Code ${version}...`)
+  const displayVersion = version === 'latest'
+    ? `${resolvedVersion} (latest)`
+    : resolvedVersion
+  console.log(`Downloading Claude Code ${displayVersion}...`)
 
   try {
-    const targetDir = await service.install(version)
-    const binaryPath = join(targetDir, 'bin', 'claude')
-    console.log(`✓ Claude Code ${version} installed`)
+    const { targetDir, version: installedVersion } = await service.install(version)
+    const binaryName = process.platform === 'win32' ? 'claude.exe' : 'claude'
+    const binaryPath = join(targetDir, 'bin', binaryName)
+    console.log(`✓ Claude Code ${installedVersion} installed`)
     console.log(`  Binary: ${binaryPath}`)
   } catch (error) {
     throw new CcxError(
