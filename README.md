@@ -23,7 +23,7 @@ When using certain models (which only support 256K context), Claude Code's nativ
 **Agent User**, just send this line to your Agent:
 
 ```plaintext
-Help me expand Claude Code's context window using the install.js from https://github.com/Lionad-Morotar/cc-expand
+Help me expand Claude Code's context window to 270k using cc-expand (npx -y cc-expand@latest)
 ```
 
 Or **install manually**:

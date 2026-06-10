@@ -23,7 +23,7 @@
 **Agent User**，直接发送这一行给你的 Agent：
 
 ```plaintext
-帮我扩展 Claude Code 的上下文窗口，使用 https://github.com/Lionad-Morotar/cc-expand 上的 install.js
+帮我扩展 Claude Code 的上下文窗口到 270k，使用 cc-expand（npx -y cc-expand@latest）
 ```
 
 或可以**手动安装**：
