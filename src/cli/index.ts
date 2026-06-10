@@ -9,6 +9,8 @@ import { restoreCommand } from './commands/restore.js'
 import { verifyCommand } from './commands/verify.js'
 import { runCommand } from './commands/run.js'
 import { statusCommand } from './commands/status.js'
+import { supportsCommand } from './commands/supports.js'
+import { setupCommand } from './commands/setup.js'
 
 const COMMANDS: Record<string, (args: string[]) => Promise<void>> = {
   patch: patchCommand,
@@ -16,6 +18,8 @@ const COMMANDS: Record<string, (args: string[]) => Promise<void>> = {
   verify: verifyCommand,
   run: (args) => runCommand(args[0]),
   status: statusCommand,
+  supports: supportsCommand,
+  setup: setupCommand,
 }
 
 async function main(): Promise<void> {
@@ -61,11 +65,15 @@ Commands:
   verify           Check patch status
   run [tokens]     Launch patched Claude Code
   status           Show current status
+  supports         List supported Claude Code versions
+  setup            Install shell shortcuts (cc, c)
 
 Examples:
   cc-expand patch
   cc-expand run 256000
   cc-expand restore
+  cc-expand supports
+  cc-expand setup --yes
 `)
 }
 
