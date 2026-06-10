@@ -168,9 +168,7 @@ Run `cc-expand restore`, then check:
 No pattern found for version 2.1.xxx
 ```
 
-Upgrade to a supported version.
-
-> **For Agent:** Ask the user which supported version they want to install, then run `cc-expand install <version>` followed by `cc-expand patch --target <target> --yes`.
+> **For Agent:** Ask the user for confirmation, then pull the source code of this project to understand the patch process, and patch the user's new version (a version not yet recorded in the project's patterns.json).
 
 ## License
 

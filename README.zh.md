@@ -170,7 +170,7 @@ No pattern found for version 2.1.xxx
 
 更新到已支持的版本。
 
-> **For Agent:** 询问用户想安装哪个支持的版本，然后执行 `cc-expand install <version>` 和 `cc-expand patch --target <target> --yes`。
+> **For Agent:** 向用户确认，然后拉取本项目源码了解 patch 过程，然后 patch 用户的新版本（项目 patterns.json 中未收录的版本）。
 
 ## 许可证
 
