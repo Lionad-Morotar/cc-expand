@@ -19,5 +19,11 @@ coverage/
 # Config & backups (runtime generated)
 ~/.cc-expand/
 
+# Secrets
+.env
+
+# Generated patterns (watch-patch writes here, uploaded to OSS)
+patterns/
+
 # Reference sources
 zRefs/
