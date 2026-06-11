@@ -31,6 +31,21 @@ describe('install command', () => {
     expect(output).toContain('已安装')
   })
 
+  it('strips v prefix from version argument', async () => {
+    // 创建假的已安装目录结构
+    const versionDir = join(tempDir, '.cc-expand', 'packages', '2.1.170')
+    mkdirSync(join(versionDir, 'bin'), { recursive: true })
+    writeFileSync(join(versionDir, 'bin', 'claude'), 'fake-binary')
+
+    const output = await installCommand(['v2.1.170'], {
+      homeDir: tempDir,
+    } as any)
+
+    expect(output.startsWith('[INFO]')).toBe(true)
+    expect(output).toContain('2.1.170')
+    expect(output).toContain('已安装')
+  })
+
   it('returns [INFO] when latest resolves to already installed version', async () => {
     // 创建假的已安装目录结构（模拟 latest 已解析为 2.1.170）
     const versionDir = join(tempDir, '.cc-expand', 'packages', '2.1.170')
