@@ -26,7 +26,7 @@ description: 定时检索 Claude Code 新包，Patch 并发版
     - `@anthropic-ai/claude-code-win32-x64@X.Y.Z`
   - 如有 Linux 包，一并下载
 3. 提取二进制
-   - 创建目录：`extracted/v{X.Y.Z}/{darwin-arm64,darwin-x64,win32-x64,wrapper}/`
+   - 创建目录：`<project-root>/zRefs/claude-codes/extracted/v{X.Y.Z}/{darwin-arm64,darwin-x64,win32-x64,wrapper}/`
    - `tar -xzf` 解压各 tarball 到对应目录
    - wrapper 包中可能包含冗余的 `bin/claude.exe`，删除之
 4. 发现混淆变量名
