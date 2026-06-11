@@ -81,13 +81,15 @@ npx cc-expand <command>
 | 2.1.172 | ✅ | ✅ | ✅ | ✅ | ✅ |
 | 2.1.173 | ✅ | ✅ | ✅ | ✅ | ✅ |
 
-> ⚠️ cc-expand 版本号对应 `claude --version`。
+> ⚠️ cc-expand 自身版本号对应 `claude --version`。运行 `cc-expand supports` 查看动态更新的支持 cc-expand 的 CC 版本列表。
 
 **版本更新机制**
 
-每半小时我的龙虾会自动执行项目内 `watch-patch` 技能给新版打补丁并发版。
+Pattern 数据托管在阿里云 OSS 上，运行 cc-expand 时按需拉取，并缓存在本地 `~/.cc-expand/cache/patterns/`，通过 ETag 条件请求减少流量消耗。
 
-但我的龙虾在许多情况会宕机。如果遇到使用的版本比 cc-expand 版本号更新的情况，请暂时使用旧版 CC（如 `npx @anthropic-ai/claude-code@2.1.148`）。
+每半小时我的 claw 会自动执行项目内 `watch-patch` 技能，发现新版 Claude Code、提取混淆变量名，并将 pattern 分片上传到 OSS。你**无需更新 npm 包**即可获得新版本支持 —— pattern 上传 OSS 后立即生效。
+
+但我的 claw 在许多情况会宕机。如果遇到使用的版本比 cc-expand 版本号更新的情况，请暂时使用旧版 CC（如 `npx @anthropic-ai/claude-code@2.1.148`）。
 
 进阶用户也可以选择让你的 Agent：
 

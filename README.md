@@ -81,11 +81,13 @@ npx cc-expand <command>
 | 2.1.172 | ✅ | ✅ | ✅ | ✅ | ✅ |
 | 2.1.173 | ✅ | ✅ | ✅ | ✅ | ✅ |
 
-> ⚠️ cc-expand version numbers correspond to `claude --version`.
+> ⚠️ cc-expand version numbers correspond to `claude --version`. Run `cc-expand supports` to see the dynamically updated list of CC versions supported by cc-expand.
 
 **Version Update Mechanism**
 
-Every half hour, my claw automatically runs the `watch-patch` skill inside the project to patch new versions and release them.
+Patterns are hosted on Aliyun OSS and fetched on-demand when you run cc-expand. They are cached locally under `~/.cc-expand/cache/patterns/` with ETag conditional requests to minimize bandwidth.
+
+Every half hour, my claw automatically runs the `watch-patch` skill to discover new Claude Code versions, extract their obfuscated variable names, and upload pattern shards to OSS. You don't need to update the `cc-expand` npm package to get new version support — new patterns are available immediately after OSS upload.
 
 But my claw crashes in many situations. If you encounter a version newer than what cc-expand supports, please use an older CC version for a moment (e.g. `npx @anthropic-ai/claude-code@2.1.148`).
 
