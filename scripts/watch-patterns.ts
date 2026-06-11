@@ -80,17 +80,21 @@ async function uploadFile(localPath: string, retryCount = 0): Promise<void> {
 
 /** 启动文件监听 */
 function startWatcher(): void {
-  const watcher = chokidar.watch('patterns/*.json', {
+  // chokidar v5 已移除 glob 支持，使用目录监听 + 手动过滤
+  const watcher = chokidar.watch('patterns', {
     persistent: true,
     ignoreInitial: false,
+    depth: 0,
   })
 
   watcher.on('add', (filePath) => {
+    if (!filePath.endsWith('.json')) return
     console.log(`[ADD] ${basename(filePath)}`)
     uploadFile(filePath)
   })
 
   watcher.on('change', (filePath) => {
+    if (!filePath.endsWith('.json')) return
     console.log(`[CHANGE] ${basename(filePath)}`)
     uploadFile(filePath)
   })
