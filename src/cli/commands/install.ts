@@ -37,11 +37,6 @@ export async function installCommand(
     }
   }
 
-  // 兼容 v 前缀（如 v2.1.172 → 2.1.172）
-  if (version.startsWith('v')) {
-    version = version.slice(1)
-  }
-
   const homeDir = options?.homeDir ?? homedir()
   const packagesDir = join(homeDir, '.cc-expand', 'packages')
   const service = new PackageService(packagesDir)

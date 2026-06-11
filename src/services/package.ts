@@ -15,11 +15,13 @@ import { execFile } from 'node:child_process'
 import { existsSync, mkdirSync, copyFileSync, chmodSync, readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { extract } from 'tar'
+import { normalizeVersion } from '../utils/version.js'
 
 /** 验证版本号格式：semver 或 latest */
 function validateVersion(version: string): void {
-  if (version === 'latest') return
-  if (/^\d+\.\d+\.\d+/.test(version)) return
+  const normalized = normalizeVersion(version)
+  if (normalized === 'latest') return
+  if (/^\d+\.\d+\.\d+/.test(normalized)) return
   throw new Error(
     `Invalid version format: ${version}. Expected semver (e.g. 2.1.170) or "latest"`,
   )
@@ -55,7 +57,8 @@ export class PackageService {
    * @returns 解析后的版本号（失败时返回原值）
    */
   async resolveVersion(version: string): Promise<string> {
-    if (version !== 'latest') return version
+    const normalized = normalizeVersion(version)
+    if (normalized !== 'latest') return normalized
 
     return new Promise((resolve) => {
       this.execFileImpl(

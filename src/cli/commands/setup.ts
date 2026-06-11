@@ -9,6 +9,7 @@ import { CcxError, ErrorCode } from '../../types/index.js'
 import { ChannelConfig } from '../../services/channel-config.js'
 import { PackageService } from '../../services/package.js'
 import { formatSummary, highlight, formatNextSteps } from '../output.js'
+import { normalizeVersion } from '../../utils/version.js'
 
 export interface SetupOptions {
   /** 覆盖默认的 home 目录（用于测试） */
@@ -205,7 +206,7 @@ export async function setupCommand(
   let version: string | undefined
 
   if (options?.version) {
-    version = options.version
+    version = normalizeVersion(options.version)
   } else {
     const channelConfig = new ChannelConfig(configDir)
 

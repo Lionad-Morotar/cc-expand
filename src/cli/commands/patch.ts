@@ -18,6 +18,7 @@ import { ChannelConfig } from '../../services/channel-config.js'
 import { ConfigService } from '../../services/config.js'
 import { CcxError, ErrorCode } from '../../types/index.js'
 import { formatSummary, highlight, formatNextSteps } from '../output.js'
+import { normalizeVersion } from '../../utils/version.js'
 
 /** 获取 patched binary 文件名（Windows 需 .exe 扩展名） */
 export function getPatchedBinaryName(targetTokens: number): string {
@@ -57,7 +58,7 @@ export async function patchCommand(args: string[] = []): Promise<string> {
           `Usage: cc-expand patch --version 2.1.170`,
         )
       }
-      version = next
+      version = normalizeVersion(next)
       i++
     }
   }
