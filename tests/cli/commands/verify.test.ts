@@ -25,7 +25,7 @@ describe('verify command', () => {
       getBinaryVersion: vi.fn().mockResolvedValue('2.1.170'),
     }
     const mockConfig = {
-      getPatternForVersion: vi.fn().mockReturnValue([
+      getPatternForVersion: vi.fn().mockResolvedValue([
         { search: 'PACKAGE_T200000', desc: 'PACKAGE_T', sourceValue: '200000' },
         { search: 'MAX_TOOL_RESULTS200000', desc: 'MAX_TOOL_RESULTS', sourceValue: '200000' },
       ]),
