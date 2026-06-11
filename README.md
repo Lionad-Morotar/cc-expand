@@ -79,6 +79,7 @@ npx cc-expand <command>
 | 2.1.169 | ✅ | ✅ | ✅ | — | — |
 | 2.1.170 | ✅ | ✅ | ✅ | — | — |
 | 2.1.172 | ✅ | ✅ | ✅ | ✅ | ✅ |
+| 2.1.173 | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 > ⚠️ cc-expand version numbers correspond to `claude --version`.
 
