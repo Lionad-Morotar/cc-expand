@@ -13,7 +13,7 @@ description: 定时检索 Claude Code 新包，Patch 并发版
 
 ## Workflow
 
-0. xxx
+0. 启动 `pnpm watch:patterns`
 1. **interval**：每半小时使用 `pnpm view @anthropic-ai/claude-code` 获取 latest 的 CC 版本：
   1.1 pattern 包含当前版本则忽略，等待下一次扫描
   1.2 不包含则准备开始任务，允许越过版本执行，比如 latest v2.1.180 而 pattern 只包含 v2.1.160 那么直接从 180 开始
