@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-11
+
+### Added
+
+- `PatternService`：支持从阿里云 OSS 远程获取 patch 模式，带 ETag 缓存
+- `watch-patterns` 脚本：自动检测新 Claude Code 版本并上传模式到 OSS
+- `install` 命令支持 `v` 前缀版本号（如 `v2.1.173`）
+- `utils/version`：集中式版本号归一化工具
+
+### Changed
+
+- `ConfigService` 重构为异步 API，模式解析委托给 `PatternService`
+- CLI 命令适配异步 `ConfigService` API
+
+### Fixed
+
+- `watch-patterns` 适配 chokidar v5 目录监听 API
+
 ## [0.1.2] - 2026-06-11
 
 ### Added
