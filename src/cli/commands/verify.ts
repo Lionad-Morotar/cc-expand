@@ -18,7 +18,7 @@ export async function verifyCommand(options?: VerifyOptions): Promise<string> {
   const binaryPath = await discovery.findClaudeBinary()
   const version = await discovery.getBinaryVersion(binaryPath)
 
-  const patches = configService.getPatternForVersion(version)
+  const patches = await configService.getPatternForVersion(version)
   if (!patches) {
     return formatSummary('WARN', `无 pattern 数据: ${highlight(version)}`)
   }

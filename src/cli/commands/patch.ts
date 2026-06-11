@@ -26,8 +26,11 @@ export function getPatchedBinaryName(targetTokens: number): string {
   return `claude-${targetTokens}${ext}`
 }
 
-export async function patchCommand(args: string[] = []): Promise<string> {
-  const configService = new ConfigService()
+export async function patchCommand(
+  args: string[] = [],
+  options?: { configService?: ConfigService },
+): Promise<string> {
+  const configService = options?.configService ?? new ConfigService()
   configService.ensureDirs()
 
   // 解析命令行参数
@@ -109,12 +112,12 @@ export async function patchCommand(args: string[] = []): Promise<string> {
   console.log(`Using Claude Code ${version}`)
 
   // 获取版本对应的模式
-  const patches = configService.getPatternForVersion(version)
+  const patches = await configService.getPatternForVersion(version)
   if (!patches) {
     throw new CcxError(
       ErrorCode.PATTERN_NOT_FOUND,
       `No pattern found for version ${version}`,
-      `Check patterns.json for supported versions`,
+      `Run 'cc-expand supports' to see supported versions`,
     )
   }
 

@@ -15,7 +15,7 @@ export async function supportsCommand(
 ): Promise<string> {
   const config = options?.configService ?? new ConfigService()
   const discovery = options?.discoveryService ?? new DiscoveryService()
-  const patterns = config.getPatterns()
+  const index = await config.getVersionIndex()
 
   // 尝试获取当前系统 Claude Code 版本
   let currentVersion: string | undefined
@@ -29,7 +29,7 @@ export async function supportsCommand(
     // 未安装 Claude Code，不显示高亮
   }
 
-  const versions = Object.keys(patterns).sort((a, b) =>
+  const versions = index.map((item) => item.version).sort((a, b) =>
     a.localeCompare(b, undefined, { numeric: true }),
   )
 
@@ -39,14 +39,8 @@ export async function supportsCommand(
   ]
 
   for (const version of versions) {
-    const versionConfig = patterns[version]
-    const platforms: string[] = []
-
-    for (const [os, archMap] of Object.entries(versionConfig.platforms)) {
-      for (const arch of Object.keys(archMap)) {
-        platforms.push(`${os}-${arch}`)
-      }
-    }
+    const item = index.find((i) => i.version === version)
+    const platforms = item?.platforms ?? []
 
     const isCurrent = currentVersion === version
     const versionText = isCurrent ? highlight(version) : version
@@ -55,7 +49,7 @@ export async function supportsCommand(
   }
 
   // 如果当前版本不在支持列表中，添加警告
-  if (currentVersion && !patterns[currentVersion]) {
+  if (currentVersion && !versions.includes(currentVersion)) {
     const currentPlatform = `${process.platform}-${process.arch}`
     lines.push(formatWarnings([
       `当前 Claude Code ${highlight(currentVersion)} 在 ${currentPlatform} 上不受支持`,
