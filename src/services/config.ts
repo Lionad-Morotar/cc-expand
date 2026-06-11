@@ -5,8 +5,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-// tsup 构建时内联 JSON 内容
-import patterns from '../data/patterns.json'
+import { PatternService, type VersionsIndexItem } from './pattern.js'
 
 export const CONFIG_DIR = join(homedir(), '.cc-expand')
 export const BACKUP_DIR = join(CONFIG_DIR, 'backups')
@@ -38,7 +37,18 @@ export interface UserConfig {
   patchedVersions: Record<string, { targets: number[]; patchedAt: string }>
 }
 
+export interface ConfigServiceOptions {
+  /** PatternService 实例（测试注入用） */
+  patternService?: PatternService
+}
+
 export class ConfigService {
+  private patternService: PatternService
+
+  constructor(options?: ConfigServiceOptions) {
+    this.patternService = options?.patternService ?? new PatternService()
+  }
+
   /** 确保配置目录存在 */
   ensureDirs(): void {
     for (const dir of [CONFIG_DIR, BACKUP_DIR, PATCHES_DIR]) {
@@ -48,23 +58,35 @@ export class ConfigService {
     }
   }
 
-  /** 读取 patterns.json（构建时内联） */
-  getPatterns(): VersionsJson {
-    return patterns as VersionsJson
+  /** 获取所有支持的版本号列表 */
+  async getSupportedVersions(): Promise<string[]> {
+    const index = await this.patternService.fetchVersionsIndex()
+    return index.map((item) => item.version).sort((a, b) =>
+      a.localeCompare(b, undefined, { numeric: true }),
+    )
+  }
+
+  /** 获取版本索引（含平台信息，供 supports 命令使用） */
+  async getVersionIndex(): Promise<VersionsIndexItem[]> {
+    return this.patternService.fetchVersionsIndex()
   }
 
   /** 根据版本号 + 平台获取 patch 列表 */
-  getPatternForVersion(version: string, os: string = process.platform, arch: string = process.arch): PatchItem[] | undefined {
-    const versionConfig = this.getPatterns()[version]
-    if (!versionConfig) return undefined
-
-    const osPatterns = versionConfig.platforms[os]
+  async getPatternForVersion(
+    version: string,
+    os: string = process.platform,
+    arch: string = process.arch,
+  ): Promise<PatchItem[] | undefined> {
+    const osPatterns = await this.patternService.fetchVersionPattern(version)
     if (!osPatterns) return undefined
 
-    const archPatterns = osPatterns[arch]
+    const platformPatterns = osPatterns[os]
+    if (!platformPatterns) return undefined
+
+    const archPatterns = platformPatterns[arch]
     if (!archPatterns) {
       // 回退到通用模式（如果存在）
-      return osPatterns['universal']
+      return platformPatterns['universal']
     }
 
     return archPatterns
