@@ -3,17 +3,18 @@ name: watch-patch
 description: 定时检索 Claude Code 新包，Patch 并发版
 ---
 
-当 Claude Code 发布新版本时，自动发现新的混淆变量名并更新 `patterns.json`。
+当 Claude Code 发布新版本时，自动发现新的混淆变量名并更新分片 pattern 文件。
 
 ## Context
 
 * CC：Claude Code
-* pattern: `<project-root>/src/data/patterns.json`
+* pattern: `<project-root>/patterns/*.json`（分片格式，按版本独立文件）
+* pattern-index: `<project-root>/patterns/versions.json`（版本索引）
 * watch-patch: 即本技能，`<project-root>/.claude/skills/watch-patch/SKILL.md`
 
 ## Workflow
 
-0. 启动 `pnpm watch:patterns`
+0. 确保 `pnpm watch:patterns` 已在后台运行（首次执行需启动，持续监听 patterns/ 目录并自动上传变更到 OSS）
 1. **interval**：每半小时使用 `pnpm view @anthropic-ai/claude-code` 获取 latest 的 CC 版本：
   1.1 pattern 包含当前版本则忽略，等待下一次扫描
   1.2 不包含则准备开始任务，允许越过版本执行，比如 latest v2.1.180 而 pattern 只包含 v2.1.160 那么直接从 180 开始
@@ -54,21 +55,39 @@ description: 定时检索 Claude Code 新包，Patch 并发版
    - 按 `search.index(sourceValue)` 计算替换偏移
    - 写入目标值（如 `256000`）
    - 验证替换后原始 search 字符串不再出现（0 残留）
-7. 更新 patterns.json
-   - 按 `version → platforms → os → arch → PatchItem[]` 结构追加新条目
-   - 保持 JSON 格式一致，注意逗号分隔
-8. 构建与测试
-   - `npx tsup` 构建（patterns.json 会被内联到 dist/cli.js）
-   - `npx vitest run` 运行全量测试
-9. 更新 README
-   - 在"支持的版本"矩阵中添加新版本行
-10. 使用 `/release-project` 技能发版，版本号对齐 latest cc，仅此步骤直接提交无需确认
-11. 子代理向你返回当前 release 的版本号
+7. 创建分片 pattern 文件
+   - 新建 `patterns/{X.Y.Z}.json`（无 `v` 前缀），内容为 shard 格式：
+     ```json
+     {
+       "darwin": {
+         "arm64": [{ "search": "...", "desc": "...", "sourceValue": "200000" }],
+         "x64": [...]
+       },
+       "win32": { "x64": [...] },
+       "linux": { "arm64": [...], "x64": [...] }
+     }
+     ```
+   - **Shard 格式扁平化了 `platforms` 层级**（旧格式有 `platforms → os → arch`，新格式直接 `os → arch`）
+8. 更新版本索引
+   - 在 `patterns/versions.json` 中追加新条目：
+     ```json
+     { "version": "X.Y.Z", "platforms": ["darwin-arm64", "darwin-x64", "win32-x64", "linux-arm64", "linux-x64"] }
+     ```
+   - 保持 JSON 数组格式，注意逗号分隔
+9. 验证 OSS 同步
+   - `pnpm watch:patterns` 会自动检测到新增/变更的分片文件并上传到阿里云 OSS
+   - 确认终端输出 `[UPLOAD] patterns/{X.Y.Z}.json` 和 `[UPLOAD] patterns/versions.json`
+10. 运行全量测试
+    - `npx vitest run` 验证 CLI 命令正常工作
+11. 子代理向你返回当前处理的版本号
 12. 恢复 interval
 
 
 ## 注意事项
 
+- **分片格式 vs 旧格式**：`patterns/v{X.Y.Z}.json` 直接是 `{ os: { arch: [...] } }`，不再包裹 `platforms` 层级
+- `pnpm watch:patterns` 必须在后台运行，否则分片文件变更不会同步到 OSS
 - 代码混淆变量名每次发布都会变化，同一版本的不同平台也互不相同
 - 目标值位数必须与原始值相同（`200000` → `256000`，6 位）
 - 当版本跨度较大时，常量周围的上下文结构可能改变，不能机械复制上一版本的 search 字符串
+- **无需发版**：patterns 通过 OSS 动态拉取，更新分片文件后用户即可获取最新 pattern，不需要发布 npm 包
