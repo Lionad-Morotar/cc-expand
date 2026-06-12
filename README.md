@@ -62,12 +62,16 @@ npx cc-expand <command>
 | `cc-expand --version` | Show cc-expand version |
 
 * install version option: `latest` or `v2.1.170`
+* token counts accept plain numbers, `k` for thousands, or `w` for ten-thousands:
+  `256000`, `256,000`, `270k`, and `27w` all mean 270000 tokens
 * patch options:
   ```
-  -t, --target <number>   Target context window size (default: 256000)
+  -t, --target <count>    Target context window size (default: 256000)
   -v, --version <semver>  Claude Code version to patch (e.g. 2.1.170)
-  -y, --yes               Skip confirmation prompt
+  -y, --yes               Skip confirmation and overwrite shell shortcuts
   ```
+* After `patch` succeeds, cc-expand automatically maintains the `cc`/`c` shell shortcuts so their default target matches the patched value.
+* `run` also accepts the same token shorthand, e.g. `cc-expand run 270k`.
 
 ## Supported CC Versions
 

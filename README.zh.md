@@ -62,12 +62,16 @@ npx cc-expand <command>
 | `cc-expand --version` | 列出 cc-expand 的版本 |
 
 * install version option: `latest` or `v2.1.170`
+* token 数量支持纯数字、千分位逗号、`k` 表示千、`w` 表示万：
+  `256000`、`256,000`、`270k`、`27w` 均表示 270000 tokens
 * patch options:
   ```
-  -t, --target <number>   目标上下文窗口大小（默认：256000）
+  -t, --target <count>    目标上下文窗口大小（默认：256000）
   -v, --version <semver>  要 patch 的 Claude Code 版本（如 2.1.170）
-  -y, --yes               跳过确认提示
+  -y, --yes               跳过确认并覆盖 shell 快捷方式
   ```
+* `patch` 成功后，cc-expand 会自动维护 `cc`/`c` 快捷方式，使其默认目标与本次 patch 值一致。
+* `run` 也支持同样的简写，例如 `cc-expand run 270k`。
 
 ## 支持的 CC 版本
 
