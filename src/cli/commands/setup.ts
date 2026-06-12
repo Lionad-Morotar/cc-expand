@@ -8,6 +8,10 @@ import { join } from 'node:path'
 import { CcxError, ErrorCode } from '../../types/index.js'
 import { ChannelConfig } from '../../services/channel-config.js'
 import { PackageService } from '../../services/package.js'
+import {
+  detectConfigFile,
+  generateShellFunction,
+} from '../../services/shell-codegen.js'
 import { formatSummary, highlight, formatNextSteps } from '../output.js'
 import { normalizeVersion } from '../../utils/version.js'
 
@@ -18,116 +22,8 @@ export interface SetupOptions {
   confirm?: (message: string) => Promise<boolean>
   /** 直接指定版本（用于测试，跳过检测） */
   version?: string
-}
-
-/**
- * 检测当前 shell 的配置文件路径
- * macOS/Linux: ~/.zshrc（优先）、~/.bashrc（fallback）
- * Windows: PowerShell $PROFILE
- */
-function detectConfigFile(homeDir: string): string {
-  if (process.platform === 'win32') {
-    return join(
-      homeDir,
-      'Documents',
-      'PowerShell',
-      'Microsoft.PowerShell_profile.ps1',
-    )
-  }
-
-  const zshrc = join(homeDir, '.zshrc')
-  const bashrc = join(homeDir, '.bashrc')
-
-  if (existsSync(zshrc)) return zshrc
-  if (existsSync(bashrc)) return bashrc
-  return zshrc
-}
-
-/**
- * 生成 cc 函数和 c alias 的 shell 代码
- * 渠道无关：直接从 ~/.cc-expand/bin/ 运行 patched binary
- */
-function generateBashFunction(): string {
-  const lines = [
-    '',
-    '# --- cc-expand generated start ---',
-    'cc() {',
-    '  local default_flags="--dangerously-skip-permissions"',
-    '',
-    '  # 数字参数：指定 context window 大小',
-    '  if [[ "$1" =~ ^[0-9]+$ ]]; then',
-    '    local ctx="$1"',
-    '    shift',
-    '    local binary="$HOME/.cc-expand/bin/claude-${ctx}"',
-    '',
-    '    if [[ ! -x "$binary" ]]; then',
-    '      echo "→ Installing Claude Code ${ctx}..." >&2',
-    '      cc-expand patch --target "$ctx" --yes || {',
-    '        echo "Error: Failed to patch Claude Code ${ctx}" >&2',
-    '        return 1',
-    '      }',
-    '    fi',
-    '',
-    '    "$binary" $default_flags "$@"',
-    '    return $?',
-    '  fi',
-    '',
-    '  # 默认启动 270k（检查是否存在）',
-    '  local default_binary="$HOME/.cc-expand/bin/claude-270000"',
-    '  if [[ ! -x "$default_binary" ]]; then',
-    '    echo "Error: Default binary not found. Run: cc-expand patch --target 270000 --yes" >&2',
-    '    return 1',
-    '  fi',
-    '  "$default_binary" $default_flags "$@"',
-    '}',
-    "alias c='cc 270000'",
-    '# --- cc-expand generated end ---',
-    '',
-  ]
-  return lines.join('\n')
-}
-
-/**
- * 生成 PowerShell 函数（Windows 专用）
- * 注意：不使用 $args 作为参数名（PowerShell 保留变量）
- */
-function generatePowerShellFunction(): string {
-  const lines = [
-    '',
-    '# --- cc-expand generated start ---',
-    'function cc {',
-    '    param([string]$ctx = "270000")',
-    '',
-    '    $default_flags = "--dangerously-skip-permissions"',
-    '    $binary = Join-Path $env:USERPROFILE ".cc-expand/bin/claude-${ctx}.exe"',
-    '',
-    '    if (-not (Test-Path $binary)) {',
-    '        Write-Host "→ Installing Claude Code ${ctx}..." -ForegroundColor Yellow',
-    '        cc-expand patch --target $ctx --yes',
-    '        if ($LASTEXITCODE -ne 0) {',
-    '            Write-Error "Error: Failed to patch Claude Code ${ctx}"',
-    '            return 1',
-    '        }',
-    '    }',
-    '',
-    '    & $binary $default_flags @args',
-    '}',
-    '',
-    'function c {',
-    '    cc 270000 @args',
-    '}',
-    '',
-    'Set-Alias -Name cc-expand-cc -Value cc',
-    '# --- cc-expand generated end ---',
-    '',
-  ]
-  return lines.join('\n')
-}
-
-function generateShellFunction(): string {
-  return process.platform === 'win32'
-    ? generatePowerShellFunction()
-    : generateBashFunction()
+  /** 默认 target tokens */
+  defaultTarget?: number
 }
 
 /**
@@ -237,7 +133,8 @@ export async function setupCommand(
   content = backupExistingDefinitions(content)
 
   // 追加生成的函数
-  const shellCode = generateShellFunction()
+  const defaultTarget = options?.defaultTarget ?? 270000
+  const shellCode = generateShellFunction(defaultTarget)
   writeFileSync(configFile, content + shellCode, 'utf-8')
 
   // 保存版本到 channel.json，供后续 patch 命令使用
