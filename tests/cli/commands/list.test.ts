@@ -1,0 +1,87 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { listCommand } from '../../../src/cli/commands/list.js'
+
+describe('list command', () => {
+  let tempDir: string
+  let originalHome: string | undefined
+
+  beforeEach(() => {
+    tempDir = mkdtempSync(join(tmpdir(), 'cc-expand-list-'))
+    originalHome = process.env.HOME
+    process.env.HOME = tempDir
+  })
+
+  afterEach(() => {
+    process.env.HOME = originalHome
+    rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  function createInstalledVersion(version: string) {
+    const binDir = join(tempDir, '.cc-expand', 'packages', version, 'bin')
+    mkdirSync(binDir, { recursive: true })
+    writeFileSync(join(binDir, 'claude'), 'fake-binary')
+  }
+
+  function createPatchedVersions(
+    versions: Record<string, { targets: number[]; patchedAt: string }>,
+  ) {
+    const configPath = join(tempDir, '.cc-expand', 'versions.json')
+    mkdirSync(join(tempDir, '.cc-expand'), { recursive: true })
+    writeFileSync(configPath, JSON.stringify({ patchedVersions: versions }, null, 2))
+  }
+
+  it('lists installed versions sorted by semver descending', async () => {
+    createInstalledVersion('2.1.170')
+    createInstalledVersion('2.1.161')
+
+    const result = await listCommand([])
+
+    expect(result.success).toBe(true)
+    expect(result.data?.versions.map((v) => v.version)).toEqual(['2.1.170', '2.1.161'])
+    expect(result.data?.versions.every((v) => v.installed)).toBe(true)
+  })
+
+  it('marks patched versions correctly', async () => {
+    createInstalledVersion('2.1.170')
+    createInstalledVersion('2.1.161')
+    createPatchedVersions({
+      '2.1.170': { targets: [270000], patchedAt: '2026-06-10T00:00:00.000Z' },
+    })
+
+    const result = await listCommand([])
+
+    const v170 = result.data?.versions.find((v) => v.version === '2.1.170')
+    const v161 = result.data?.versions.find((v) => v.version === '2.1.161')
+    expect(v170?.patched).toBe(true)
+    expect(v170?.targets).toEqual([270000])
+    expect(v161?.patched).toBe(false)
+  })
+
+  it('filters with --patched', async () => {
+    createInstalledVersion('2.1.170')
+    createInstalledVersion('2.1.161')
+    createPatchedVersions({
+      '2.1.170': { targets: [270000], patchedAt: '2026-06-10T00:00:00.000Z' },
+    })
+
+    const result = await listCommand(['--patched'])
+
+    expect(result.data?.versions).toHaveLength(1)
+    expect(result.data?.versions[0]?.version).toBe('2.1.170')
+  })
+
+  it('includes only patched versions when none installed', async () => {
+    createPatchedVersions({
+      '2.1.170': { targets: [270000], patchedAt: '2026-06-10T00:00:00.000Z' },
+    })
+
+    const result = await listCommand([])
+
+    expect(result.data?.versions).toHaveLength(1)
+    expect(result.data?.versions[0]?.installed).toBe(false)
+    expect(result.data?.versions[0]?.patched).toBe(true)
+  })
+})

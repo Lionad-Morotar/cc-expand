@@ -16,53 +16,54 @@ describe('install command', () => {
     rmSync(tempDir, { recursive: true, force: true })
   })
 
-  it('returns [INFO] when binary is already installed', async () => {
-    // 创建假的已安装目录结构
-    const versionDir = join(tempDir, '.cc-expand', 'packages', '2.1.170')
+  function createFakePackage(version: string): PackageService {
+    const packagesDir = join(tempDir, '.cc-expand', 'packages')
+    const versionDir = join(packagesDir, version)
     mkdirSync(join(versionDir, 'bin'), { recursive: true })
     writeFileSync(join(versionDir, 'bin', 'claude'), 'fake-binary')
+    return new PackageService(packagesDir)
+  }
 
-    const output = await installCommand(['2.1.170'], {
+  it('returns structured result when binary is already installed', async () => {
+    const service = createFakePackage('2.1.170')
+
+    const result = await installCommand(['2.1.170'], {
       homeDir: tempDir,
-    } as any)
+      packageService: service,
+    })
 
-    expect(output.startsWith('[INFO]')).toBe(true)
-    expect(output).toContain('2.1.170')
-    expect(output).toContain('已安装')
+    expect(result.success).toBe(true)
+    expect(result.command).toBe('install')
+    expect(result.data?.version).toBe('2.1.170')
+    expect(result.data?.alreadyInstalled).toBe(true)
   })
 
   it('strips v prefix from version argument', async () => {
-    // 创建假的已安装目录结构
-    const versionDir = join(tempDir, '.cc-expand', 'packages', '2.1.170')
-    mkdirSync(join(versionDir, 'bin'), { recursive: true })
-    writeFileSync(join(versionDir, 'bin', 'claude'), 'fake-binary')
+    const service = createFakePackage('2.1.170')
 
-    const output = await installCommand(['v2.1.170'], {
+    const result = await installCommand(['v2.1.170'], {
       homeDir: tempDir,
-    } as any)
+      packageService: service,
+    })
 
-    expect(output.startsWith('[INFO]')).toBe(true)
-    expect(output).toContain('2.1.170')
-    expect(output).toContain('已安装')
+    expect(result.success).toBe(true)
+    expect(result.data?.version).toBe('2.1.170')
   })
 
-  it('returns [INFO] when latest resolves to already installed version', async () => {
-    // 创建假的已安装目录结构（模拟 latest 已解析为 2.1.170）
-    const versionDir = join(tempDir, '.cc-expand', 'packages', '2.1.170')
-    mkdirSync(join(versionDir, 'bin'), { recursive: true })
-    writeFileSync(join(versionDir, 'bin', 'claude'), 'fake-binary')
-
-    // Mock PackageService.resolveVersion 以注入版本解析行为
+  it('returns structured result when latest resolves to already installed version', async () => {
+    const service = createFakePackage('2.1.170')
     const originalResolveVersion = PackageService.prototype.resolveVersion
     PackageService.prototype.resolveVersion = vi.fn().mockResolvedValue('2.1.170')
 
     try {
-      const output = await installCommand(['latest'], {
+      const result = await installCommand(['latest'], {
         homeDir: tempDir,
-      } as any)
+        packageService: service,
+      })
 
-      expect(output.startsWith('[INFO]')).toBe(true)
-      expect(output).toContain('2.1.170')
+      expect(result.success).toBe(true)
+      expect(result.data?.version).toBe('2.1.170')
+      expect(result.data?.alreadyInstalled).toBe(true)
     } finally {
       PackageService.prototype.resolveVersion = originalResolveVersion
     }

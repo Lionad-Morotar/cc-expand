@@ -1,11 +1,6 @@
 /**
  * cc-expand patch — 交互式 patch 命令
  * 从本地包复制 binary → patch → 保存到 ~/.cc-expand/bin/
- *
- * 用法:
- *   cc-expand patch                    # 交互式模式
- *   cc-expand patch --target 256000    # 非交互式，直接指定目标值
- *   cc-expand patch --target 256000 --yes  # 非交互式，跳过确认
  */
 import { readFileSync, writeFileSync, copyFileSync, chmodSync, mkdirSync, rmSync } from 'node:fs'
 import { homedir } from 'node:os'
@@ -16,9 +11,11 @@ import { Verifier } from '../../core/verifier.js'
 import { PackageService } from '../../services/package.js'
 import { ChannelConfig } from '../../services/channel-config.js'
 import { ConfigService } from '../../services/config.js'
+import { UserConfigService } from '../../services/user-config.js'
 import { maintainShellShortcuts } from '../../services/shell-maintain.js'
 import { CcxError, ErrorCode } from '../../types/index.js'
-import { formatSummary, highlight, formatNextSteps } from '../output.js'
+import { t } from '../i18n.js'
+import { makeErrorResult, type CommandResult } from '../result.js'
 import { normalizeVersion } from '../../utils/version.js'
 import { parseTokenCount } from '../../utils/parse-token-count.js'
 
@@ -28,11 +25,29 @@ export function getPatchedBinaryName(targetTokens: number): string {
   return `claude-${targetTokens}${ext}`
 }
 
+export interface PatchData {
+  version: string
+  targetTokens: number
+  sourceValue: string
+  replaceCount: number
+  binaryPath: string
+  details: Array<{ desc: string; offset: number }>
+  shortcutsUpdated: boolean
+}
+
+export interface PatchOptions {
+  configService?: ConfigService
+  userConfigService?: UserConfigService
+  homeDir?: string
+  packagesDir?: string
+}
+
 export async function patchCommand(
   args: string[] = [],
-  options?: { configService?: ConfigService },
-): Promise<string> {
+  options?: PatchOptions,
+): Promise<CommandResult<PatchData>> {
   const configService = options?.configService ?? new ConfigService()
+  const userConfigService = options?.userConfigService ?? new UserConfigService()
   configService.ensureDirs()
 
   // 解析命令行参数
@@ -44,23 +59,35 @@ export async function patchCommand(
     if (args[i] === '--target' || args[i] === '-t') {
       const next = args[i + 1]
       if (next === undefined) {
-        throw new CcxError(
+        return makeErrorResult(
+          'patch',
           ErrorCode.INVALID_TARGET,
           `--target requires a value`,
-          `Usage: cc-expand patch --target 256000`,
+          `Usage: ccx patch --target 256000`,
         )
       }
-      targetTokens = parseTokenCount(next)
+      try {
+        targetTokens = parseTokenCount(next)
+      } catch (error) {
+        const message = error instanceof CcxError ? error.message : String(error)
+        return makeErrorResult(
+          'patch',
+          ErrorCode.INVALID_TARGET,
+          message,
+          `Usage: ccx patch --target 256000`,
+        )
+      }
       i++
     } else if (args[i] === '--yes' || args[i] === '-y') {
       skipConfirm = true
     } else if (args[i] === '--version' || args[i] === '-v') {
       const next = args[i + 1]
       if (next === undefined || next.startsWith('-')) {
-        throw new CcxError(
+        return makeErrorResult(
+          'patch',
           ErrorCode.INVALID_TARGET,
           `--version requires a value`,
-          `Usage: cc-expand patch --version 2.1.170`,
+          `Usage: ccx patch --version 2.1.170`,
         )
       }
       version = normalizeVersion(next)
@@ -70,16 +97,18 @@ export async function patchCommand(
 
   // --yes 必须配合 --target 使用
   if (skipConfirm && targetTokens === undefined) {
-    throw new CcxError(
+    return makeErrorResult(
+      'patch',
       ErrorCode.INVALID_TARGET,
       '--yes requires --target',
-      'Usage: cc-expand patch --target 256000 --yes',
+      'Usage: ccx patch --target 256000 --yes',
     )
   }
 
   // 验证 target tokens 有效（提前拒绝，避免不必要的 I/O）
   if (targetTokens !== undefined && targetTokens <= 0) {
-    throw new CcxError(
+    return makeErrorResult(
+      'patch',
       ErrorCode.INVALID_TARGET,
       `Invalid target tokens: ${targetTokens}`,
       `Target must be a positive integer (e.g. 256000)`,
@@ -88,13 +117,16 @@ export async function patchCommand(
 
   // 确定版本：命令行 > channel.json > 报错
   if (!version) {
-    const channelConfig = new ChannelConfig()
+    const homeDir = options?.homeDir ?? homedir()
+    const configDir = join(homeDir, '.cc-expand')
+    const channelConfig = new ChannelConfig(configDir)
     const channel = channelConfig.getChannel()
     version = channel?.version
   }
 
   if (!version) {
-    throw new CcxError(
+    return makeErrorResult(
+      'patch',
       ErrorCode.BINARY_NOT_FOUND,
       'No version specified',
       'Use --version or run setup first to select a version',
@@ -102,24 +134,36 @@ export async function patchCommand(
   }
 
   // 确保包已安装
-  const packagesDir = join(homedir(), '.cc-expand', 'packages')
+  const homeDir = options?.homeDir ?? homedir()
+  const packagesDir = options?.packagesDir ?? join(homeDir, '.cc-expand', 'packages')
   const packageService = new PackageService(packagesDir)
 
   if (!packageService.isInstalled(version)) {
-    console.log(`Claude Code ${version} not installed. Downloading...`)
-    await packageService.install(version)
+    try {
+      await packageService.install(version)
+    } catch (error) {
+      if (error instanceof CcxError) {
+        return makeErrorResult('patch', error.code, error.message, error.suggestion)
+      }
+      return makeErrorResult(
+        'patch',
+        ErrorCode.BINARY_NOT_FOUND,
+        `Failed to install Claude Code ${version}`,
+        'Check your network connection and npm registry access',
+      )
+    }
   }
 
   const sourceBinaryPath = packageService.getBinaryPath(version)
-  console.log(`Using Claude Code ${version}`)
 
   // 获取版本对应的模式
   const patches = await configService.getPatternForVersion(version)
   if (!patches) {
-    throw new CcxError(
+    return makeErrorResult(
+      'patch',
       ErrorCode.PATTERN_NOT_FOUND,
       `No pattern found for version ${version}`,
-      `Run 'cc-expand supports' to see supported versions`,
+      `Run 'ccx supports' to see supported versions`,
     )
   }
 
@@ -154,20 +198,31 @@ export async function patchCommand(
     })
 
     if (!confirmed) {
-      console.log('Patch cancelled.')
-      return ''
+      return {
+        success: true,
+        command: 'patch',
+        summary: 'Patch cancelled',
+        data: {
+          version,
+          targetTokens,
+          sourceValue,
+          replaceCount: 0,
+          binaryPath: '',
+          details: [],
+          shortcutsUpdated: false,
+        },
+      }
     }
   }
 
   // 创建 patched binary 目录
-  const patchBinDir = join(homedir(), '.cc-expand', 'bin')
+  const patchBinDir = join(homeDir, '.cc-expand', 'bin')
   mkdirSync(patchBinDir, { recursive: true })
   const patchedBinaryPath = join(patchBinDir, getPatchedBinaryName(targetTokens))
 
   // 复制原始 binary（不修改原始包）
   copyFileSync(sourceBinaryPath, patchedBinaryPath)
   chmodSync(patchedBinaryPath, 0o755)
-  console.log(`Created patched binary: ${patchedBinaryPath}`)
 
   // Patch
   const buffer = readFileSync(patchedBinaryPath)
@@ -176,24 +231,22 @@ export async function patchCommand(
 
   if (!patchResult.success) {
     rmSync(patchedBinaryPath, { force: true })
-    throw patchResult.error ?? new CcxError(ErrorCode.PATCH_FAILED, 'Patch failed')
-  }
-
-  console.log(`Patched ${patchResult.replaceCount} occurrence(s):`)
-  for (const detail of patchResult.details) {
-    console.log(`  - ${detail.desc} at offset ${detail.offset}`)
+    if (patchResult.error instanceof CcxError) {
+      return makeErrorResult('patch', patchResult.error.code, patchResult.error.message, patchResult.error.suggestion)
+    }
+    return makeErrorResult('patch', ErrorCode.PATCH_FAILED, 'Patch failed')
   }
 
   // 写入修改后的二进制
   writeFileSync(patchedBinaryPath, buffer)
 
   // macOS codesign（重新签名）
+  let codesignWarning: string | undefined
   if (process.platform === 'darwin') {
     try {
       execSync(`codesign --sign - --force --deep "${patchedBinaryPath}"`, { stdio: 'ignore' })
-      console.log('Self-signed with codesign ✓')
     } catch {
-      console.warn('⚠ codesign failed — binary may not be executable')
+      codesignWarning = 'codesign failed — binary may not be executable'
     }
   }
 
@@ -208,29 +261,45 @@ export async function patchCommand(
 
   if (!verifyResult.success) {
     rmSync(patchedBinaryPath, { force: true })
-    throw verifyResult.error ?? new CcxError(ErrorCode.VERIFICATION_FAILED, 'Verification failed')
+    if (verifyResult.error instanceof CcxError) {
+      return makeErrorResult('patch', verifyResult.error.code, verifyResult.error.message, verifyResult.error.suggestion)
+    }
+    return makeErrorResult('patch', ErrorCode.VERIFICATION_FAILED, 'Verification failed')
   }
-
-  console.log('Verification passed ✓')
 
   // 记录
   configService.recordPatchedVersion(version, targetTokens)
 
-  const maintainSummary = await maintainShellShortcuts({
-    targetTokens,
-    skipConfirm,
-  })
+  // 自动维护 shell 快捷方式（可由用户配置关闭）
+  let shortcutsUpdated = false
+  let maintainSummary = ''
+  const autoMaintain = userConfigService.get('autoMaintain')
+  if (autoMaintain) {
+    maintainSummary = await maintainShellShortcuts({
+      targetTokens,
+      skipConfirm,
+      homeDir,
+    })
+    shortcutsUpdated = true
+  }
 
-  return [
-    formatSummary('OK', `Patched Claude Code ${highlight(version)} to ${highlight(String(targetTokens))} tokens`),
-    '',
-    `替换: ${highlight(String(patchResult.replaceCount))} 处常量`,
-    `Binary: ${highlight(patchedBinaryPath)}`,
-    formatNextSteps([
-      `cc-expand run ${targetTokens}    # 启动 patch 版本`,
-      `cc ${targetTokens}               # 快捷方式`,
-    ]),
-    '',
-    maintainSummary,
-  ].join('\n')
+  return {
+    success: true,
+    command: 'patch',
+    summary: t('command.patch.success', { version, targetTokens }),
+    data: {
+      version,
+      targetTokens,
+      sourceValue,
+      replaceCount: patchResult.replaceCount ?? 0,
+      binaryPath: patchedBinaryPath,
+      details: patchResult.details,
+      shortcutsUpdated,
+    },
+    next: [
+      `ccx run ${targetTokens}`,
+      `cc ${targetTokens}`,
+    ],
+    warnings: codesignWarning ? [codesignWarning] : undefined,
+  }
 }

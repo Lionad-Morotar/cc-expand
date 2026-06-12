@@ -4,23 +4,47 @@
 import { readFileSync } from 'node:fs'
 import { DiscoveryService } from '../../services/discovery.js'
 import { ConfigService } from '../../services/config.js'
-import { formatSummary, highlight } from '../output.js'
+import { t } from '../i18n.js'
+import { makeErrorResult, type CommandResult } from '../result.js'
+import { CcxError, ErrorCode } from '../../types/index.js'
+
+export interface VerifyData {
+  version: string
+  binaryPath: string
+  sourceValue: string
+  patched: boolean
+  foundOriginals: string[]
+}
 
 export interface VerifyOptions {
   discoveryService?: DiscoveryService
   configService?: ConfigService
 }
 
-export async function verifyCommand(options?: VerifyOptions): Promise<string> {
+export async function verifyCommand(options?: VerifyOptions): Promise<CommandResult<VerifyData>> {
   const discovery = options?.discoveryService ?? new DiscoveryService()
   const configService = options?.configService ?? new ConfigService()
 
-  const binaryPath = await discovery.findClaudeBinary()
-  const version = await discovery.getBinaryVersion(binaryPath)
+  let binaryPath: string
+  let version: string
+  try {
+    binaryPath = await discovery.findClaudeBinary()
+    version = await discovery.getBinaryVersion(binaryPath)
+  } catch (error) {
+    if (error instanceof CcxError) {
+      return makeErrorResult('verify', error.code, error.message, error.suggestion)
+    }
+    throw error
+  }
 
   const patches = await configService.getPatternForVersion(version)
   if (!patches) {
-    return formatSummary('WARN', `无 pattern 数据: ${highlight(version)}`)
+    return makeErrorResult(
+      'verify',
+      ErrorCode.PATTERN_NOT_FOUND,
+      `No pattern data for ${version}`,
+      'Run `ccx supports` to see supported versions',
+    )
   }
 
   const content = readFileSync(binaryPath)
@@ -33,25 +57,20 @@ export async function verifyCommand(options?: VerifyOptions): Promise<string> {
     }
   }
 
-  if (foundOriginals.length > 0) {
-    const lines = [
-      formatSummary('WARN', `Claude Code ${highlight(version)} — 未 patch（发现 ${foundOriginals.length} 处原始常量）`),
-      '',
-      `Binary: ${highlight(binaryPath)}`,
-      `源值: ${highlight(sourceValue)}`,
-      '',
-      '未替换项:',
-    ]
-    for (const desc of foundOriginals) {
-      lines.push(`  ✗ ${desc}`)
-    }
-    return lines.join('\n')
-  }
+  const patched = foundOriginals.length === 0
 
-  return [
-    formatSummary('OK', `Claude Code ${highlight(version)} — 已 patch（无原始常量残留）`),
-    '',
-    `Binary: ${highlight(binaryPath)}`,
-    `源值: ${highlight(sourceValue)}`,
-  ].join('\n')
+  return {
+    success: true,
+    command: 'verify',
+    summary: patched
+      ? t('command.verify.patched', { version })
+      : t('command.verify.unpatched', { version, count: foundOriginals.length }),
+    data: {
+      version,
+      binaryPath,
+      sourceValue,
+      patched,
+      foundOriginals,
+    },
+  }
 }

@@ -12,8 +12,16 @@ import {
   detectConfigFile,
   generateShellFunction,
 } from '../../services/shell-codegen.js'
-import { formatSummary, highlight, formatNextSteps } from '../output.js'
+import { t } from '../i18n.js'
+import { makeErrorResult, type CommandResult } from '../result.js'
 import { normalizeVersion } from '../../utils/version.js'
+
+export interface SetupData {
+  configFile: string
+  version?: string
+  defaultTarget: number
+  installedVersion?: string
+}
 
 export interface SetupOptions {
   /** 覆盖默认的 home 目录（用于测试） */
@@ -64,7 +72,7 @@ function backupExistingDefinitions(content: string): string {
 export async function setupCommand(
   args: string[] = [],
   options?: SetupOptions,
-): Promise<string | void> {
+): Promise<CommandResult<SetupData>> {
   // 解析参数
   let skipConfirm = false
   for (const arg of args) {
@@ -91,7 +99,8 @@ export async function setupCommand(
 
   // 检测是否已安装过
   if (content.includes('# --- cc-expand generated start ---')) {
-    throw new CcxError(
+    return makeErrorResult(
+      'setup',
       ErrorCode.PERMISSION_DENIED,
       'cc-expand shell integration is already installed',
       `Remove the existing block from ${configFile} or use --force to overwrite`,
@@ -108,7 +117,6 @@ export async function setupCommand(
 
     if (channelConfig.hasChannel()) {
       version = channelConfig.getChannel()?.version
-      console.log(`Using saved version: ${version}`)
     }
   }
 
@@ -124,8 +132,12 @@ export async function setupCommand(
       `Install cc-expand shell integration to ${configFile}?`,
     )
     if (!confirmed) {
-      console.log('Setup cancelled.')
-      return
+      return {
+        success: true,
+        command: 'setup',
+        summary: 'Setup cancelled',
+        data: { configFile, defaultTarget: options?.defaultTarget ?? 270000 },
+      }
     }
   }
 
@@ -138,6 +150,7 @@ export async function setupCommand(
   writeFileSync(configFile, content + shellCode, 'utf-8')
 
   // 保存版本到 channel.json，供后续 patch 命令使用
+  let installedVersion: string | undefined
   if (version) {
     const channelConfig = new ChannelConfig(configDir)
     channelConfig.saveChannel({
@@ -150,23 +163,33 @@ export async function setupCommand(
     const packageService = new PackageService(packagesDir)
 
     if (!packageService.isInstalled(version)) {
-      console.log(`\nDownloading Claude Code ${version}...`)
-      await packageService.install(version)
+      try {
+        await packageService.install(version)
+        installedVersion = version
+      } catch (error) {
+        if (error instanceof CcxError) {
+          return makeErrorResult('setup', error.code, error.message, error.suggestion)
+        }
+        return makeErrorResult(
+          'setup',
+          ErrorCode.BINARY_NOT_FOUND,
+          `Failed to install Claude Code ${version}`,
+          'Check your network connection and npm registry access',
+        )
+      }
     }
   }
 
-  const nextSteps: string[] = [
-    `source ${configFile}   # 使快捷方式生效`,
-  ]
-  if (version) {
-    nextSteps.push(`cc-expand patch --target 270000 --yes   # 创建默认 patch 版本`)
+  return {
+    success: true,
+    command: 'setup',
+    summary: t('command.setup.success'),
+    data: {
+      configFile,
+      version,
+      defaultTarget,
+      installedVersion,
+    },
+    next: ['source ' + configFile],
   }
-
-  return [
-    formatSummary('OK', 'Shell 快捷方式已安装'),
-    '',
-    `配置文件: ${highlight(configFile)}`,
-    ...(version ? [`版本: ${highlight(version)}`] : []),
-    formatNextSteps(nextSteps),
-  ].join('\n')
 }

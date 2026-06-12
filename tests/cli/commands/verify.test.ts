@@ -19,7 +19,7 @@ describe('verify command', () => {
     rmSync(tempDir, { recursive: true, force: true })
   })
 
-  it('returns [WARN] when binary is not patched', async () => {
+  it('returns structured result when binary is not patched', async () => {
     const mockDiscovery = {
       findClaudeBinary: vi.fn().mockResolvedValue(binaryPath),
       getBinaryVersion: vi.fn().mockResolvedValue('2.1.170'),
@@ -31,17 +31,19 @@ describe('verify command', () => {
       ]),
     }
 
-    const output = await verifyCommand({
+    const result = await verifyCommand({
       discoveryService: mockDiscovery as any,
       configService: mockConfig as any,
     })
 
-    expect(output.startsWith('[WARN]')).toBe(true)
-    expect(output).toContain('2.1.170')
-    expect(output).toContain('未 patch')
+    expect(result.success).toBe(true)
+    expect(result.command).toBe('verify')
+    expect(result.data?.version).toBe('2.1.170')
+    expect(result.data?.patched).toBe(false)
+    expect(result.data?.foundOriginals).toEqual(['PACKAGE_T', 'MAX_TOOL_RESULTS'])
   })
 
-  it('returns [OK] when binary is patched', async () => {
+  it('returns structured result when binary is patched', async () => {
     // 覆盖 binary 内容，不包含原始 patterns
     writeFileSync(binaryPath, Buffer.from('some content without original patterns'))
 
@@ -55,12 +57,13 @@ describe('verify command', () => {
       ]),
     }
 
-    const output = await verifyCommand({
+    const result = await verifyCommand({
       discoveryService: mockDiscovery as any,
       configService: mockConfig as any,
     })
 
-    expect(output.startsWith('[OK]')).toBe(true)
-    expect(output).toContain('已 patch')
+    expect(result.success).toBe(true)
+    expect(result.data?.patched).toBe(true)
+    expect(result.data?.foundOriginals).toEqual([])
   })
 })

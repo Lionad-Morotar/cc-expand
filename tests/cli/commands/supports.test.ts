@@ -13,39 +13,39 @@ describe('supports command', () => {
     } as unknown as ConfigService
   }
 
-  it('returns [INFO] with all supported versions', async () => {
+  it('returns structured result with all supported versions', async () => {
     const mockDiscovery = {
       findClaudeBinary: vi.fn().mockRejectedValue(new Error('not found')),
       getBinaryVersion: vi.fn().mockResolvedValue('unknown'),
     }
     const mockConfig = createMockConfig()
 
-    const output = await supportsCommand([], {
+    const result = await supportsCommand([], {
       discoveryService: mockDiscovery as any,
       configService: mockConfig,
     })
 
-    expect(output.startsWith('[INFO]')).toBe(true)
-    expect(output).toContain('2.1.161')
-    expect(output).toContain('2.1.170')
-    expect(output).toContain('darwin-arm64')
-    expect(output).not.toContain('← 当前版本')
+    expect(result.success).toBe(true)
+    expect(result.command).toBe('supports')
+    expect(result.data?.versions).toHaveLength(2)
+    expect(result.data?.versions.map((v) => v.version)).toEqual(['2.1.161', '2.1.170'])
+    expect(result.data?.versions[0]?.platforms).toEqual(['darwin-arm64', 'darwin-x64'])
   })
 
-  it('highlights current version with arrow marker', async () => {
+  it('marks current version in structured data', async () => {
     const mockDiscovery = {
       findClaudeBinary: vi.fn().mockResolvedValue('/fake/claude'),
       getBinaryVersion: vi.fn().mockResolvedValue('2.1.170'),
     }
     const mockConfig = createMockConfig()
 
-    const output = await supportsCommand([], {
+    const result = await supportsCommand([], {
       discoveryService: mockDiscovery as any,
       configService: mockConfig,
     })
 
-    expect(output).toContain('← 当前版本')
-    expect(output).toContain('2.1.170')
+    const current = result.data?.versions.find((v) => v.current)
+    expect(current?.version).toBe('2.1.170')
   })
 
   it('warns when current version is NOT in the list', async () => {
@@ -55,29 +55,28 @@ describe('supports command', () => {
     }
     const mockConfig = createMockConfig()
 
-    const output = await supportsCommand([], {
+    const result = await supportsCommand([], {
       discoveryService: mockDiscovery as any,
       configService: mockConfig,
     })
 
-    expect(output).toContain('⚠')
-    expect(output).toContain('2.1.999')
-    expect(output).toContain('不受支持')
+    expect(result.warnings?.length).toBeGreaterThan(0)
+    expect(result.warnings?.[0]).toContain('2.1.999')
   })
 
-  it('does not show current highlight when claude is not installed', async () => {
+  it('does not mark any version current when claude is not installed', async () => {
     const mockDiscovery = {
       findClaudeBinary: vi.fn().mockRejectedValue(new Error('not found')),
       getBinaryVersion: vi.fn().mockResolvedValue('unknown'),
     }
     const mockConfig = createMockConfig()
 
-    const output = await supportsCommand([], {
+    const result = await supportsCommand([], {
       discoveryService: mockDiscovery as any,
       configService: mockConfig,
     })
 
-    expect(output).not.toContain('← 当前版本')
-    expect(output).not.toContain('⚠')
+    expect(result.data?.versions.every((v) => !v.current)).toBe(true)
+    expect(result.warnings?.length ?? 0).toBe(0)
   })
 })

@@ -20,51 +20,53 @@ describe('patch command argument validation', () => {
   })
 
   it('should reject --target without value', async () => {
-    await expect(patchCommand(['--target'])).rejects.toThrow(
-      '--target requires a value',
-    )
+    const result = await patchCommand(['--target'])
+    expect(result.success).toBe(false)
+    expect(result.error?.message).toContain('--target requires a value')
   })
 
   it('should reject non-numeric --target', async () => {
-    await expect(patchCommand(['--target', 'abc'])).rejects.toThrow(
-      'Invalid target tokens',
-    )
+    const result = await patchCommand(['--target', 'abc'])
+    expect(result.success).toBe(false)
+    expect(result.error?.code).toBe('INVALID_TARGET')
   })
 
   it('should reject --target with zero', async () => {
-    await expect(patchCommand(['--target', '0'])).rejects.toThrow(
-      'Invalid target tokens',
-    )
+    const result = await patchCommand(['--target', '0'])
+    expect(result.success).toBe(false)
+    expect(result.error?.code).toBe('INVALID_TARGET')
   })
 
   it('should reject --target with negative number', async () => {
-    await expect(patchCommand(['--target', '-1'])).rejects.toThrow(
-      'Invalid target tokens',
-    )
+    const result = await patchCommand(['--target', '-1'])
+    expect(result.success).toBe(false)
+    expect(result.error?.code).toBe('INVALID_TARGET')
   })
 
   it('should accept --target with k suffix', async () => {
-    // 没有安装包和 pattern，会在后面失败，但参数解析应成功
-    await expect(patchCommand(['--target', '270k'])).rejects.not.toThrow(
-      'Invalid target tokens',
-    )
+    const result = await patchCommand(['--target', '270k'])
+    // 没有安装包和 pattern，会在后面失败，但参数解析不应报 Invalid target tokens
+    if (!result.success) {
+      expect(result.error?.message).not.toContain('Invalid target tokens')
+    }
   })
 
   it('should accept --target with w suffix', async () => {
-    await expect(patchCommand(['--target', '27w'])).rejects.not.toThrow(
-      'Invalid target tokens',
-    )
+    const result = await patchCommand(['--target', '27w'])
+    if (!result.success) {
+      expect(result.error?.message).not.toContain('Invalid target tokens')
+    }
   })
 
   it('should reject --version without value', async () => {
-    await expect(patchCommand(['--version'])).rejects.toThrow(
-      '--version requires a value',
-    )
+    const result = await patchCommand(['--version'])
+    expect(result.success).toBe(false)
+    expect(result.error?.message).toContain('--version requires a value')
   })
 
   it('should reject --version followed by another flag', async () => {
-    await expect(patchCommand(['--version', '--yes'])).rejects.toThrow(
-      '--version requires a value',
-    )
+    const result = await patchCommand(['--version', '--yes'])
+    expect(result.success).toBe(false)
+    expect(result.error?.message).toContain('--version requires a value')
   })
 })

@@ -1,6 +1,6 @@
 {
   "name": "cc-expand",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Expand Claude Code's context window beyond 200k tokens",
   "bin": {
     "cc-expand": "dist/cli.js",
@@ -18,6 +18,8 @@
   "scripts": {
     "build": "tsup",
     "test": "vitest",
+    "test:unit": "vitest run tests/cli",
+    "test:e2e": "npm run build && vitest run tests/integration",
     "dev": "tsup --watch",
     "watch:patterns": "tsx scripts/watch-patterns.ts",
     "prepublishOnly": "npm run build && vitest run"
@@ -42,6 +44,8 @@
   },
   "dependencies": {
     "@inquirer/prompts": "^7.0.0",
+    "cac": "^7.0.0",
+    "picocolors": "^1.1.1",
     "tar": "^7.5.16"
   }
 }

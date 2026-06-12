@@ -4,7 +4,17 @@
 
 import { ConfigService } from '../../services/config.js'
 import { DiscoveryService } from '../../services/discovery.js'
-import { formatSummary, highlight, formatWarnings } from '../output.js'
+import { t } from '../i18n.js'
+import { type CommandResult } from '../result.js'
+
+export interface SupportsData {
+  currentVersion?: string
+  versions: Array<{
+    version: string
+    platforms: string[]
+    current: boolean
+  }>
+}
 
 export async function supportsCommand(
   _args: string[] = [],
@@ -12,12 +22,11 @@ export async function supportsCommand(
     discoveryService?: DiscoveryService
     configService?: ConfigService
   },
-): Promise<string> {
+): Promise<CommandResult<SupportsData>> {
   const config = options?.configService ?? new ConfigService()
   const discovery = options?.discoveryService ?? new DiscoveryService()
   const index = await config.getVersionIndex()
 
-  // 尝试获取当前系统 Claude Code 版本
   let currentVersion: string | undefined
   try {
     const binaryPath = await discovery.findClaudeBinary()
@@ -29,32 +38,33 @@ export async function supportsCommand(
     // 未安装 Claude Code，不显示高亮
   }
 
-  const versions = index.map((item) => item.version).sort((a, b) =>
-    a.localeCompare(b, undefined, { numeric: true }),
-  )
+  const versions = index
+    .map((item) => ({
+      version: item.version,
+      platforms: item.platforms,
+      current: item.version === currentVersion,
+    }))
+    .sort((a, b) => a.version.localeCompare(b.version, undefined, { numeric: true }),
+    )
 
-  const lines: string[] = [
-    formatSummary('INFO', `支持的 Claude Code 版本 (${versions.length} 个)`),
-    '',
-  ]
-
-  for (const version of versions) {
-    const item = index.find((i) => i.version === version)
-    const platforms = item?.platforms ?? []
-
-    const isCurrent = currentVersion === version
-    const versionText = isCurrent ? highlight(version) : version
-    const suffix = isCurrent ? '  ← 当前版本' : ''
-    lines.push(`  ${versionText} (${platforms.join(', ')})${suffix}`)
+  const warnings: string[] = []
+  if (currentVersion && !versions.some((v) => v.version === currentVersion)) {
+    warnings.push(
+      t('command.supports.unsupportedCurrent', {
+        version: currentVersion,
+        platform: `${process.platform}-${process.arch}`,
+      }),
+    )
   }
 
-  // 如果当前版本不在支持列表中，添加警告
-  if (currentVersion && !versions.includes(currentVersion)) {
-    const currentPlatform = `${process.platform}-${process.arch}`
-    lines.push(formatWarnings([
-      `当前 Claude Code ${highlight(currentVersion)} 在 ${currentPlatform} 上不受支持`,
-    ]))
+  return {
+    success: true,
+    command: 'supports',
+    summary: t('command.supports.summary', { count: versions.length }),
+    data: {
+      currentVersion,
+      versions,
+    },
+    warnings,
   }
-
-  return lines.join('\n')
 }

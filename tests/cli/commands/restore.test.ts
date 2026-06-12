@@ -25,7 +25,7 @@ describe('restore command', () => {
     rmSync(tempDir, { recursive: true, force: true })
   })
 
-  it('returns [OK] formatted output on successful restore', async () => {
+  it('returns structured result on successful restore', async () => {
     const binaryPath = join(tempDir, 'claude')
     const backupDir = join(tempDir, '.cc-expand', 'backups')
 
@@ -39,14 +39,16 @@ describe('restore command', () => {
       getBackupDir: vi.fn().mockReturnValue(backupDir),
     }
 
-    const output = await restoreCommand({
+    const result = await restoreCommand({
       discoveryService: mockDiscovery as any,
       backupService: mockBackup as any,
       configService: mockConfig as any,
     })
 
-    expect(output.startsWith('[OK]')).toBe(true)
-    expect(output).toContain(binaryPath)
+    expect(result.success).toBe(true)
+    expect(result.command).toBe('restore')
+    expect(result.data?.binaryPath).toBe(binaryPath)
+    expect(result.data?.shortcutsStillPointToPatched).toBe(false)
     expect(mockBackup.restore).toHaveBeenCalledWith(binaryPath, backupDir)
   })
 
@@ -74,15 +76,16 @@ alias c='cc 270000'
       getBackupDir: vi.fn().mockReturnValue(backupDir),
     }
 
-    const output = await restoreCommand({
+    const result = await restoreCommand({
       discoveryService: mockDiscovery as any,
       backupService: mockBackup as any,
       configService: mockConfig as any,
       homeDir: tempDir,
     })
 
-    expect(output).toContain('⚠')
-    expect(output).toContain('claude-270000')
-    expect(output).toContain('建议操作')
+    expect(result.success).toBe(true)
+    expect(result.data?.shortcutsStillPointToPatched).toBe(true)
+    expect(result.warnings?.length).toBeGreaterThan(0)
+    expect(result.warnings?.[0]).toContain('still point')
   })
 })

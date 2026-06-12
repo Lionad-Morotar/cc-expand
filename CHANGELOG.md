@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-13
+
+### Added
+
+- 新增 `config` 命令：管理用户偏好，支持 `get`、`set`、`lang` 子命令
+- 新增 `list` 命令：列出已安装和已 patch 的 Claude Code 版本，支持 `--patched` 过滤
+- CLI 输出渲染器：支持 `--json` 结构化输出、`--no-color` 关闭颜色、`--quiet` 安静模式
+- 国际化（i18n）支持：新增 `--locale`/`-l` 全局参数（`en` 或 `zh`）
+- 新增 BSD 风格退出码映射（`EX_USAGE`、`EX_DATAERR`、`EX_NOINPUT` 等）
+- 新增 `UserConfigService`：XDG 兼容的用户配置管理（`~/.config/cc-expand/config.json`）
+
+### Changed
+
+- CLI 路由迁移至 `cac`，所有命令统一返回结构化 `CommandResult` 对象
+- `status`、`supports`、`install`、`setup`、`restore`、`verify`、`run`、`patch` 命令全部改为结果对象输出
+- 集成测试扩展为对 `dist/cli.js` 的端到端测试
+
+### Fixed
+
+- 非 TTY 环境和 `NO_COLOR`/`TERM=dumb` 现在会正确禁用 ANSI 颜色
+- `--yes` 标志不再被全局错误处理误拦截
+
 ## [0.2.1] - 2026-06-12
 
 ### Fixed

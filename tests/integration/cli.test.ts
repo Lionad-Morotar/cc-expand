@@ -12,7 +12,7 @@ describe('CLI Integration', () => {
       encoding: 'utf-8',
     })
 
-    expect(output).toContain('cc-expand')
+    expect(output).toContain('ccx')
     expect(output).toContain('patch')
     expect(output).toContain('restore')
     expect(output).toContain('verify')
@@ -26,15 +26,22 @@ describe('CLI Integration', () => {
       encoding: 'utf-8',
     })
 
-    expect(output.trim()).toBe(pkg.version)
+    expect(output.trim()).toContain(pkg.version)
   })
 
-  it('should show help when no command given', () => {
-    const output = execFileSync('node', [CLI_PATH], {
-      encoding: 'utf-8',
-    })
-
-    expect(output).toContain('cc-expand')
+  it('should error when no command given', () => {
+    let threw = false
+    try {
+      execFileSync('node', [CLI_PATH], {
+        encoding: 'utf-8',
+      })
+    } catch (error: any) {
+      threw = true
+      const combined = (error.stdout || '') + (error.stderr || '')
+      expect(combined).toContain('No command specified')
+      expect(error.status).toBe(64)
+    }
+    expect(threw).toBe(true)
   })
 
   it('should error when --yes is used without --target', () => {
@@ -48,7 +55,7 @@ describe('CLI Integration', () => {
       threw = true
       const combined = (error.stdout || '') + (error.stderr || '')
       expect(combined).toContain('--yes requires --target')
-      expect(error.status).toBe(1)
+      expect(error.status).toBe(64)
     }
     expect(threw).toBe(true)
   })
@@ -64,7 +71,7 @@ describe('CLI Integration', () => {
       threw = true
       const combined = (error.stdout || '') + (error.stderr || '')
       expect(combined).toContain('Unknown command')
-      expect(error.status).toBe(1)
+      expect(error.status).toBe(64)
     }
     expect(threw).toBe(true)
   })
@@ -164,9 +171,44 @@ describe('CLI Integration', () => {
       encoding: 'utf-8',
     })
 
-    expect(output).toContain('[INFO]')
+    expect(output).toContain('[OK]')
     expect(output).toContain('2.1.161')
     expect(output).toContain('2.1.170')
+  })
+
+  it('should output JSON for config command', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'cc-expand-config-'))
+    const env = { ...process.env, HOME: tempDir, XDG_CONFIG_HOME: join(tempDir, '.config') }
+
+    const output = execFileSync('node', [CLI_PATH, 'config', 'get', 'locale', '--json'], {
+      encoding: 'utf-8',
+      env,
+    })
+
+    const parsed = JSON.parse(output)
+    expect(parsed.success).toBe(true)
+    expect(parsed.command).toBe('config')
+    expect(parsed.data).toEqual({ key: 'locale', value: 'en' })
+    expect(parsed.locale).toBe('en')
+
+    rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  it('should output JSON for list command', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'cc-expand-list-'))
+    const env = { ...process.env, HOME: tempDir }
+
+    const output = execFileSync('node', [CLI_PATH, 'list', '--json'], {
+      encoding: 'utf-8',
+      env,
+    })
+
+    const parsed = JSON.parse(output)
+    expect(parsed.success).toBe(true)
+    expect(parsed.command).toBe('list')
+    expect(Array.isArray(parsed.data.versions)).toBe(true)
+
+    rmSync(tempDir, { recursive: true, force: true })
   })
 
   // Note: status command requires a working Claude Code binary with responsive --version
@@ -177,8 +219,7 @@ describe('CLI Integration', () => {
       timeout: 10000,
     })
 
-    expect(output).toContain('[INFO]')
+    expect(output).toContain('[OK]')
     expect(output).toContain('Binary:')
-    expect(output).toMatch(/(已 patch|未 patch)/)
   })
 })

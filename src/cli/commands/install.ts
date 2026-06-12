@@ -6,32 +6,39 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { PackageService } from '../../services/package.js'
 import { CcxError, ErrorCode } from '../../types/index.js'
-import { formatSummary, highlight, formatNextSteps } from '../output.js'
+import { t } from '../i18n.js'
+import { makeErrorResult, type CommandResult } from '../result.js'
+import { normalizeVersion } from '../../utils/version.js'
+
+export interface InstallData {
+  version: string
+  binaryPath: string
+  alreadyInstalled: boolean
+}
 
 export interface InstallOptions {
   /** 覆盖默认的 home 目录（用于测试） */
   homeDir?: string
+  packageService?: PackageService
 }
 
 export async function installCommand(
   args: string[] = [],
   options?: InstallOptions,
-): Promise<string> {
+): Promise<CommandResult<InstallData>> {
   // 解析版本号：支持位置参数或 --version
   let version = 'latest'
-  // 第一轮：找 --version 标志
   for (let i = 0; i < args.length; i++) {
     if ((args[i] === '--version' || args[i] === '-v') && args[i + 1]) {
-      version = args[i + 1]
+      version = normalizeVersion(args[i + 1])
       i++
       break
     }
   }
-  // 第二轮：找第一个非选项位置参数（如果 --version 未指定）
   if (version === 'latest') {
     for (const arg of args) {
       if (!arg.startsWith('-')) {
-        version = arg
+        version = normalizeVersion(arg)
         break
       }
     }
@@ -39,18 +46,32 @@ export async function installCommand(
 
   const homeDir = options?.homeDir ?? homedir()
   const packagesDir = join(homeDir, '.cc-expand', 'packages')
-  const service = new PackageService(packagesDir)
+  const service = options?.packageService ?? new PackageService(packagesDir)
 
-  // 解析 latest 到实际版本号，以便后续检查、输出和 patch 匹配 patterns.json
-  const resolvedVersion = await service.resolveVersion(version)
+  let resolvedVersion: string
+  try {
+    resolvedVersion = await service.resolveVersion(version)
+  } catch (error) {
+    return makeErrorResult(
+      'install',
+      ErrorCode.BINARY_NOT_FOUND,
+      `Failed to resolve version ${version}`,
+      'Check your network connection and npm registry access',
+    )
+  }
 
-  // 检查是否已安装（使用解析后的实际版本）
   if (service.isInstalled(resolvedVersion)) {
-    return [
-      formatSummary('INFO', `Claude Code ${resolvedVersion} 已安装`),
-      '',
-      `Binary: ${highlight(service.getBinaryPath(resolvedVersion))}`,
-    ].join('\n')
+    const binaryPath = service.getBinaryPath(resolvedVersion)
+    return {
+      success: true,
+      command: 'install',
+      summary: t('command.install.alreadyInstalled', { version: resolvedVersion }),
+      data: {
+        version: resolvedVersion,
+        binaryPath,
+        alreadyInstalled: true,
+      },
+    }
   }
 
   try {
@@ -58,19 +79,26 @@ export async function installCommand(
     const binaryName = process.platform === 'win32' ? 'claude.exe' : 'claude'
     const binaryPath = join(targetDir, 'bin', binaryName)
 
-    return [
-      formatSummary('OK', `Claude Code ${installedVersion} 安装成功`),
-      '',
-      `Binary: ${highlight(binaryPath)}`,
-      formatNextSteps([
-        `cc-expand patch --target 270000 --yes   # 创建 patch 版本`,
-      ]),
-    ].join('\n')
+    return {
+      success: true,
+      command: 'install',
+      summary: t('command.install.success', { version: installedVersion }),
+      data: {
+        version: installedVersion,
+        binaryPath,
+        alreadyInstalled: false,
+      },
+      next: ['ccx patch --target 270000 --yes'],
+    }
   } catch (error) {
-    throw new CcxError(
+    if (error instanceof CcxError) {
+      return makeErrorResult('install', error.code, error.message, error.suggestion)
+    }
+    return makeErrorResult(
+      'install',
       ErrorCode.BINARY_NOT_FOUND,
       `Failed to install Claude Code ${version}`,
-      `Check your network connection and npm registry access`,
+      'Check your network connection and npm registry access',
     )
   }
 }

@@ -4,7 +4,9 @@
 import { DiscoveryService } from '../../services/discovery.js'
 import { ConfigService } from '../../services/config.js'
 import { readShortcutState } from '../../services/shell-profile.js'
-import { formatSummary, highlight } from '../output.js'
+import { t } from '../i18n.js'
+import { makeErrorResult, type CommandResult } from '../result.js'
+import { CcxError, ErrorCode } from '../../types/index.js'
 
 export interface StatusOptions {
   discoveryService?: DiscoveryService
@@ -12,61 +14,94 @@ export interface StatusOptions {
   homeDir?: string
 }
 
-export async function statusCommand(options?: StatusOptions): Promise<string> {
+export interface StatusData {
+  version?: string
+  binaryPath?: string
+  patched: boolean
+  targets?: number[]
+  patchedAt?: string
+  shortcuts?: {
+    ccTarget?: string
+    cTarget?: string
+    pointsToPatched: boolean
+  }
+  installedVersions: Array<{
+    version: string
+    targets: number[]
+    patchedAt: string
+    current: boolean
+  }>
+}
+
+export async function statusCommand(options?: StatusOptions): Promise<CommandResult<StatusData>> {
   const discovery = options?.discoveryService ?? new DiscoveryService()
   const configService = options?.configService ?? new ConfigService()
 
-  const binaryPath = await discovery.findClaudeBinary()
-  const version = await discovery.getBinaryVersion(binaryPath)
+  let binaryPath: string | undefined
+  let version: string | undefined
+
+  try {
+    binaryPath = await discovery.findClaudeBinary()
+    version = await discovery.getBinaryVersion(binaryPath)
+  } catch (error) {
+    if (error instanceof CcxError && error.code === ErrorCode.BINARY_NOT_FOUND) {
+      const userConfig = configService.getUserConfig()
+      const installedVersions = Object.entries(userConfig.patchedVersions).map(([v, info]) => ({
+        version: v,
+        targets: info.targets,
+        patchedAt: info.patchedAt,
+        current: false,
+      }))
+
+      return {
+        success: true,
+        command: 'status',
+        summary: t('command.status.noBinary'),
+        data: {
+          patched: false,
+          installedVersions,
+        },
+      }
+    }
+
+    if (error instanceof CcxError) {
+      return makeErrorResult('status', error.code, error.message, error.suggestion)
+    }
+    throw error
+  }
 
   const userConfig = configService.getUserConfig()
   const patchedInfo = userConfig.patchedVersions[version]
 
   const shortcutState = readShortcutState(options?.homeDir)
 
-  // 构建第一行摘要
-  let summary: string
-  if (patchedInfo) {
-    const targets = patchedInfo.targets.join(', ')
-    summary = `Claude Code ${highlight(version)} — 已 patch 到 ${highlight(targets)} tokens`
-  } else {
-    summary = `Claude Code ${highlight(version)} — 未 patch（默认上下文窗口）`
+  const summary = patchedInfo
+    ? t('command.status.patched', { version, targets: patchedInfo.targets.join(', ') })
+    : t('command.status.unpatched', { version })
+
+  const installedVersions = Object.entries(userConfig.patchedVersions).map(([v, info]) => ({
+    version: v,
+    targets: info.targets,
+    patchedAt: info.patchedAt,
+    current: v === version,
+  }))
+
+  return {
+    success: true,
+    command: 'status',
+    summary,
+    data: {
+      version,
+      binaryPath,
+      patched: !!patchedInfo,
+      targets: patchedInfo?.targets,
+      patchedAt: patchedInfo?.patchedAt,
+      shortcuts: {
+        ccTarget: shortcutState.ccTarget,
+        cTarget: shortcutState.cTarget,
+        pointsToPatched: shortcutState.pointsToPatched,
+      },
+      installedVersions,
+    },
   }
-
-  const lines: string[] = [
-    formatSummary('INFO', summary),
-    '',
-    `Binary: ${highlight(binaryPath)}`,
-  ]
-
-  if (patchedInfo) {
-    const patchedAt = new Date(patchedInfo.patchedAt).toLocaleString('zh-CN')
-    lines.push(`Patch 时间: ${patchedAt}`)
-  }
-
-  // 快捷方式状态
-  if (shortcutState.ccTarget || shortcutState.cTarget) {
-    lines.push('')
-    lines.push('快捷方式状态:')
-    if (shortcutState.ccTarget) {
-      lines.push(`  cc() → ${highlight(shortcutState.ccTarget)}`)
-    }
-    if (shortcutState.cTarget) {
-      lines.push(`  c alias → ${highlight(shortcutState.cTarget)}`)
-    }
-  }
-
-  // 已安装 patch 版本
-  const allPatched = Object.entries(userConfig.patchedVersions)
-  if (allPatched.length > 0) {
-    lines.push('')
-    lines.push('已安装 patch 版本:')
-    for (const [v, info] of allPatched) {
-      const targets = info.targets.map((t) => highlight(String(t))).join(', ')
-      const marker = v === version ? ' ← 当前' : ''
-      lines.push(`  ${v}: ${targets} tokens${marker}`)
-    }
-  }
-
-  return lines.join('\n')
 }
