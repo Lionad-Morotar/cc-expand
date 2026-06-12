@@ -16,9 +16,11 @@ import { Verifier } from '../../core/verifier.js'
 import { PackageService } from '../../services/package.js'
 import { ChannelConfig } from '../../services/channel-config.js'
 import { ConfigService } from '../../services/config.js'
+import { maintainShellShortcuts } from '../../services/shell-maintain.js'
 import { CcxError, ErrorCode } from '../../types/index.js'
 import { formatSummary, highlight, formatNextSteps } from '../output.js'
 import { normalizeVersion } from '../../utils/version.js'
+import { parseTokenCount } from '../../utils/parse-token-count.js'
 
 /** 获取 patched binary 文件名（Windows 需 .exe 扩展名） */
 export function getPatchedBinaryName(targetTokens: number): string {
@@ -41,14 +43,14 @@ export async function patchCommand(
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--target' || args[i] === '-t') {
       const next = args[i + 1]
-      if (next === undefined || !/^\d+$/.test(next)) {
+      if (next === undefined) {
         throw new CcxError(
           ErrorCode.INVALID_TARGET,
-          `--target requires a valid positive integer`,
+          `--target requires a value`,
           `Usage: cc-expand patch --target 256000`,
         )
       }
-      targetTokens = parseInt(next, 10)
+      targetTokens = parseTokenCount(next)
       i++
     } else if (args[i] === '--yes' || args[i] === '-y') {
       skipConfirm = true
@@ -128,16 +130,20 @@ export async function patchCommand(
     // 交互式模式
     const { input } = await import('@inquirer/prompts')
     const targetInput = await input({
-      message: `Current context window: ${sourceValue}\nEnter target tokens (e.g. 256000):`,
+      message: `Current context window: ${sourceValue}\nEnter target tokens (e.g. 256000 or 270k):`,
       validate: (value: string) => {
-        if (!/^\d+$/.test(value)) return 'Please enter a valid number'
-        if (value.length !== sourceValue.length) {
-          return `Must be ${sourceValue.length} digits`
+        try {
+          const parsed = parseTokenCount(value)
+          if (String(parsed).length !== sourceValue.length) {
+            return `Must be ${sourceValue.length} digits`
+          }
+          return true
+        } catch (e) {
+          return e instanceof CcxError ? e.message : 'Please enter a valid number'
         }
-        return true
       },
     })
-    targetTokens = parseInt(targetInput, 10)
+    targetTokens = parseTokenCount(targetInput)
   }
 
   // 确认
@@ -210,6 +216,11 @@ export async function patchCommand(
   // 记录
   configService.recordPatchedVersion(version, targetTokens)
 
+  const maintainSummary = await maintainShellShortcuts({
+    targetTokens,
+    skipConfirm,
+  })
+
   return [
     formatSummary('OK', `Patched Claude Code ${highlight(version)} to ${highlight(String(targetTokens))} tokens`),
     '',
@@ -217,7 +228,9 @@ export async function patchCommand(
     `Binary: ${highlight(patchedBinaryPath)}`,
     formatNextSteps([
       `cc-expand run ${targetTokens}    # 启动 patch 版本`,
-      `cc ${targetTokens}               # 快捷方式（如已 setup）`,
+      `cc ${targetTokens}               # 快捷方式`,
     ]),
+    '',
+    maintainSummary,
   ].join('\n')
 }

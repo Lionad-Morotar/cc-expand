@@ -21,13 +21,13 @@ describe('patch command argument validation', () => {
 
   it('should reject --target without value', async () => {
     await expect(patchCommand(['--target'])).rejects.toThrow(
-      '--target requires a valid positive integer',
+      '--target requires a value',
     )
   })
 
   it('should reject non-numeric --target', async () => {
     await expect(patchCommand(['--target', 'abc'])).rejects.toThrow(
-      '--target requires a valid positive integer',
+      'Invalid target tokens',
     )
   })
 
@@ -39,7 +39,20 @@ describe('patch command argument validation', () => {
 
   it('should reject --target with negative number', async () => {
     await expect(patchCommand(['--target', '-1'])).rejects.toThrow(
-      '--target requires a valid positive integer',
+      'Invalid target tokens',
+    )
+  })
+
+  it('should accept --target with k suffix', async () => {
+    // 没有安装包和 pattern，会在后面失败，但参数解析应成功
+    await expect(patchCommand(['--target', '270k'])).rejects.not.toThrow(
+      'Invalid target tokens',
+    )
+  })
+
+  it('should accept --target with w suffix', async () => {
+    await expect(patchCommand(['--target', '27w'])).rejects.not.toThrow(
+      'Invalid target tokens',
     )
   })
 

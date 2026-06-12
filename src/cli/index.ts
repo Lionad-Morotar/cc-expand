@@ -91,10 +91,16 @@ Commands:
   supports         List supported Claude Code versions
   setup            Install shell shortcuts (cc, c)
 
+Options:
+  patch:
+    -t, --target <count>   Target context window size (e.g. 256000, 270k, 27w)
+    -v, --version <ver>    Claude Code version to patch (e.g. 2.1.170)
+    -y, --yes              Skip confirmation and overwrite shell shortcuts
+
 Examples:
   cc-expand install 2.1.170
-  cc-expand patch --target 256000
-  cc-expand run 256000
+  cc-expand patch --target 270k --yes
+  cc-expand run 270k
   cc-expand setup --yes
 `)
 }
