@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-06-12
+
+### Fixed
+
+- Windows 平台 `install` / `patch` 命令调用 `npm.cmd` 时出现 `spawn EINVAL` 的问题，通过为 Windows 启用 `shell: true` 修复
+
 ## [0.2.0] - 2026-06-11
 
 ### Added

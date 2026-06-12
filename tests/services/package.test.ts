@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { getNpmCommand, PackageService } from '../../src/services/package.js'
+import { getNpmCommand, getNpmExecOptions, PackageService } from '../../src/services/package.js'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -37,6 +37,39 @@ describe('getNpmCommand', () => {
   })
 })
 
+describe('getNpmExecOptions', () => {
+  let originalPlatform: PropertyDescriptor | undefined
+
+  afterEach(() => {
+    if (originalPlatform) {
+      Object.defineProperty(process, 'platform', originalPlatform)
+    }
+  })
+
+  function setPlatform(platform: string) {
+    originalPlatform = Object.getOwnPropertyDescriptor(process, 'platform')
+    Object.defineProperty(process, 'platform', {
+      value: platform,
+      configurable: true,
+    })
+  }
+
+  it('should enable shell on Windows', () => {
+    setPlatform('win32')
+    expect(getNpmExecOptions()).toEqual({ shell: true })
+  })
+
+  it('should not enable shell on macOS', () => {
+    setPlatform('darwin')
+    expect(getNpmExecOptions()).toEqual({})
+  })
+
+  it('should not enable shell on Linux', () => {
+    setPlatform('linux')
+    expect(getNpmExecOptions()).toEqual({})
+  })
+})
+
 describe('PackageService.resolveVersion', () => {
   let tempDir: string
 
@@ -50,10 +83,10 @@ describe('PackageService.resolveVersion', () => {
 
   function createMockExecFile(
     result: { error?: Error; stdout: string },
-    assert?: (file: string, args: string[]) => void,
+    assert?: (file: string, args: string[], options: unknown) => void,
   ) {
-    return vi.fn((file: string, args: string[], _options: unknown, callback: (error: Error | null, stdout: string) => void) => {
-      if (assert) assert(file, args)
+    return vi.fn((file: string, args: string[], options: unknown, callback: (error: Error | null, stdout: string) => void) => {
+      if (assert) assert(file, args, options)
       callback(result.error ?? null, result.stdout)
     })
   }
@@ -78,7 +111,7 @@ describe('PackageService.resolveVersion', () => {
   it('should resolve latest tag via npm view', async () => {
     const execFileMock = createMockExecFile(
       { stdout: '"2.1.170"' },
-      (file, args) => {
+      (file, args, options) => {
         expect(file).toMatch(/npm(?:\.cmd)?$/)
         expect(args).toEqual([
           'view',
@@ -86,6 +119,7 @@ describe('PackageService.resolveVersion', () => {
           'version',
           '--json',
         ])
+        expect(options).toEqual(expect.any(Object))
       },
     )
     const service = new PackageService(tempDir, execFileMock as any)

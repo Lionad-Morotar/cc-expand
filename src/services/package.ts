@@ -37,6 +37,15 @@ export function getNpmCommand(): string {
   return process.platform === 'win32' ? 'npm.cmd' : 'npm'
 }
 
+/**
+ * 获取平台相关的 execFile 选项
+ *
+ * Windows 上执行 .cmd 文件时，Node.js v18+ 默认会抛出 EINVAL，必须显式启用 shell。
+ */
+export function getNpmExecOptions(): { shell?: boolean } {
+  return process.platform === 'win32' ? { shell: true } : {}
+}
+
 /** 安装结果 */
 export interface InstallResult {
   /** 安装目录路径 */
@@ -64,7 +73,7 @@ export class PackageService {
       this.execFileImpl(
         getNpmCommand(),
         ['view', '@anthropic-ai/claude-code@latest', 'version', '--json'],
-        { timeout: 30000 },
+        { timeout: 30000, ...getNpmExecOptions() },
         (error: Error | null, stdout: string) => {
           if (error) {
             resolve(version)
@@ -202,7 +211,7 @@ export class PackageService {
       this.execFileImpl(
         getNpmCommand(),
         ['pack', `${name}@${version}`, '--pack-destination', destDir, '--json'],
-        { timeout: 300000 },
+        { timeout: 300000, ...getNpmExecOptions() },
         (error: Error | null, stdout: string) => {
           if (error) {
             reject(error)
