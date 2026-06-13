@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `ccx restore` 在 `autoMaintain` 开启时自动把 cc/c 快捷方式覆盖为调用原版 Claude Code（对称于 `patch` 的 maintain；之前只警告）
+- 新增 `generateRestoredShellFunction` 与 `maintainShellShortcutsToOriginal`，复用 `extractBlock` 把 cc-expand 块内容改为 `claude --dangerously-skip-permissions`
+
 ### Fixed
 
 - `--locale`/`-l` 传入非法值（如 `fr`）不再导致 `t()` 崩溃，回退到 `en`

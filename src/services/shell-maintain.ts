@@ -5,7 +5,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname } from 'node:path'
-import { detectConfigFile, generateShellFunction } from './shell-codegen.js'
+import { detectConfigFile, generateShellFunction, generateRestoredShellFunction } from './shell-codegen.js'
 
 const START_MARKER = '# --- cc-expand generated start ---'
 const END_MARKER = '# --- cc-expand generated end ---'
@@ -87,4 +87,66 @@ export async function maintainShellShortcuts(options: MaintainOptions): Promise<
 
   writeFileSync(configFile, existing.before + newBlock + existing.after, 'utf-8')
   return `Shell 快捷方式已更新为默认目标 ${options.targetTokens} tokens`
+}
+
+/**
+ * maintainShellShortcutsToOriginal 的选项
+ * 与 MaintainOptions 类似，但不需要 targetTokens（restore 没有 target 概念）
+ */
+export interface MaintainToOriginalOptions {
+  /** 覆盖默认 home 目录（用于测试） */
+  homeDir?: string
+  /** 跳过确认直接覆盖 */
+  skipConfirm?: boolean
+  /** 覆盖确认函数（用于测试） */
+  confirm?: (message: string) => Promise<boolean>
+}
+
+/**
+ * 把 shell profile 中的 cc-expand 块覆盖为"指向原版 Claude Code"
+ * 用于 restore：cc/c 保留快捷方式结构，但调用系统原版 claude 而非 patched binary
+ * 与 maintainShellShortcuts（指向 patched）形成对称操作
+ */
+export async function maintainShellShortcutsToOriginal(
+  options: MaintainToOriginalOptions,
+): Promise<string> {
+  const homeDir = options.homeDir ?? homedir()
+  const configFile = detectConfigFile(homeDir)
+  mkdirSync(dirname(configFile), { recursive: true })
+
+  let content = ''
+  if (existsSync(configFile)) {
+    content = readFileSync(configFile, 'utf-8')
+  }
+
+  const newBlock = generateRestoredShellFunction()
+  const existing = extractBlock(content)
+  if (!existing) {
+    // 无旧块：restore 场景罕见，兜底追加
+    writeFileSync(configFile, content + newBlock, 'utf-8')
+    return `Shell 快捷方式已更新为指向原版 ${configFile}`
+  }
+
+  if (existing.block.trim() === newBlock.trim()) {
+    return `Shell 快捷方式已指向原版，无需更新`
+  }
+
+  // 旧块指向 patched：确认或直接覆盖
+  if (!options.skipConfirm) {
+    const doConfirm =
+      options.confirm ??
+      (async (msg: string) => {
+        const { confirm } = await import('@inquirer/prompts')
+        return confirm({ message: msg })
+      })
+    const ok = await doConfirm(
+      `Update cc/c shortcuts to launch the original Claude Code?`,
+    )
+    if (!ok) {
+      return `Shell 快捷方式未更新（仍指向 patched binary）`
+    }
+  }
+
+  writeFileSync(configFile, existing.before + newBlock + existing.after, 'utf-8')
+  return `Shell 快捷方式已更新为指向原版 ${configFile}`
 }

@@ -118,3 +118,55 @@ export function generateShellFunction(targetTokens: number): string {
     ? generatePowerShellFunction(targetTokens)
     : generateBashFunction(targetTokens)
 }
+
+/**
+ * 生成"指向原版 Claude Code"的 bash/zsh 函数块
+ * 用于 restore：保留 cc/c 快捷方式结构，但调用系统原版 claude 而非 patched binary
+ * 与 generateBashFunction 对称——只换底层 binary，保留 --dangerously-skip-permissions 习惯
+ */
+export function generateRestoredBashFunction(): string {
+  const lines = [
+    '',
+    '# --- cc-expand generated start ---',
+    'cc() {',
+    '  # restore 后：cc/c 直接调用原版 Claude Code',
+    '  claude --dangerously-skip-permissions "$@"',
+    '}',
+    "alias c='cc'",
+    '# --- cc-expand generated end ---',
+    '',
+  ]
+  return lines.join('\n')
+}
+
+/**
+ * 生成"指向原版 Claude Code"的 PowerShell 函数块（Windows 专用）
+ */
+export function generateRestoredPowerShellFunction(): string {
+  const lines = [
+    '',
+    '# --- cc-expand generated start ---',
+    'function cc {',
+    '    # restore 后：cc/c 直接调用原版 Claude Code',
+    '    claude --dangerously-skip-permissions @args',
+    '}',
+    '',
+    'function c {',
+    '    cc @args',
+    '}',
+    '',
+    'Set-Alias -Name cc-expand-cc -Value cc',
+    '# --- cc-expand generated end ---',
+    '',
+  ]
+  return lines.join('\n')
+}
+
+/**
+ * 根据平台生成"指向原版"的 shell 函数块（restore 专用）
+ */
+export function generateRestoredShellFunction(): string {
+  return process.platform === 'win32'
+    ? generateRestoredPowerShellFunction()
+    : generateRestoredBashFunction()
+}

@@ -7,6 +7,8 @@ import {
   generateBashFunction,
   generatePowerShellFunction,
   generateShellFunction,
+  generateRestoredBashFunction,
+  generateRestoredShellFunction,
 } from '../../src/services/shell-codegen.js'
 
 describe('shell-codegen', () => {
@@ -51,6 +53,29 @@ describe('shell-codegen', () => {
     try {
       const code = generateShellFunction(270000)
       expect(code).toContain('function cc')
+    } finally {
+      if (originalPlatform) Object.defineProperty(process, 'platform', originalPlatform)
+    }
+  })
+
+  it('generates restored bash function that calls original claude directly', () => {
+    const code = generateRestoredBashFunction()
+    expect(code).toContain('cc() {')
+    expect(code).toContain('claude --dangerously-skip-permissions "$@"')
+    expect(code).toContain("alias c='cc'")
+    // restore 块不应引用 patched binary 路径
+    expect(code).not.toContain('.cc-expand/bin/claude-')
+    expect(code).toContain('# --- cc-expand generated start ---')
+    expect(code).toContain('# --- cc-expand generated end ---')
+  })
+
+  it('generateRestoredShellFunction uses powershell backend on windows', () => {
+    const originalPlatform = Object.getOwnPropertyDescriptor(process, 'platform')
+    Object.defineProperty(process, 'platform', { value: 'win32', configurable: true })
+    try {
+      const code = generateRestoredShellFunction()
+      expect(code).toContain('function cc')
+      expect(code).toContain('claude --dangerously-skip-permissions @args')
     } finally {
       if (originalPlatform) Object.defineProperty(process, 'platform', originalPlatform)
     }

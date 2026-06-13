@@ -52,12 +52,12 @@ describe('restore command', () => {
     expect(mockBackup.restore).toHaveBeenCalledWith(binaryPath, backupDir)
   })
 
-  it('warns when shell shortcuts still point to patched binary', async () => {
+  it('warns when shortcuts point to patched and autoMaintain is disabled', async () => {
     const binaryPath = join(tempDir, 'claude')
     const backupDir = join(tempDir, '.cc-expand', 'backups')
     const zshrc = join(tempDir, '.zshrc')
 
-    // 写入包含 cc-expand 快捷方式的 profile
+    // 写入包含 cc-expand 快捷方式的 profile（指向 patched binary）
     writeFileSync(zshrc, `
 cc() {
   local default_binary="$HOME/.cc-expand/bin/claude-270000"
@@ -66,26 +66,89 @@ cc() {
 alias c='cc 270000'
 `)
 
-    const mockDiscovery = {
-      findClaudeBinary: vi.fn().mockResolvedValue(binaryPath),
-    }
-    const mockBackup = {
-      restore: vi.fn().mockResolvedValue(undefined),
-    }
-    const mockConfig = {
-      getBackupDir: vi.fn().mockReturnValue(backupDir),
-    }
+    const mockDiscovery = { findClaudeBinary: vi.fn().mockResolvedValue(binaryPath) }
+    const mockBackup = { restore: vi.fn().mockResolvedValue(undefined) }
+    const mockConfig = { getBackupDir: vi.fn().mockReturnValue(backupDir) }
+    const mockUserConfig = { get: vi.fn().mockReturnValue(false) }
+    const mockMaintain = vi.fn()
 
     const result = await restoreCommand({
       discoveryService: mockDiscovery as any,
       backupService: mockBackup as any,
       configService: mockConfig as any,
+      userConfigService: mockUserConfig as any,
+      maintain: mockMaintain,
       homeDir: tempDir,
     })
 
     expect(result.success).toBe(true)
     expect(result.data?.shortcutsStillPointToPatched).toBe(true)
+    expect(result.data?.shortcutsUpdated).toBe(false)
     expect(result.warnings?.length).toBeGreaterThan(0)
     expect(result.warnings?.[0]).toContain('still point')
+    // autoMaintain 关闭时不应调用 maintain
+    expect(mockMaintain).not.toHaveBeenCalled()
+  })
+
+  it('overwrites shortcuts to launch original when autoMaintain is enabled', async () => {
+    const binaryPath = join(tempDir, 'claude')
+    const backupDir = join(tempDir, '.cc-expand', 'backups')
+    const zshrc = join(tempDir, '.zshrc')
+
+    writeFileSync(zshrc, `
+cc() {
+  local default_binary="$HOME/.cc-expand/bin/claude-270000"
+  "$default_binary" \$default_flags "$@"
+}
+alias c='cc 270000'
+`)
+
+    const mockDiscovery = { findClaudeBinary: vi.fn().mockResolvedValue(binaryPath) }
+    const mockBackup = { restore: vi.fn().mockResolvedValue(undefined) }
+    const mockConfig = { getBackupDir: vi.fn().mockReturnValue(backupDir) }
+    const mockUserConfig = { get: vi.fn().mockReturnValue(true) }
+    const mockMaintain = vi.fn().mockResolvedValue('Shell 快捷方式已更新为指向原版')
+
+    const result = await restoreCommand({
+      discoveryService: mockDiscovery as any,
+      backupService: mockBackup as any,
+      configService: mockConfig as any,
+      userConfigService: mockUserConfig as any,
+      maintain: mockMaintain,
+      homeDir: tempDir,
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.data?.shortcutsUpdated).toBe(true)
+    expect(result.data?.shortcutsStillPointToPatched).toBe(false)
+    expect(result.data?.maintainSummary).toBe('Shell 快捷方式已更新为指向原版')
+    // autoMaintain 已表达"自动维护"，应以 skipConfirm 直接覆盖
+    expect(mockMaintain).toHaveBeenCalledWith({ skipConfirm: true, homeDir: tempDir })
+    // 维护成功后不应再有警告
+    expect(result.warnings).toBeUndefined()
+  })
+
+  it('does not touch shortcuts when they do not point to patched', async () => {
+    const binaryPath = join(tempDir, 'claude')
+    const backupDir = join(tempDir, '.cc-expand', 'backups')
+
+    const mockDiscovery = { findClaudeBinary: vi.fn().mockResolvedValue(binaryPath) }
+    const mockBackup = { restore: vi.fn().mockResolvedValue(undefined) }
+    const mockConfig = { getBackupDir: vi.fn().mockReturnValue(backupDir) }
+    const mockUserConfig = { get: vi.fn().mockReturnValue(true) }
+    const mockMaintain = vi.fn()
+
+    const result = await restoreCommand({
+      discoveryService: mockDiscovery as any,
+      backupService: mockBackup as any,
+      configService: mockConfig as any,
+      userConfigService: mockUserConfig as any,
+      maintain: mockMaintain,
+      homeDir: tempDir,
+    })
+
+    expect(result.data?.shortcutsUpdated).toBe(false)
+    expect(result.data?.shortcutsStillPointToPatched).toBe(false)
+    expect(mockMaintain).not.toHaveBeenCalled()
   })
 })

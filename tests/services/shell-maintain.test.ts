@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, writeFileSync, readFileSync, rmSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { maintainShellShortcuts } from '../../src/services/shell-maintain.js'
-import { generateShellFunction } from '../../src/services/shell-codegen.js'
+import { maintainShellShortcuts, maintainShellShortcutsToOriginal } from '../../src/services/shell-maintain.js'
+import { generateShellFunction, generateRestoredShellFunction } from '../../src/services/shell-codegen.js'
 
 describe('shell-maintain', () => {
   let tempDir: string
@@ -112,5 +112,59 @@ describe('shell-maintain', () => {
     } finally {
       if (originalPlatform) Object.defineProperty(process, 'platform', originalPlatform)
     }
+  })
+
+  it('maintainShellShortcutsToOriginal overwrites patched block with original', async () => {
+    const zshrc = join(tempDir, '.zshrc')
+    writeFileSync(zshrc, generateShellFunction(270000))
+
+    const summary = await maintainShellShortcutsToOriginal({
+      homeDir: tempDir,
+      skipConfirm: true,
+    })
+
+    const content = readFileSync(zshrc, 'utf-8')
+    expect(content).toContain('claude --dangerously-skip-permissions')
+    expect(content).not.toContain('.cc-expand/bin/claude-270000')
+    expect(summary).toContain('原版')
+  })
+
+  it('maintainShellShortcutsToOriginal skips when already pointing to original', async () => {
+    const zshrc = join(tempDir, '.zshrc')
+    writeFileSync(zshrc, generateRestoredShellFunction())
+
+    const summary = await maintainShellShortcutsToOriginal({
+      homeDir: tempDir,
+      skipConfirm: true,
+    })
+
+    expect(summary).toContain('无需更新')
+  })
+
+  it('maintainShellShortcutsToOriginal cancels overwrite when user declines', async () => {
+    const zshrc = join(tempDir, '.zshrc')
+    writeFileSync(zshrc, generateShellFunction(270000))
+
+    const summary = await maintainShellShortcutsToOriginal({
+      homeDir: tempDir,
+      confirm: async () => false,
+    })
+
+    const content = readFileSync(zshrc, 'utf-8')
+    // 用户拒绝后仍保留 patched 块
+    expect(content).toContain('.cc-expand/bin/claude-270000')
+    expect(summary).toContain('未更新')
+  })
+
+  it('maintainShellShortcutsToOriginal appends block when none exists', async () => {
+    const summary = await maintainShellShortcutsToOriginal({
+      homeDir: tempDir,
+      skipConfirm: true,
+    })
+
+    const zshrc = join(tempDir, '.zshrc')
+    const content = readFileSync(zshrc, 'utf-8')
+    expect(content).toContain('claude --dangerously-skip-permissions')
+    expect(summary).toContain('原版')
   })
 })
