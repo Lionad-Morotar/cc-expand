@@ -10,6 +10,12 @@ export interface CommandResult<T = unknown> {
   data?: T
   next?: string[]
   warnings?: string[]
+  /**
+   * 成功结果的可视严重级别，供渲染器选色
+   * - 'warning'：命令成功但状态需注意（如 verify 发现未 patch），渲染为黄色 [WARN]
+   * - 默认 undefined：成功渲染为绿色 [OK]
+   */
+  severity?: 'ok' | 'warning'
   error?: { code: string; message: string; suggestion?: string }
 }
 
@@ -29,12 +35,12 @@ export function getExitCode(code?: ErrorCode): number {
   return EXIT_CODES[code] ?? 1
 }
 
-export function makeErrorResult(
+export function makeErrorResult<T = unknown>(
   command: string,
   code: ErrorCode,
   message: string,
   suggestion?: string,
-): CommandResult {
+): CommandResult<T> {
   return {
     success: false,
     command,

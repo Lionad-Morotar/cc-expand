@@ -62,6 +62,8 @@ export async function verifyCommand(options?: VerifyOptions): Promise<CommandRes
   return {
     success: true,
     command: 'verify',
+    // 未 patch 用 warning 严重级别，渲染器显示黄色 [WARN] 而非绿色 [OK]，避免"验证通过"的视觉误导
+    severity: patched ? undefined : 'warning',
     summary: patched
       ? t('command.verify.patched', { version })
       : t('command.verify.unpatched', { version, count: foundOriginals.length }),

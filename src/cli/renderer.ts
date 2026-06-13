@@ -4,7 +4,7 @@
  */
 import { isatty } from 'node:tty'
 import { createColors } from 'picocolors'
-import { t, type Locale } from './i18n.js'
+import { t, setLocale, normalizeLocale, type Locale } from './i18n.js'
 import type { CommandResult } from './result.js'
 
 export interface RendererOptions {
@@ -25,10 +25,12 @@ export function createRenderer(options: RendererOptions = {}) {
 
   return {
     render(result: CommandResult, commandName: string): string | undefined {
+      // renderer 自包含 locale：render 时同步全局 i18n，避免依赖外部 setLocale 调用顺序
+      setLocale(normalizeLocale(options.locale))
       if (options.json) {
         const envelope = {
           ...result,
-          locale: options.locale ?? t('command.config.lang', { value: '' }),
+          locale: options.locale ?? 'en',
         }
         return JSON.stringify(envelope, null, 2)
       }
@@ -39,18 +41,21 @@ export function createRenderer(options: RendererOptions = {}) {
 
       const lines: string[] = []
 
-      if (result.success) {
-        lines.push(`${pc.green('[OK]')} ${result.summary}`)
-      } else {
+      if (!result.success) {
         lines.push(`${pc.red('[ERROR]')} ${result.error?.message ?? result.summary}`)
         if (result.error?.suggestion) {
           lines.push(`${pc.yellow('💡')} ${result.error.suggestion}`)
         }
+      } else if (result.severity === 'warning') {
+        // 命令成功但状态需注意（如 verify 发现未 patch）：黄色而非绿色，避免"验证通过"的视觉误导
+        lines.push(`${pc.yellow('[WARN]')} ${result.summary}`)
+      } else {
+        lines.push(`${pc.green('[OK]')} ${result.summary}`)
       }
 
       if (result.warnings && result.warnings.length > 0) {
         lines.push('')
-        lines.push(pc.yellow('⚠ 注意：'))
+        lines.push(pc.yellow(t('ui.warnings')))
         for (const warning of result.warnings) {
           lines.push(`  ${warning}`)
         }
@@ -58,7 +63,7 @@ export function createRenderer(options: RendererOptions = {}) {
 
       if (result.next && result.next.length > 0) {
         lines.push('')
-        lines.push('建议操作：')
+        lines.push(t('ui.nextSteps'))
         for (let i = 0; i < result.next.length; i++) {
           lines.push(`  ${i + 1}. ${result.next[i]}`)
         }

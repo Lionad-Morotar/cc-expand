@@ -33,6 +33,8 @@ export interface PatchData {
   binaryPath: string
   details: Array<{ desc: string; offset: number }>
   shortcutsUpdated: boolean
+  /** shell 快捷方式维护结果摘要（autoMaintain 关闭时为 undefined） */
+  maintainSummary?: string
 }
 
 export interface PatchOptions {
@@ -295,6 +297,7 @@ export async function patchCommand(
       binaryPath: patchedBinaryPath,
       details: patchResult.details,
       shortcutsUpdated,
+      maintainSummary: maintainSummary || undefined,
     },
     next: [
       `ccx run ${targetTokens}`,

@@ -40,18 +40,28 @@ export interface UserConfig {
 export interface ConfigServiceOptions {
   /** PatternService 实例（测试注入用） */
   patternService?: PatternService
+  /** 覆盖默认 home 目录（测试隔离用），默认 homedir() */
+  homeDir?: string
 }
 
 export class ConfigService {
   private patternService: PatternService
+  private readonly configDir: string
+  private readonly backupDir: string
+  private readonly patchesDir: string
 
   constructor(options?: ConfigServiceOptions) {
+    // 接受 homeDir 注入以支持测试隔离；默认 homedir()。CONFIG_DIR 常量仅作为 channel-config 的默认值
+    const homeDir = options?.homeDir ?? homedir()
+    this.configDir = join(homeDir, '.cc-expand')
+    this.backupDir = join(this.configDir, 'backups')
+    this.patchesDir = join(this.configDir, 'patches')
     this.patternService = options?.patternService ?? new PatternService()
   }
 
   /** 确保配置目录存在 */
   ensureDirs(): void {
-    for (const dir of [CONFIG_DIR, BACKUP_DIR, PATCHES_DIR]) {
+    for (const dir of [this.configDir, this.backupDir, this.patchesDir]) {
       if (!existsSync(dir)) {
         mkdirSync(dir, { recursive: true })
       }
@@ -94,7 +104,7 @@ export class ConfigService {
 
   /** 读取用户配置 */
   getUserConfig(): UserConfig {
-    const configPath = join(CONFIG_DIR, 'versions.json')
+    const configPath = join(this.configDir, 'versions.json')
     if (!existsSync(configPath)) {
       return { patchedVersions: {} }
     }
@@ -104,7 +114,7 @@ export class ConfigService {
 
   /** 写入用户配置 */
   setUserConfig(config: UserConfig): void {
-    const configPath = join(CONFIG_DIR, 'versions.json')
+    const configPath = join(this.configDir, 'versions.json')
     writeFileSync(configPath, JSON.stringify(config, null, 2))
   }
 
@@ -131,6 +141,6 @@ export class ConfigService {
 
   /** 获取备份目录路径 */
   getBackupDir(): string {
-    return BACKUP_DIR
+    return this.backupDir
   }
 }

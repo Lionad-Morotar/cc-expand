@@ -26,6 +26,8 @@ export type I18nKey =
   | 'error.unknownKey'
   | 'error.missingValue'
   | 'error.missingArgument'
+  | 'ui.warnings'
+  | 'ui.nextSteps'
 
 type Translations = Record<Locale, Record<I18nKey, string>>
 
@@ -52,6 +54,8 @@ const translations: Translations = {
     'error.unknownKey': 'Unknown configuration key: {key}',
     'error.missingValue': '{flag} requires a value',
     'error.missingArgument': 'Missing required argument: {name}',
+    'ui.warnings': '⚠ Warnings:',
+    'ui.nextSteps': 'Next steps:',
   },
   zh: {
     'command.config.get': '{key} 的当前值为 {value}',
@@ -75,10 +79,30 @@ const translations: Translations = {
     'error.unknownKey': '未知配置项：{key}',
     'error.missingValue': '{flag} 需要一个值',
     'error.missingArgument': '缺少必要参数：{name}',
+    'ui.warnings': '⚠ 注意：',
+    'ui.nextSteps': '建议操作：',
   },
 }
 
+const SUPPORTED_LOCALES: readonly Locale[] = ['en', 'zh']
+
 let currentLocale: Locale = 'en'
+
+/** 判断字符串是否为受支持的 locale 值 */
+export function isLocale(value: string): value is Locale {
+  return (SUPPORTED_LOCALES as readonly string[]).includes(value)
+}
+
+/**
+ * 把任意输入归一化为合法 locale
+ * 非法或空值回退到 fallback（默认 en），避免 t() 因越界 locale 崩溃
+ */
+export function normalizeLocale(
+  value: string | undefined | null,
+  fallback: Locale = 'en',
+): Locale {
+  return value != null && isLocale(value) ? value : fallback
+}
 
 export function setLocale(locale: Locale): void {
   currentLocale = locale
@@ -89,10 +113,9 @@ export function getLocale(): Locale {
 }
 
 export function t(key: I18nKey, params?: Record<string, string | number | boolean>): string {
-  let template = translations[currentLocale][key]
-  if (!template) {
-    template = translations.en[key] ?? key
-  }
+  // 防御：currentLocale 若被设为非法值，回退到 en 表，避免 translations[bad][key] 崩溃
+  const localeMap = translations[currentLocale] ?? translations.en
+  let template = localeMap[key] ?? translations.en[key] ?? key
 
   if (!params) {
     return template

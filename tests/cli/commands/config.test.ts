@@ -75,4 +75,44 @@ describe('config command', () => {
     expect(result.success).toBe(false)
     expect(result.error?.code).toBe('INVALID_TARGET')
   })
+
+  it('rejects invalid locale value via set to prevent downstream t() crash', async () => {
+    const result = await configCommand(['set', 'locale', 'fr'], {
+      userConfigService: new UserConfigService(),
+    })
+
+    expect(result.success).toBe(false)
+    expect(result.error?.code).toBe('INVALID_TARGET')
+  })
+
+  it('accepts case-insensitive true variants for autoMaintain', async () => {
+    for (const truthy of ['TRUE', 'Yes', '1', 'on']) {
+      const result = await configCommand(['set', 'autoMaintain', truthy], {
+        userConfigService: new UserConfigService(),
+      })
+
+      expect(result.success).toBe(true)
+      expect(result.data).toEqual({ key: 'autoMaintain', value: true })
+    }
+  })
+
+  it('accepts false variants for autoMaintain', async () => {
+    for (const falsy of ['FALSE', 'no', '0', 'off']) {
+      const result = await configCommand(['set', 'autoMaintain', falsy], {
+        userConfigService: new UserConfigService(),
+      })
+
+      expect(result.success).toBe(true)
+      expect(result.data).toEqual({ key: 'autoMaintain', value: false })
+    }
+  })
+
+  it('rejects unrecognized boolean value for autoMaintain', async () => {
+    const result = await configCommand(['set', 'autoMaintain', 'maybe'], {
+      userConfigService: new UserConfigService(),
+    })
+
+    expect(result.success).toBe(false)
+    expect(result.error?.code).toBe('INVALID_TARGET')
+  })
 })

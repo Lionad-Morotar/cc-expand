@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `--locale`/`-l` 传入非法值（如 `fr`）不再导致 `t()` 崩溃，回退到 `en`
+- `ccx config set locale` 写入的偏好现在会被后续命令读取（之前持久化值从不生效）
+- `ccx config set autoMaintain` 支持大小写不敏感的 `true/false/1/0/yes/no/on/off`，无法识别的值报错而非静默变 `false`
+- `ccx config set locale <非法值>` 现在会被拒绝，防止后续命令崩溃
+- `ccx run` 监听 child 的 `error` 事件，binary 存在但无法执行时不再 uncaughtException 崩溃
+- `ccx run` 失败时现在打印错误消息（之前只退出，看不到原因）
+- `--json` 输出的 `locale` 字段不再错误地填入翻译句子
+- `ccx verify` 未 patch 时渲染为黄色 `[WARN]` 而非绿色 `[OK]`，避免"验证通过"的视觉误导
+- renderer 的 `⚠ 注意：`/`建议操作：` 标签现在走 i18n，`--locale en` 下显示英文
+
+### Changed
+
+- `ConfigService` 接受 `homeDir` 注入，`list` 命令复用 `ConfigService.getUserConfig()`（消除直读 versions.json 的重复逻辑）
+- `makeErrorResult` 泛型化，消除整类 `CommandResult<unknown>` 类型错误
+- `runCommand` 支持 `spawn` 函数注入，测试用依赖注入替代 `vi.mock`
+
+### Removed
+
+- 删除重构后成为 dead code 的 `src/cli/output.ts` 及其测试
+
+### Fixed (Tests)
+
+- 修复 `run.test.ts` 的 `vi.mock` 从未生效问题（工厂引用未 hoisted 变量），测试从假绿（真实 spawn 巧合 exit 0）改为真正的依赖注入验证
+
 ## [0.3.0] - 2026-06-13
 
 ### Added

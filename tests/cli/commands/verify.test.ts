@@ -38,6 +38,7 @@ describe('verify command', () => {
 
     expect(result.success).toBe(true)
     expect(result.command).toBe('verify')
+    expect(result.severity).toBe('warning')
     expect(result.data?.version).toBe('2.1.170')
     expect(result.data?.patched).toBe(false)
     expect(result.data?.foundOriginals).toEqual(['PACKAGE_T', 'MAX_TOOL_RESULTS'])
@@ -63,6 +64,7 @@ describe('verify command', () => {
     })
 
     expect(result.success).toBe(true)
+    expect(result.severity).toBeUndefined()
     expect(result.data?.patched).toBe(true)
     expect(result.data?.foundOriginals).toEqual([])
   })

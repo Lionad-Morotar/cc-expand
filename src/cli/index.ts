@@ -7,9 +7,10 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import cac from 'cac'
 import { CcxError, ErrorCode } from '../types/index.js'
-import { setLocale, type Locale } from './i18n.js'
+import { setLocale, normalizeLocale, type Locale } from './i18n.js'
 import { getExitCode, type CommandResult } from './result.js'
 import { createRenderer } from './renderer.js'
+import { UserConfigService } from '../services/user-config.js'
 import { configCommand } from './commands/config.js'
 import { statusCommand } from './commands/status.js'
 import { supportsCommand } from './commands/supports.js'
@@ -40,14 +41,27 @@ async function main(): Promise<void> {
     .option('--json', 'Output structured JSON')
     .option('--locale, -l <locale>', 'Set locale for this command (en or zh)')
 
+  // 解析本次命令的 locale：优先级为 --locale/-l flag > 持久化用户偏好 > 'en'
+  // 持久化偏好由 UserConfigService 管理（ccx config set locale <value>）
+  function resolveLocale(flagValue: string | undefined): Locale {
+    if (flagValue !== undefined) {
+      return normalizeLocale(flagValue)
+    }
+    try {
+      return normalizeLocale(new UserConfigService().get('locale'))
+    } catch {
+      return 'en'
+    }
+  }
+
   function getRenderer(options: Record<string, unknown>) {
-    const locale = (options.locale as string | undefined) ?? 'en'
-    setLocale(locale as Locale)
+    const locale = resolveLocale(options.locale as string | undefined)
+    setLocale(locale)
     return createRenderer({
       color: options.color as boolean | undefined,
       quiet: options.quiet as boolean | undefined,
       json: options.json as boolean | undefined,
-      locale: locale as Locale,
+      locale,
     })
   }
 
@@ -132,12 +146,15 @@ async function main(): Promise<void> {
   cli
     .command('run [tokens]', 'Launch patched Claude Code')
     .action(async (tokens: string | undefined, options: Record<string, unknown>) => {
-      getRenderer(options)
+      const renderer = getRenderer(options)
       const result = await runCommand(tokens)
       if (result && !result.success) {
+        // run 失败时（binary 缺失或 spawn 失败）打印错误，否则用户只看到退出码看不到原因
+        const rendered = renderer.render(result, 'run')
+        if (rendered !== undefined) console.error(rendered)
         process.exit(getExitCode(result.error?.code as ErrorCode | undefined))
       }
-      // run command spawns a child process that replaces the TTY
+      // run 成功时 child 进程接管 stdio，无需渲染
     })
 
   cli
@@ -183,7 +200,7 @@ async function main(): Promise<void> {
         color: parsed.options.color as boolean | undefined,
         quiet: parsed.options.quiet as boolean | undefined,
         json: parsed.options.json as boolean | undefined,
-        locale: (parsed.options.locale as string | undefined) ?? 'en',
+        locale: resolveLocale(parsed.options.locale as string | undefined),
       })
       const rendered = renderer.render(
         {
@@ -201,15 +218,16 @@ async function main(): Promise<void> {
       if (rendered !== undefined) {
         console.error(rendered)
       }
-      process.exit(64)
+      process.exit(getExitCode(ErrorCode.INVALID_TARGET))
     }
   } catch (error) {
     if (error instanceof CcxError) {
       console.error(`[ERROR] ${error.message}`)
       process.exit(getExitCode(error.code))
+    } else {
+      console.error('[ERROR] Unexpected error:', error)
+      process.exit(1)
     }
-    console.error('[ERROR] Unexpected error:', error)
-    process.exit(1)
   }
 }
 

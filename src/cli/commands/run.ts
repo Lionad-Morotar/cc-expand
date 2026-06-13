@@ -1,7 +1,7 @@
 /**
  * cc-expand run — 启动已 patch 的 Claude Code
  */
-import { spawn } from 'node:child_process'
+import { spawn as defaultSpawn, type ChildProcess } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
@@ -20,9 +20,18 @@ export interface RunData {
   targetTokens: number
 }
 
+/** spawn 函数签名，便于测试注入替换 */
+export type SpawnFn = (
+  command: string,
+  args: string[],
+  options: object,
+) => ChildProcess
+
 export interface RunOptions {
   /** 在测试中避免直接 process.exit */
   exitOnChildExit?: boolean
+  /** 注入 spawn 实现（测试用），默认使用 node:child_process.spawn */
+  spawn?: SpawnFn
 }
 
 export async function runCommand(
@@ -41,12 +50,26 @@ export async function runCommand(
     )
   }
 
-  const child = spawn(binaryPath, ['--dangerously-skip-permissions'], {
+  const doSpawn = options?.spawn ?? defaultSpawn
+  const child = doSpawn(binaryPath, ['--dangerously-skip-permissions'], {
     stdio: 'inherit',
     detached: false,
   })
 
   return new Promise((resolve) => {
+    // binary 存在但无法 spawn（权限不足、codesign 损坏、架构不匹配）时触发 'error'
+    // 不监听会变成 uncaughtException 或 Promise 永久 pending
+    child.on('error', (err) => {
+      resolve(
+        makeErrorResult(
+          'run',
+          ErrorCode.BINARY_NOT_FOUND,
+          `Failed to launch patched binary: ${err.message}`,
+          `Re-run \`ccx patch --target ${target}\` to rebuild, or check the binary's execute permission`,
+        ),
+      )
+    })
+
     child.on('exit', (code) => {
       if (options?.exitOnChildExit !== false) {
         process.exit(code ?? 0)

@@ -211,6 +211,43 @@ describe('CLI Integration', () => {
     rmSync(tempDir, { recursive: true, force: true })
   })
 
+  it('applies persisted locale preference to subsequent commands', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'cc-expand-locale-'))
+    const env = { ...process.env, HOME: tempDir, XDG_CONFIG_HOME: join(tempDir, '.config') }
+
+    // 持久化 locale=zh（ccx config set locale zh）
+    execFileSync('node', [CLI_PATH, 'config', 'set', 'locale', 'zh'], {
+      encoding: 'utf-8',
+      env,
+    })
+
+    // 后续命令不带 -l 时应使用持久化的 zh（patched/unpatched/noBinary 任一路径都输出中文）
+    const output = execFileSync('node', [CLI_PATH, 'status'], {
+      encoding: 'utf-8',
+      env,
+    })
+
+    // 含中文字符即证明 locale=zh 已从持久化偏好加载（默认 en 不会有中文）
+    expect(output).toMatch(/[一-龥]/)
+
+    rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  it('falls back gracefully for unsupported --locale value instead of crashing', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'cc-expand-locale-'))
+    const env = { ...process.env, HOME: tempDir }
+
+    // -l fr 非法，应回退到 en 而非让 t() 崩溃
+    const output = execFileSync('node', [CLI_PATH, '-l', 'fr', 'status'], {
+      encoding: 'utf-8',
+      env,
+    })
+
+    expect(output).toContain('Claude Code')
+
+    rmSync(tempDir, { recursive: true, force: true })
+  })
+
   // Note: status command requires a working Claude Code binary with responsive --version
   // This test is skipped in CI where claude may not be available or may hang
   it.skip('should show status with found binary (requires working claude binary)', () => {

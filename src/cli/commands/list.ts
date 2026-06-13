@@ -1,9 +1,10 @@
 /**
  * cc-expand list — 列出已安装和已 patch 的版本
  */
-import { readdirSync, existsSync, readFileSync } from 'node:fs'
+import { readdirSync, existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { ConfigService } from '../../services/config.js'
 import { t } from '../i18n.js'
 import { type CommandResult } from '../result.js'
 
@@ -21,6 +22,8 @@ export interface ListData {
 export interface ListOptions {
   homeDir?: string
   patchedOnly?: boolean
+  /** 注入 ConfigService（测试用），默认基于 homeDir 新建 */
+  configService?: ConfigService
 }
 
 function compareSemverDesc(a: string, b: string): number {
@@ -42,16 +45,10 @@ export async function listCommand(
   const patchedOnly = options?.patchedOnly ?? args.includes('--patched')
   const homeDir = options?.homeDir ?? homedir()
   const packagesDir = join(homeDir, '.cc-expand', 'packages')
-  const versionsJsonPath = join(homeDir, '.cc-expand', 'versions.json')
 
-  const patchedVersions: Record<string, { targets: number[]; patchedAt: string }> = {}
-  if (existsSync(versionsJsonPath)) {
-    const raw = readFileSync(versionsJsonPath, 'utf-8')
-    const parsed = JSON.parse(raw) as { patchedVersions?: typeof patchedVersions }
-    if (parsed.patchedVersions) {
-      Object.assign(patchedVersions, parsed.patchedVersions)
-    }
-  }
+  // patchedVersions 走 ConfigService，与 status/patch 共享同一数据源与解析逻辑
+  const configService = options?.configService ?? new ConfigService({ homeDir })
+  const patchedVersions = configService.getUserConfig().patchedVersions ?? {}
 
   const installedVersions = new Set<string>()
   if (existsSync(packagesDir)) {
