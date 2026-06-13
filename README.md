@@ -5,7 +5,7 @@
 <h1 align="center">cc-expand</h1>
 
 <p align="center">
-  <span>Expand your CC's usable context window by 60%, or more</span>
+  <span>Resize your CC's context window freely</span>
 </p>
 
 <p align="center">
@@ -14,11 +14,18 @@
 
 ---
 
-**Compression is one of the main causes of performance degradation. Use cc-expand to break through Claude Code's 200K context window limit and delay auto-compaction.**
+Model performance degrades for two main reasons: auto-compaction and long context. cc-expand lets you resize the context window to sidestep both:
 
-When using certain models (which only support 256K context), Claude Code's native 200K limit becomes a bottleneck. `cc-expand` patches the hard-coded constants in the Claude Code binary to raise the context window size to your target value.
+1. **Break through the 200K context window limit to delay auto-compaction**: When using certain models (which only support 256K context), Claude Code's native 200K limit becomes a bottleneck. `cc-expand` patches the hard-coded constants in the Claude Code binary to raise the context window size to your target value.
+2. **Cap 1M models at 500K to stay in the optimal performance range**: Performance drops noticeably past 256K and 512K.
 
-> **Tip:** Claude Code's environment variable allows setting `COMPACT_WINDOW`, but it cannot exceed the hard-coded default. So raising the target delays compression. For example, the Kimi-K2.6 I use daily supports 256K, so I set my target to 270000 to push compression from around 17K to 23K.
+Details below.
+
+First, performance degradation over long contexts. Image from the mimo-v2.5 pro blog.
+
+![](https://mgear-image.oss-cn-shanghai.aliyuncs.com/image/other/20260614013032076.png)
+
+Claude Code's environment variable allows setting `COMPACT_WINDOW`, but it cannot exceed the hard-coded default. So raising the target delays compression. For example, the Kimi-K2.6 I use daily supports 256K, so I set my target to 270000 to push compression from around 17K to 23K.
 
 | Before | After |
 |--------|-------|
