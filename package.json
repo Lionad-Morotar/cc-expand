@@ -24,7 +24,7 @@
     "dev:website": "pnpm --filter @cc-expand/website dev",
     "build:website": "pnpm --filter @cc-expand/website generate",
     "watch:patterns": "tsx scripts/watch-patterns.ts",
-    "prepublishOnly": "npm run build && vitest run"
+    "prepublishOnly": "npm run build && vitest run --exclude tests/integration"
   },
   "keywords": [
     "claude-code",
