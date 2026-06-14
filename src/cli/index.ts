@@ -21,6 +21,7 @@ import { verifyCommand } from './commands/verify.js'
 import { runCommand } from './commands/run.js'
 import { patchCommand } from './commands/patch.js'
 import { listCommand } from './commands/list.js'
+import { selfUpdateCommand } from './commands/self-update.js'
 
 function getVersion(): string {
   try {
@@ -181,6 +182,14 @@ async function main(): Promise<void> {
       if (options.patched) args.push('--patched')
       const result = await listCommand(args)
       renderResult(renderer, result, 'list')
+    })
+
+  cli
+    .command('self-update', 'Update cc-expand to the latest npm version')
+    .action(async (options: Record<string, unknown>) => {
+      const renderer = getRenderer(options)
+      const result = await selfUpdateCommand()
+      renderResult(renderer, result, 'self-update')
     })
 
   cli.help()
