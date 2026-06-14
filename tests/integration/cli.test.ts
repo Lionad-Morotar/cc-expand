@@ -84,6 +84,14 @@ describe('CLI Integration', () => {
     expect(output).toContain('install')
   })
 
+  it('should show self-update command in help', () => {
+    const output = execFileSync('node', [CLI_PATH, '--help'], {
+      encoding: 'utf-8',
+    })
+
+    expect(output).toContain('self-update')
+  })
+
   it('should append cc function to zshrc with --yes', () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'cc-expand-setup-'))
 

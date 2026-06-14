@@ -11,6 +11,12 @@ import { setLocale, normalizeLocale, type Locale } from './i18n.js'
 import { getExitCode, type CommandResult } from './result.js'
 import { createRenderer } from './renderer.js'
 import { UserConfigService } from '../services/user-config.js'
+import {
+  shouldRunUpdateCheck,
+  startUpdateCheck,
+  awaitUpdateCheckHint,
+} from './update-check-runner.js'
+import type { UpdateInfo } from '../services/update-check.js'
 import { configCommand } from './commands/config.js'
 import { statusCommand } from './commands/status.js'
 import { supportsCommand } from './commands/supports.js'
@@ -35,6 +41,9 @@ function getVersion(): string {
 
 async function main(): Promise<void> {
   const cli = cac('ccx')
+
+  // 隐式更新检查 promise（与命令 action 并行启动，命令后 await）
+  let updateCheckPromise: Promise<UpdateInfo | null> | null = null
 
   cli
     .option('--no-color', 'Disable ANSI colors')
@@ -66,18 +75,24 @@ async function main(): Promise<void> {
     })
   }
 
-  function renderResult(
+  // 渲染命令结果，并在非 run 命令后执行隐式更新检查（发现新版时提示到 stderr）
+  async function renderResult(
     renderer: ReturnType<typeof createRenderer>,
     result: CommandResult,
     commandName: string,
-  ): void {
+  ): Promise<void> {
     const rendered = renderer.render(result, commandName)
-    if (rendered === undefined) return
-    if (result.success) {
-      console.log(rendered)
-    } else {
-      console.error(rendered)
-      process.exit(getExitCode(result.error?.code as ErrorCode | undefined))
+    if (rendered !== undefined) {
+      if (result.success) {
+        console.log(rendered)
+      } else {
+        console.error(rendered)
+        process.exit(getExitCode(result.error?.code as ErrorCode | undefined))
+      }
+    }
+    // 隐式更新检查：run 命令 exec 接管进程不检查；失败已 exit 不会执行到这
+    if (commandName !== 'run' && updateCheckPromise) {
+      await awaitUpdateCheckHint(updateCheckPromise, (line) => console.error(line))
     }
   }
 
@@ -86,7 +101,7 @@ async function main(): Promise<void> {
     .action(async (subcommand: string, key: string | undefined, value: string | undefined, options: Record<string, unknown>) => {
       const renderer = getRenderer(options)
       const result = await configCommand([subcommand, key, value].filter(Boolean) as string[])
-      renderResult(renderer, result, 'config')
+      await renderResult(renderer, result, 'config')
     })
 
   cli
@@ -94,7 +109,7 @@ async function main(): Promise<void> {
     .action(async (options: Record<string, unknown>) => {
       const renderer = getRenderer(options)
       const result = await statusCommand()
-      renderResult(renderer, result, 'status')
+      await renderResult(renderer, result, 'status')
     })
 
   cli
@@ -102,7 +117,7 @@ async function main(): Promise<void> {
     .action(async (options: Record<string, unknown>) => {
       const renderer = getRenderer(options)
       const result = await supportsCommand()
-      renderResult(renderer, result, 'supports')
+      await renderResult(renderer, result, 'supports')
     })
 
   cli
@@ -114,7 +129,7 @@ async function main(): Promise<void> {
       if (options.version) args.push('--version', String(options.version))
       if (positionalVersion) args.push(positionalVersion)
       const result = await installCommand(args)
-      renderResult(renderer, result, 'install')
+      await renderResult(renderer, result, 'install')
     })
 
   cli
@@ -125,7 +140,7 @@ async function main(): Promise<void> {
       const args: string[] = []
       if (options.yes) args.push('--yes')
       const result = await setupCommand(args)
-      renderResult(renderer, result, 'setup')
+      await renderResult(renderer, result, 'setup')
     })
 
   cli
@@ -133,7 +148,7 @@ async function main(): Promise<void> {
     .action(async (options: Record<string, unknown>) => {
       const renderer = getRenderer(options)
       const result = await restoreCommand()
-      renderResult(renderer, result, 'restore')
+      await renderResult(renderer, result, 'restore')
     })
 
   cli
@@ -141,7 +156,7 @@ async function main(): Promise<void> {
     .action(async (options: Record<string, unknown>) => {
       const renderer = getRenderer(options)
       const result = await verifyCommand()
-      renderResult(renderer, result, 'verify')
+      await renderResult(renderer, result, 'verify')
     })
 
   cli
@@ -155,7 +170,7 @@ async function main(): Promise<void> {
         if (rendered !== undefined) console.error(rendered)
         process.exit(getExitCode(result.error?.code as ErrorCode | undefined))
       }
-      // run 成功时 child 进程接管 stdio，无需渲染
+      // run 成功时 child 进程接管 stdio，无需渲染，也跳过更新检查（promise 被 exec 遗弃）
     })
 
   cli
@@ -170,7 +185,7 @@ async function main(): Promise<void> {
       if (options.version) args.push('--version', String(options.version))
       if (options.yes) args.push('--yes')
       const result = await patchCommand(args)
-      renderResult(renderer, result, 'patch')
+      await renderResult(renderer, result, 'patch')
     })
 
   cli
@@ -181,7 +196,7 @@ async function main(): Promise<void> {
       const args: string[] = []
       if (options.patched) args.push('--patched')
       const result = await listCommand(args)
-      renderResult(renderer, result, 'list')
+      await renderResult(renderer, result, 'list')
     })
 
   cli
@@ -189,7 +204,7 @@ async function main(): Promise<void> {
     .action(async (options: Record<string, unknown>) => {
       const renderer = getRenderer(options)
       const result = await selfUpdateCommand()
-      renderResult(renderer, result, 'self-update')
+      await renderResult(renderer, result, 'self-update')
     })
 
   cli.help()
@@ -228,6 +243,12 @@ async function main(): Promise<void> {
         console.error(rendered)
       }
       process.exit(getExitCode(ErrorCode.INVALID_TARGET))
+    }
+
+    // 启动隐式更新检查（与命令 action 并行执行，命令后由 renderResult await）
+    const matchedName = (cli.matchedCommand as { name: string } | null)?.name
+    if (shouldRunUpdateCheck(matchedName, new UserConfigService())) {
+      updateCheckPromise = startUpdateCheck(getVersion())
     }
   } catch (error) {
     if (error instanceof CcxError) {
