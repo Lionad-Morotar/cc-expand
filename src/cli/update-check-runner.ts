@@ -9,6 +9,7 @@
 import type { UpdateInfo } from '../services/update-check.js'
 import { UpdateCheckService } from '../services/update-check.js'
 import type { UserConfigService } from '../services/user-config.js'
+import { t } from './i18n.js'
 
 const DEFAULT_HINT_TIMEOUT_MS = 3000
 
@@ -55,7 +56,7 @@ export async function awaitUpdateCheckHint(
   ])
   if (info?.hasUpdate) {
     hintWriter(
-      `Update available: ${info.currentVersion} → ${info.latestVersion}. Run \`ccx self-update\` to update.`,
+      t('update.hint.available', { current: info.currentVersion, latest: info.latestVersion }),
     )
   }
 }

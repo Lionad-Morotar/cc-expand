@@ -22,12 +22,23 @@ export type I18nKey =
   | 'command.verify.unpatched'
   | 'command.patch.success'
   | 'command.list.summary'
+  | 'command.selfUpdate.npxHint'
+  | 'command.selfUpdate.success'
   | 'error.invalidTarget'
   | 'error.unknownKey'
   | 'error.missingValue'
   | 'error.missingArgument'
+  | 'error.selfUpdate.unknownMethod'
+  | 'error.selfUpdate.exitCode'
+  | 'error.selfUpdate.eacces'
+  | 'error.selfUpdate.enoent'
+  | 'error.selfUpdate.generic'
+  | 'suggestion.selfUpdate.unknownMethod'
+  | 'suggestion.selfUpdate.eacces'
+  | 'suggestion.selfUpdate.enoent'
   | 'ui.warnings'
   | 'ui.nextSteps'
+  | 'update.hint.available'
 
 type Translations = Record<Locale, Record<I18nKey, string>>
 
@@ -50,12 +61,23 @@ const translations: Translations = {
     'command.verify.unpatched': 'Claude Code {version} is unpatched ({count} original constants found)',
     'command.patch.success': 'Patched Claude Code {version} to {targetTokens} tokens',
     'command.list.summary': '{count} versions listed',
+    'command.selfUpdate.npxHint': 'npx always uses the latest version, no self-update needed',
+    'command.selfUpdate.success': 'Updated to the latest version. Restart `ccx` to take effect.',
     'error.invalidTarget': 'Invalid value: {value}',
     'error.unknownKey': 'Unknown configuration key: {key}',
     'error.missingValue': '{flag} requires a value',
     'error.missingArgument': 'Missing required argument: {name}',
+    'error.selfUpdate.unknownMethod': 'Cannot auto-detect how cc-expand was installed',
+    'error.selfUpdate.exitCode': 'Update failed, package manager exited with code {code}',
+    'error.selfUpdate.eacces': 'Permission denied, cannot write to global install directory',
+    'error.selfUpdate.enoent': 'Command not found: {message}',
+    'error.selfUpdate.generic': 'Update failed: {message}',
+    'suggestion.selfUpdate.unknownMethod': 'Declare explicitly via `ccx config set installMethod <npm|pnpm|yarn>`',
+    'suggestion.selfUpdate.eacces': 'Configure npm prefix to a user directory (npm config set prefix ~/.npm-global), or use sudo (not recommended)',
+    'suggestion.selfUpdate.enoent': 'Ensure the package manager is installed and in PATH',
     'ui.warnings': '⚠ Warnings:',
     'ui.nextSteps': 'Next steps:',
+    'update.hint.available': 'Update available: {current} → {latest}. Run `ccx self-update` to update.',
   },
   zh: {
     'command.config.get': '{key} 的当前值为 {value}',
@@ -75,12 +97,23 @@ const translations: Translations = {
     'command.verify.unpatched': 'Claude Code {version} 未 patch（发现 {count} 处原始常量）',
     'command.patch.success': '已将 Claude Code {version} patch 到 {targetTokens} tokens',
     'command.list.summary': '{count} 个版本',
+    'command.selfUpdate.npxHint': 'npx 每次自动拉取最新版，无需 self-update',
+    'command.selfUpdate.success': '已更新到最新版，下次运行 ccx 即生效',
     'error.invalidTarget': '无效的值：{value}',
     'error.unknownKey': '未知配置项：{key}',
     'error.missingValue': '{flag} 需要一个值',
     'error.missingArgument': '缺少必要参数：{name}',
+    'error.selfUpdate.unknownMethod': '无法自动检测 cc-expand 的安装方式',
+    'error.selfUpdate.exitCode': '更新失败，包管理器退出码 {code}',
+    'error.selfUpdate.eacces': '权限不足，无法写入全局安装目录',
+    'error.selfUpdate.enoent': '未找到命令：{message}',
+    'error.selfUpdate.generic': '更新失败：{message}',
+    'suggestion.selfUpdate.unknownMethod': '请用 `ccx config set installMethod <npm|pnpm|yarn>` 显式声明',
+    'suggestion.selfUpdate.eacces': '建议配置 npm prefix 到用户目录（npm config set prefix ~/.npm-global），或用 sudo（不推荐，可能破坏权限）',
+    'suggestion.selfUpdate.enoent': '请确认对应的包管理器已安装并在 PATH 中',
     'ui.warnings': '⚠ 注意：',
     'ui.nextSteps': '建议操作：',
+    'update.hint.available': '发现新版本：{current} → {latest}。运行 `ccx self-update` 更新。',
   },
 }
 

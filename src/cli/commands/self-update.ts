@@ -3,14 +3,13 @@
  *
  * 编排 InstallMethodDetector + spawner，按 installMethod 执行对应包管理器命令。
  * npx 特判提示；unknown 报错引导配置；EACCES 给 prefix 建议。
- *
- * 文案暂用硬编码，Slice F 抽到 i18n。
  */
 import { spawn } from 'node:child_process'
 import type { InstallMethod } from '../../types/index.js'
 import { ErrorCode } from '../../types/index.js'
 import { InstallMethodDetector } from '../../services/install-method.js'
 import { makeErrorResult, type CommandResult } from '../result.js'
+import { t } from '../i18n.js'
 
 export interface SpawnResult {
   code: number | null
@@ -42,7 +41,7 @@ export async function selfUpdateCommand(options?: SelfUpdateOptions): Promise<Co
     return {
       success: true,
       command: 'self-update',
-      summary: 'npx 每次自动拉取最新版，无需 self-update',
+      summary: t('command.selfUpdate.npxHint'),
     }
   }
 
@@ -51,8 +50,8 @@ export async function selfUpdateCommand(options?: SelfUpdateOptions): Promise<Co
     return makeErrorResult(
       'self-update',
       ErrorCode.SELF_UPDATE_FAILED,
-      '无法自动检测 cc-expand 的安装方式',
-      '请用 `ccx config set installMethod <npm|pnpm|yarn>` 显式声明',
+      t('error.selfUpdate.unknownMethod'),
+      t('suggestion.selfUpdate.unknownMethod'),
     )
   }
 
@@ -65,13 +64,13 @@ export async function selfUpdateCommand(options?: SelfUpdateOptions): Promise<Co
       return makeErrorResult(
         'self-update',
         ErrorCode.SELF_UPDATE_FAILED,
-        `更新失败，包管理器退出码 ${result.code}`,
+        t('error.selfUpdate.exitCode', { code: result.code }),
       )
     }
     return {
       success: true,
       command: 'self-update',
-      summary: '已更新到最新版，下次运行 ccx 即生效',
+      summary: t('command.selfUpdate.success'),
     }
   } catch (error) {
     return handleSpawnError(error)
@@ -95,21 +94,21 @@ function handleSpawnError(error: unknown): CommandResult {
     return makeErrorResult(
       'self-update',
       ErrorCode.SELF_UPDATE_FAILED,
-      '权限不足，无法写入全局安装目录',
-      '建议配置 npm prefix 到用户目录（npm config set prefix ~/.npm-global），或用 sudo（不推荐，可能破坏权限）',
+      t('error.selfUpdate.eacces'),
+      t('suggestion.selfUpdate.eacces'),
     )
   }
   if (err.code === 'ENOENT') {
     return makeErrorResult(
       'self-update',
       ErrorCode.SELF_UPDATE_FAILED,
-      `未找到命令：${err.message}`,
-      '请确认对应的包管理器已安装并在 PATH 中',
+      t('error.selfUpdate.enoent', { message: err.message }),
+      t('suggestion.selfUpdate.enoent'),
     )
   }
   return makeErrorResult(
     'self-update',
     ErrorCode.SELF_UPDATE_FAILED,
-    `更新失败：${err.message ?? String(error)}`,
+    t('error.selfUpdate.generic', { message: err.message ?? String(error) }),
   )
 }
