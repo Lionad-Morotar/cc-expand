@@ -10,7 +10,16 @@ export enum ErrorCode {
   BACKUP_NOT_FOUND = 'BACKUP_NOT_FOUND',
   INVALID_TARGET = 'INVALID_TARGET',
   PERMISSION_DENIED = 'PERMISSION_DENIED',
+  NETWORK_ERROR = 'NETWORK_ERROR',
+  SELF_UPDATE_FAILED = 'SELF_UPDATE_FAILED',
 }
+
+/**
+ * cc-expand 自身的安装方式（区别于 channel：channel 指 CC 二进制渠道）
+ * 用于 self-update 决定执行哪条更新命令
+ * @see CONTEXT.md — installMethod 与 channel 的术语区分
+ */
+export type InstallMethod = 'npm' | 'pnpm' | 'yarn' | 'npx' | 'unknown'
 
 /**
  * cc-expand 统一错误类

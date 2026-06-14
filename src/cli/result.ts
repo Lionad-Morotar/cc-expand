@@ -28,6 +28,8 @@ export const EXIT_CODES: Record<ErrorCode, number> = {
   [ErrorCode.VERIFICATION_FAILED]: 70,
   [ErrorCode.BACKUP_NOT_FOUND]: 70,
   [ErrorCode.PERMISSION_DENIED]: 77,
+  [ErrorCode.NETWORK_ERROR]: 69,
+  [ErrorCode.SELF_UPDATE_FAILED]: 70,
 }
 
 export function getExitCode(code?: ErrorCode): number {
