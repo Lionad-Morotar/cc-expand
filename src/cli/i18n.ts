@@ -24,6 +24,8 @@ export type I18nKey =
   | 'command.list.summary'
   | 'command.selfUpdate.npxHint'
   | 'command.selfUpdate.success'
+  | 'command.selfUpdate.alreadyLatest'
+  | 'command.selfUpdate.updated'
   | 'error.invalidTarget'
   | 'error.unknownKey'
   | 'error.missingValue'
@@ -63,6 +65,8 @@ const translations: Translations = {
     'command.list.summary': '{count} versions listed',
     'command.selfUpdate.npxHint': 'npx always uses the latest version, no self-update needed',
     'command.selfUpdate.success': 'Updated to the latest version. Restart `ccx` to take effect.',
+    'command.selfUpdate.alreadyLatest': 'Already up to date ({version}).',
+    'command.selfUpdate.updated': 'Updated from {from} to {to}. Restart `ccx` to take effect.',
     'error.invalidTarget': 'Invalid value: {value}',
     'error.unknownKey': 'Unknown configuration key: {key}',
     'error.missingValue': '{flag} requires a value',
@@ -99,6 +103,8 @@ const translations: Translations = {
     'command.list.summary': '{count} 个版本',
     'command.selfUpdate.npxHint': 'npx 每次自动拉取最新版，无需 self-update',
     'command.selfUpdate.success': '已更新到最新版，下次运行 ccx 即生效',
+    'command.selfUpdate.alreadyLatest': '已是最新版本（{version}）。',
+    'command.selfUpdate.updated': '已从 {from} 更新到 {to}。下次运行 ccx 即生效。',
     'error.invalidTarget': '无效的值：{value}',
     'error.unknownKey': '未知配置项：{key}',
     'error.missingValue': '{flag} 需要一个值',

@@ -23,6 +23,11 @@ export interface UpdateCheckServiceOptions {
   intervalMs?: number
 }
 
+export interface UpdateCheckOptions {
+  /** 跳过节流缓存，强制 fetch（手动 self-update 场景用，避免读到过时缓存） */
+  skipCache?: boolean
+}
+
 export interface UpdateInfo {
   hasUpdate: boolean
   currentVersion: string
@@ -59,24 +64,26 @@ export class UpdateCheckService {
    * 检查是否有新版本可用。
    *
    * 节流策略：若本地 state 在 intervalMs 内已检查过，直接用缓存的 lastKnownLatest
-   * 比较，不发网络请求。否则发请求并写回 state。
+   * 比较，不发网络请求。skipCache=true 时绕过节流（手动 self-update 总是拉真实最新版）。
    *
    * @returns UpdateInfo（含 hasUpdate 标志），或 null（检查失败/跳过，调用方应静默）
    */
-  async check(): Promise<UpdateInfo | null> {
-    // 1. 节流：读缓存 state，命中则不发请求
-    const cached = this.readState()
-    if (cached && this.isFresh(cached)) {
-      const latest = cached.lastKnownLatest
-      if (!semver.valid(latest)) return null
-      return {
-        hasUpdate: semver.gt(latest, this.currentVersion),
-        currentVersion: this.currentVersion,
-        latestVersion: latest,
+  async check(options?: UpdateCheckOptions): Promise<UpdateInfo | null> {
+    // 1. 节流：读缓存 state，命中则不发请求（skipCache 时跳过）
+    if (!options?.skipCache) {
+      const cached = this.readState()
+      if (cached && this.isFresh(cached)) {
+        const latest = cached.lastKnownLatest
+        if (!semver.valid(latest)) return null
+        return {
+          hasUpdate: semver.gt(latest, this.currentVersion),
+          currentVersion: this.currentVersion,
+          latestVersion: latest,
+        }
       }
     }
 
-    // 2. 节流未命中，发请求
+    // 2. 节流未命中（或 skipCache），发请求
     try {
       const response = await fetch(this.registryUrl, {
         signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
@@ -86,7 +93,7 @@ export class UpdateCheckService {
       const latest = data.version
       if (!latest || !semver.valid(latest)) return null
 
-      // 3. 写回 state 供下次节流
+      // 3. 写回 state 供下次节流（skipCache 也写回，刷新缓存）
       this.writeState({
         lastCheckedAt: new Date().toISOString(),
         lastKnownLatest: latest,

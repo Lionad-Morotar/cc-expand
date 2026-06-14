@@ -1,5 +1,5 @@
 /**
- * TDD Slice B: UpdateCheckService — 更新检查深度模块
+ * TDD Slice B + G: UpdateCheckService — 更新检查深度模块
  *
  * 封装节流、fetch npm registry、semver 比较、静默失败、atomic write。
  * 通过 cachePath / registryUrl / currentVersion 依赖注入隔离外部依赖，
@@ -157,5 +157,35 @@ describe('UpdateCheckService', () => {
     const result = await service.check()
 
     expect(result).toBeNull()
+  })
+
+  it('skipCache=true 时忽略新鲜缓存，强制 fetch 真实最新版', async () => {
+    // 预置新鲜缓存：缓存的 latest 与 current 相同（缓存比较会得 hasUpdate=false）
+    const state = {
+      lastCheckedAt: new Date().toISOString(),
+      lastKnownLatest: '0.3.0',
+    }
+    writeFileSync(cachePath, JSON.stringify(state))
+
+    // 但 registry 实际已有 0.3.1（缓存过时）
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ version: '0.3.1' }),
+    } as unknown as Response)
+
+    const service = new UpdateCheckService({
+      cachePath,
+      currentVersion: '0.3.0',
+    })
+    // skipCache 绕过节流，强制拉真实 0.3.1
+    const result = await service.check({ skipCache: true })
+
+    expect(globalThis.fetch).toHaveBeenCalled()
+    expect(result).toEqual({
+      hasUpdate: true,
+      currentVersion: '0.3.0',
+      latestVersion: '0.3.1',
+    })
   })
 })

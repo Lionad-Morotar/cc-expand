@@ -1,13 +1,17 @@
 /**
  * self-update command — 更新 cc-expand 自身到最新 npm 版本
  *
- * 编排 InstallMethodDetector + spawner，按 installMethod 执行对应包管理器命令。
- * npx 特判提示；unknown 报错引导配置；EACCES 给 prefix 建议。
+ * 编排 InstallMethodDetector + UpdateCheckService + spawner。
+ * 手动执行时强制查最新版（skipCache）：已是最新则跳过 spawn，有更新则显示 from→to，
+ * 查询失败则降级直接 spawn（用户意图明确，不因版本查询失败而阻止）。
  */
 import { spawn } from 'node:child_process'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import type { InstallMethod } from '../../types/index.js'
 import { ErrorCode } from '../../types/index.js'
 import { InstallMethodDetector } from '../../services/install-method.js'
+import { UpdateCheckService } from '../../services/update-check.js'
 import { makeErrorResult, type CommandResult } from '../result.js'
 import { t } from '../i18n.js'
 
@@ -20,6 +24,10 @@ export type Spawner = (cmd: string, args: string[]) => Promise<SpawnResult>
 export interface SelfUpdateOptions {
   installMethodDetector?: InstallMethodDetector
   spawner?: Spawner
+  /** 更新检查服务（注入用），默认新建 */
+  updateCheckService?: Pick<UpdateCheckService, 'check'>
+  /** 当前版本（注入用），默认从 package.json 读取 */
+  currentVersion?: string
 }
 
 /** 各安装方式对应的更新命令 */
@@ -30,6 +38,16 @@ const UPDATE_COMMANDS: Record<
   npm: ['npm', ['install', '-g', 'cc-expand@latest']],
   pnpm: ['pnpm', ['add', '-g', 'cc-expand@latest']],
   yarn: ['yarn', ['global', 'add', 'cc-expand']],
+}
+
+/** 从 package.json 读取当前 cc-expand 版本 */
+function readCurrentVersion(): string {
+  try {
+    const pkgPath = join(__dirname, '..', 'package.json')
+    return (JSON.parse(readFileSync(pkgPath, 'utf-8')).version as string) ?? 'unknown'
+  } catch {
+    return 'unknown'
+  }
 }
 
 export async function selfUpdateCommand(options?: SelfUpdateOptions): Promise<CommandResult> {
@@ -55,6 +73,21 @@ export async function selfUpdateCommand(options?: SelfUpdateOptions): Promise<Co
     )
   }
 
+  // 强制查最新版（skipCache：手动执行不读缓存，拉真实 registry）
+  const currentVersion = options?.currentVersion ?? readCurrentVersion()
+  const updateCheck = options?.updateCheckService ?? new UpdateCheckService({ currentVersion })
+  const info = await updateCheck.check({ skipCache: true })
+
+  // 已是最新 → 跳过 spawn
+  if (info && !info.hasUpdate) {
+    return {
+      success: true,
+      command: 'self-update',
+      summary: t('command.selfUpdate.alreadyLatest', { version: currentVersion }),
+    }
+  }
+
+  // 有更新或查询失败（info=null）→ 执行 spawn
   const [cmd, args] = UPDATE_COMMANDS[method]
   const spawner = options?.spawner ?? createDefaultSpawner()
 
@@ -70,7 +103,9 @@ export async function selfUpdateCommand(options?: SelfUpdateOptions): Promise<Co
     return {
       success: true,
       command: 'self-update',
-      summary: t('command.selfUpdate.success'),
+      summary: info
+        ? t('command.selfUpdate.updated', { from: info.currentVersion, to: info.latestVersion })
+        : t('command.selfUpdate.success'),
     }
   } catch (error) {
     return handleSpawnError(error)
