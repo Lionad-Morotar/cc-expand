@@ -7,10 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-06-14
+
 ### Added
 
 - `ccx restore` 在 `autoMaintain` 开启时自动把 cc/c 快捷方式覆盖为调用原版 Claude Code（对称于 `patch` 的 maintain；之前只警告）
 - 新增 `generateRestoredShellFunction` 与 `maintainShellShortcutsToOriginal`，复用 `extractBlock` 把 cc-expand 块内容改为 `claude --dangerously-skip-permissions`
+- 新增 `ccx self-update` 命令：检测安装方式（npm/pnpm/yarn/npx/unknown）路由到正确的全局更新命令，`npx` 提示无需更新、`unknown` 引导配置 `installMethod`；手动执行强制跳过缓存查最新版，已是最新则跳过 spawn，有更新显示 `from→to`，查询失败降级为直接 spawn
+- 新增隐式更新检查器：非 `run` 命令启动时并行查询 npm registry，发现新版本在 stderr 提示；24h 节流、3s 硬超时、尊重 `autoUpdateCheck` 偏好、失败静默
+- 新增用户偏好字段 `installMethod`（声明安装方式，覆盖自动检测）、`autoUpdateCheck`（默认开启）、`updateCheckInterval`（默认 24h）
+- 新增退出码 `NETWORK_ERROR`(69) 与 `SELF_UPDATE_FAILED`(70)
+- 新增 `CONTEXT.md` 术语表：消歧 `channel` 与 `installMethod`，定义 `update` 的三重含义（self-update / CC binary / pattern）
 
 ### Fixed
 
