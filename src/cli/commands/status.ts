@@ -40,11 +40,12 @@ export interface StatusData {
   }>
 }
 
-/** 当前版本已 patch 且 npm latest 更新时，建议 migration；否则无 next */
+/** 当前版本已 patch、npm latest 更新、且 latest 尚未 patch 时，建议 migration；否则无 next */
 async function buildMigrationHint(
   options: StatusOptions | undefined,
   patchedInfo: { targets: number[]; patchedAt: string } | undefined,
   currentVersion: string,
+  patchedVersions: Record<string, { targets: number[]; patchedAt: string }>,
 ): Promise<string[] | undefined> {
   if (!patchedInfo) return undefined
   const resolver = options?.latestResolver ?? (() => queryLatestVersion())
@@ -55,7 +56,8 @@ async function buildMigrationHint(
     // resolver 失败（网络/超时）静默跳过，绝不破坏 status 主输出
     latest = undefined
   }
-  if (latest && isVersionGreater(latest, currentVersion)) {
+  // 仅当 latest 新于当前版本 且 latest 尚未 patch——否则说明已迁移过，不再重复建议
+  if (latest && isVersionGreater(latest, currentVersion) && !patchedVersions[latest]) {
     return ['ccx migration latest']
   }
   return undefined
@@ -114,7 +116,7 @@ export async function statusCommand(options?: StatusOptions): Promise<CommandRes
     current: v === version,
   }))
 
-  const next = await buildMigrationHint(options, patchedInfo, version)
+  const next = await buildMigrationHint(options, patchedInfo, version, userConfig.patchedVersions)
 
   return {
     success: true,

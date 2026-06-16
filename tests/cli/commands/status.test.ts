@@ -141,4 +141,29 @@ describe('status command', () => {
     expect(result.data?.patched).toBe(true)
     expect(result.next).toBeUndefined() // latest 查询失败不破坏主输出，静默跳过
   })
+
+  it('does not suggest migration when latest is already patched (already migrated)', async () => {
+    const mockDiscovery = {
+      findClaudeBinary: vi.fn().mockResolvedValue('/path/to/claude'),
+      getBinaryVersion: vi.fn().mockResolvedValue('2.1.177'),
+    }
+    // current=2.1.177（系统版本），latest=2.1.178 已被 migration patch → 不应重复建议
+    const mockConfig = {
+      getUserConfig: vi.fn().mockReturnValue({
+        patchedVersions: {
+          '2.1.177': { targets: [1000000], patchedAt: '2026-06-15T00:00:00Z' },
+          '2.1.178': { targets: [1000000], patchedAt: '2026-06-16T00:00:00Z' },
+        },
+      }),
+    }
+
+    const result = await statusCommand({
+      discoveryService: mockDiscovery as any,
+      configService: mockConfig as any,
+      latestResolver: async () => '2.1.178',
+    })
+
+    expect(result.data?.patched).toBe(true)
+    expect(result.next).toBeUndefined()
+  })
 })
