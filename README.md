@@ -59,7 +59,7 @@ npx cc-expand <command>
 | Command | Description |
 |---------|-------------|
 | `cc-expand install [version]` | Download Claude Code from npm to `~/.cc-expand/packages/` |
-| `cc-expand patch [options]` | Copy binary from local package, patch it, and save to `~/.cc-expand/bin/` |
+| `cc-expand patch [version]` | Copy binary from local package, patch it, and save to `~/.cc-expand/bin/` |
 | `cc-expand run [tokens]` | Launch the patched Claude Code binary |
 | `cc-expand setup` | Install shell shortcuts (`cc`, `c` aliases for quickly opening the patched Claude Code) |
 | `cc-expand restore` | Restore original binary from backup |
@@ -73,8 +73,8 @@ npx cc-expand <command>
   `256000`, `256,000`, `270k`, and `27w` all mean 270000 tokens
 * patch options:
   ```
+  <version>               Claude Code version to patch (e.g. 2.1.170)
   -t, --target <count>    Target context window size (default: 256000)
-  -v, --version <semver>  Claude Code version to patch (e.g. 2.1.170)
   -y, --yes               Skip confirmation and overwrite shell shortcuts
   ```
 * After `patch` succeeds, cc-expand automatically maintains the `cc`/`c` shell shortcuts so their default target matches the patched value.
