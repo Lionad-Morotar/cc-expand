@@ -1,9 +1,9 @@
 /**
  * config 命令
- * 管理用户偏好配置（locale, autoMaintain）
+ * 管理用户偏好配置（locale, autoMaintain, installMethod, autoUpdateCheck, updateCheckInterval）
  */
 import { UserConfigService, type UserPreferences } from '../../services/user-config.js'
-import { CcxError, ErrorCode } from '../../types/index.js'
+import { CcxError, ErrorCode, type InstallMethod } from '../../types/index.js'
 import { isLocale, t } from '../i18n.js'
 import { makeErrorResult, type CommandResult } from '../result.js'
 
@@ -13,7 +13,16 @@ export interface ConfigCommandOptions {
 
 type KnownKey = keyof UserPreferences
 
-const KNOWN_KEYS: KnownKey[] = ['locale', 'autoMaintain']
+const KNOWN_KEYS: KnownKey[] = [
+  'locale',
+  'autoMaintain',
+  'installMethod',
+  'autoUpdateCheck',
+  'updateCheckInterval',
+]
+
+/** installMethod 合法值；self-update 引导的 npm/pnpm/yarn 必须在此列（引导可执行性契约） */
+const INSTALL_METHODS: readonly InstallMethod[] = ['npm', 'pnpm', 'yarn', 'npx', 'unknown']
 
 function isKnownKey(key: string): key is KnownKey {
   return KNOWN_KEYS.includes(key as KnownKey)
@@ -40,6 +49,22 @@ function parseBoolean(rawValue: string): boolean {
     `Invalid boolean value: ${rawValue}`,
     'Use one of: true/false, 1/0, yes/no, on/off',
   )
+}
+
+/**
+ * 解析正整数（用于 updateCheckInterval）
+ * 拒绝非整数与 <= 0 的值，避免节流间隔为 0 导致每次启动都查询 npm registry
+ */
+function parsePositiveInt(rawValue: string): number {
+  const n = Number(rawValue)
+  if (!Number.isInteger(n) || n <= 0) {
+    throw new CcxError(
+      ErrorCode.INVALID_TARGET,
+      `Invalid updateCheckInterval: ${rawValue}`,
+      'Use a positive integer (milliseconds), e.g. 3600000',
+    )
+  }
+  return n
 }
 
 export async function configCommand(
@@ -115,7 +140,7 @@ export async function configCommand(
     }
 
     let value: UserPreferences[KnownKey]
-    if (key === 'autoMaintain') {
+    if (key === 'autoMaintain' || key === 'autoUpdateCheck') {
       try {
         value = parseBoolean(rawValue)
       } catch (error) {
@@ -138,6 +163,31 @@ export async function configCommand(
         )
       }
       value = rawValue
+    } else if (key === 'installMethod') {
+      // installMethod 必须是合法安装方式，self-update 据此路由更新命令
+      if (!INSTALL_METHODS.includes(rawValue as InstallMethod)) {
+        return makeErrorResult(
+          'config',
+          ErrorCode.INVALID_TARGET,
+          t('error.invalidTarget', { value: rawValue }),
+          `Usage: ccx config set installMethod ${INSTALL_METHODS.join('|')}`,
+        )
+      }
+      value = rawValue as InstallMethod
+    } else if (key === 'updateCheckInterval') {
+      // updateCheckInterval 必须是正整数（毫秒），0 或负数会让节流失效
+      try {
+        value = parsePositiveInt(rawValue)
+      } catch (error) {
+        const message =
+          error instanceof CcxError ? error.message : `Invalid updateCheckInterval: ${rawValue}`
+        return makeErrorResult(
+          'config',
+          ErrorCode.INVALID_TARGET,
+          message,
+          error instanceof CcxError ? error.suggestion : 'Use a positive integer (milliseconds)',
+        )
+      }
     } else {
       value = rawValue as UserPreferences[KnownKey]
     }
