@@ -29,6 +29,7 @@ export type I18nKey =
   | 'command.selfUpdate.success'
   | 'command.selfUpdate.alreadyLatest'
   | 'command.selfUpdate.updated'
+  | 'command.selfUpdate.stalledSummary'
   | 'error.invalidTarget'
   | 'error.unknownKey'
   | 'error.missingValue'
@@ -41,6 +42,8 @@ export type I18nKey =
   | 'suggestion.selfUpdate.unknownMethod'
   | 'suggestion.selfUpdate.eacces'
   | 'suggestion.selfUpdate.enoent'
+  | 'warning.selfUpdate.stalled'
+  | 'warning.selfUpdate.registryHint'
   | 'ui.warnings'
   | 'ui.nextSteps'
   | 'update.hint.available'
@@ -73,6 +76,7 @@ const translations: Translations = {
     'command.selfUpdate.success': 'Updated to the latest version. Restart `ccx` to take effect.',
     'command.selfUpdate.alreadyLatest': 'Already up to date ({version}).',
     'command.selfUpdate.updated': 'Updated from {from} to {to}. Restart `ccx` to take effect.',
+    'command.selfUpdate.stalledSummary': 'Install command ran, but cc-expand is still {actual}',
     'error.invalidTarget': 'Invalid value: {value}',
     'error.unknownKey': 'Unknown configuration key: {key}',
     'error.missingValue': '{flag} requires a value',
@@ -85,6 +89,8 @@ const translations: Translations = {
     'suggestion.selfUpdate.unknownMethod': 'Declare explicitly via `ccx config set installMethod <npm|pnpm|yarn>`',
     'suggestion.selfUpdate.eacces': 'Configure npm prefix to a user directory (npm config set prefix ~/.npm-global), or use sudo (not recommended)',
     'suggestion.selfUpdate.enoent': 'Ensure the package manager is installed and in PATH',
+    'warning.selfUpdate.stalled': 'The installed version is still {actual} while the latest is {latest}. Your npm registry mirror may lag behind the official registry.',
+    'warning.selfUpdate.registryHint': 'Retry against the official registry to bypass mirror lag, e.g. npm install -g cc-expand@latest --registry=https://registry.npmjs.org',
     'ui.warnings': '⚠ Warnings:',
     'ui.nextSteps': 'Next steps:',
     'update.hint.available': 'Update available: {current} → {latest}. Run `ccx self-update` to update.',
@@ -114,6 +120,7 @@ const translations: Translations = {
     'command.selfUpdate.success': '已更新到最新版，下次运行 ccx 即生效',
     'command.selfUpdate.alreadyLatest': '已是最新版本（{version}）。',
     'command.selfUpdate.updated': '已从 {from} 更新到 {to}。下次运行 ccx 即生效。',
+    'command.selfUpdate.stalledSummary': '安装命令已执行，但 cc-expand 仍为 {actual}',
     'error.invalidTarget': '无效的值：{value}',
     'error.unknownKey': '未知配置项：{key}',
     'error.missingValue': '{flag} 需要一个值',
@@ -126,6 +133,8 @@ const translations: Translations = {
     'suggestion.selfUpdate.unknownMethod': '请用 `ccx config set installMethod <npm|pnpm|yarn>` 显式声明',
     'suggestion.selfUpdate.eacces': '建议配置 npm prefix 到用户目录（npm config set prefix ~/.npm-global），或用 sudo（不推荐，可能破坏权限）',
     'suggestion.selfUpdate.enoent': '请确认对应的包管理器已安装并在 PATH 中',
+    'warning.selfUpdate.stalled': '已安装版本仍为 {actual}，而最新版本是 {latest}。你的 npm 镜像源可能尚未同步官方仓库。',
+    'warning.selfUpdate.registryHint': '可指定官方源绕过镜像延迟，例如 npm install -g cc-expand@latest --registry=https://registry.npmjs.org',
     'ui.warnings': '⚠ 注意：',
     'ui.nextSteps': '建议操作：',
     'update.hint.available': '发现新版本：{current} → {latest}。运行 `ccx self-update` 更新。',

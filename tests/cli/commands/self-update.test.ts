@@ -146,4 +146,33 @@ describe('self-update command', () => {
     expect(result.error?.code).toBe('SELF_UPDATE_FAILED')
     expect(result.error?.suggestion).toMatch(/prefix|sudo/i)
   })
+
+  it('spawn 成功但实际版本仍落后 latest → severity=warning + warnings（镜像延迟等）', async () => {
+    const spawner = vi.fn().mockResolvedValue({ code: 0 })
+    const result = await selfUpdateCommand({
+      installMethodDetector: makeDetector('npm'),
+      updateCheckService: makeUpdateCheck(true, '0.3.5'),
+      spawner,
+      currentVersion: '0.3.2',
+      versionVerifier: () => '0.3.2', // 安装后仍是旧版（镜像未同步）
+    })
+    expect(result.success).toBe(true)
+    expect(result.severity).toBe('warning')
+    expect(result.warnings?.some((w) => w.includes('0.3.2') && w.includes('0.3.5'))).toBe(true)
+  })
+
+  it('spawn 成功且实际版本已升到 latest → 正常成功，无 warning', async () => {
+    const spawner = vi.fn().mockResolvedValue({ code: 0 })
+    const result = await selfUpdateCommand({
+      installMethodDetector: makeDetector('npm'),
+      updateCheckService: makeUpdateCheck(true, '0.3.5'),
+      spawner,
+      currentVersion: '0.3.2',
+      versionVerifier: () => '0.3.5',
+    })
+    expect(result.success).toBe(true)
+    expect(result.severity).toBeUndefined()
+    expect(result.warnings).toBeUndefined()
+    expect(result.summary).toContain('0.3.5')
+  })
 })

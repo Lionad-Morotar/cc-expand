@@ -56,4 +56,15 @@ describe('queryLatestVersion', () => {
     const v = await queryLatestVersion(4000, fakeExec('garbage') as any)
     expect(v).toBeUndefined()
   })
+
+  it('支持指定 packageName（如 cc-expand 自身），args 含对应包名', async () => {
+    let capturedArgs: unknown
+    const spyExec = (_cmd: unknown, args: unknown, _opts: unknown, cb: ExecCb) => {
+      capturedArgs = args
+      cb(null, '"0.3.5"')
+    }
+    const v = await queryLatestVersion(4000, spyExec as any, 'cc-expand')
+    expect(v).toBe('0.3.5')
+    expect((capturedArgs as readonly string[]).join(' ')).toContain('cc-expand@latest')
+  })
 })

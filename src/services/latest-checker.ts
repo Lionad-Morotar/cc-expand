@@ -6,7 +6,10 @@ import { execFile } from 'node:child_process'
 import { getNpmCommand, getNpmExecOptions } from './package.js'
 
 /**
- * 查询 npm 上 @anthropic-ai/claude-code 的最新版本。
+ * 查询 npm 上某包的最新版本（默认 @anthropic-ai/claude-code；查 cc-expand 自身时传 'cc-expand'）。
+ *
+ * 走 npm 命令（npm view），因此自动使用用户配置的 registry——这是关键：
+ * self-update 的更新检查与实际安装必须走同一 registry，否则镜像同步窗口内会误报"有更新却装不上"。
  *
  * 用 execFile 的 timeout 选项：超时自动 kill 子进程，保证 status/list 命令
  * 输出完成后 Node 进程能立即退出（不挂起）。失败/超时/解析失败均返回 undefined，
@@ -18,11 +21,12 @@ import { getNpmCommand, getNpmExecOptions } from './package.js'
 export async function queryLatestVersion(
   timeoutMs = 4000,
   execFileImpl: typeof execFile = execFile,
+  packageName: string = '@anthropic-ai/claude-code',
 ): Promise<string | undefined> {
   return new Promise((resolve) => {
     execFileImpl(
       getNpmCommand(),
-      ['view', '@anthropic-ai/claude-code@latest', 'version', '--json'],
+      ['view', `${packageName}@latest`, 'version', '--json'],
       { timeout: timeoutMs, ...getNpmExecOptions() },
       (error: Error | null, stdout: string) => {
         if (error) {

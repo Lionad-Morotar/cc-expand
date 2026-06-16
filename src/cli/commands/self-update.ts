@@ -12,6 +12,7 @@ import type { InstallMethod } from '../../types/index.js'
 import { ErrorCode } from '../../types/index.js'
 import { InstallMethodDetector } from '../../services/install-method.js'
 import { UpdateCheckService } from '../../services/update-check.js'
+import { isVersionGreater } from '../../utils/version.js'
 import { makeErrorResult, type CommandResult } from '../result.js'
 import { t } from '../i18n.js'
 
@@ -19,7 +20,7 @@ export interface SpawnResult {
   code: number | null
 }
 
-export type Spawner = (cmd: string, args: string[]) => Promise<SpawnResult>
+export type Spawner = (cmd: string, args: readonly string[]) => Promise<SpawnResult>
 
 export interface SelfUpdateOptions {
   installMethodDetector?: InstallMethodDetector
@@ -28,6 +29,8 @@ export interface SelfUpdateOptions {
   updateCheckService?: Pick<UpdateCheckService, 'check'>
   /** 当前版本（注入用），默认从 package.json 读取 */
   currentVersion?: string
+  /** 安装后版本验证器（注入用），默认 readCurrentVersion 重读 package.json 实际版本 */
+  versionVerifier?: () => string
 }
 
 /** 各安装方式对应的更新命令 */
@@ -97,15 +100,45 @@ export async function selfUpdateCommand(options?: SelfUpdateOptions): Promise<Co
       return makeErrorResult(
         'self-update',
         ErrorCode.SELF_UPDATE_FAILED,
-        t('error.selfUpdate.exitCode', { code: result.code }),
+        t('error.selfUpdate.exitCode', { code: result.code ?? 'killed' }),
       )
     }
+
+    // 验证：重新读实际安装版本，确认更新真正生效。
+    // 防止镜像同步延迟等导致"npm 装了旧版、退出码 0、却谎报已更新到 latest"。
+    if (info) {
+      const actualVersion = options?.versionVerifier?.() ?? readCurrentVersion()
+      if (isVersionGreater(info.latestVersion, actualVersion)) {
+        // spawn 成功但实际版本仍落后 → 告警而非撒谎，提示用官方源重试
+        return {
+          success: true,
+          command: 'self-update',
+          severity: 'warning',
+          summary: t('command.selfUpdate.stalledSummary', { actual: actualVersion }),
+          warnings: [
+            t('warning.selfUpdate.stalled', {
+              actual: actualVersion,
+              latest: info.latestVersion,
+            }),
+            t('warning.selfUpdate.registryHint'),
+          ],
+        }
+      }
+      return {
+        success: true,
+        command: 'self-update',
+        summary: t('command.selfUpdate.updated', {
+          from: info.currentVersion,
+          to: info.latestVersion,
+        }),
+      }
+    }
+
+    // info=null（版本查询失败）→ 无法验证，直接报成功
     return {
       success: true,
       command: 'self-update',
-      summary: info
-        ? t('command.selfUpdate.updated', { from: info.currentVersion, to: info.latestVersion })
-        : t('command.selfUpdate.success'),
+      summary: t('command.selfUpdate.success'),
     }
   } catch (error) {
     return handleSpawnError(error)
@@ -114,7 +147,7 @@ export async function selfUpdateCommand(options?: SelfUpdateOptions): Promise<Co
 
 /** 默认 spawner：用 spawn + stdio inherit，让包管理器原生输出直通终端 */
 function createDefaultSpawner(): Spawner {
-  return (cmd: string, args: string[]) =>
+  return (cmd: string, args: readonly string[]) =>
     new Promise((resolve, reject) => {
       const child = spawn(cmd, args, { stdio: 'inherit' })
       child.on('close', (code) => resolve({ code }))

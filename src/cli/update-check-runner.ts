@@ -13,8 +13,10 @@ import { t } from './i18n.js'
 
 const DEFAULT_HINT_TIMEOUT_MS = 3000
 
-/** 不应触发隐式检查的命令（run 会 exec 接管进程，promise 被遗弃） */
-const EXCLUDED_COMMANDS = new Set<string>(['run'])
+/** 不应触发隐式检查的命令
+ *  - run：exec 接管进程，promise 被遗弃
+ *  - self-update：本身就是更新入口，成功后再提示"有更新"自相矛盾 */
+const EXCLUDED_COMMANDS = new Set<string>(['run', 'self-update'])
 
 /**
  * 判断是否应为该命令触发隐式更新检查。

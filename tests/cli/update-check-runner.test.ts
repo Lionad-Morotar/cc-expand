@@ -24,6 +24,10 @@ describe('shouldRunUpdateCheck', () => {
     expect(shouldRunUpdateCheck('run', makeConfig(true))).toBe(false)
   })
 
+  it('self-update 命令 → false（本身就是更新入口，避免自相矛盾的"有更新"提示）', () => {
+    expect(shouldRunUpdateCheck('self-update', makeConfig(true))).toBe(false)
+  })
+
   it('autoUpdateCheck=false → false', () => {
     expect(shouldRunUpdateCheck('status', makeConfig(false))).toBe(false)
   })

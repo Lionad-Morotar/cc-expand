@@ -11,12 +11,13 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import semver from 'semver'
 import { getUserConfigPath } from './user-config.js'
+import { queryLatestVersion } from './latest-checker.js'
 
 export interface UpdateCheckServiceOptions {
   /** 节流文件路径（测试注入用），默认与 config.json 同目录的 update-check.json */
   cachePath?: string
-  /** npm registry endpoint，默认 cc-expand 的 latest manifest */
-  registryUrl?: string
+  /** 最新版本解析器（测试注入用），默认走 npm view 查询用户 registry 上的 cc-expand latest */
+  versionResolver?: () => Promise<string | undefined>
   /** 当前 cc-expand 版本 */
   currentVersion: string
   /** 节流间隔（毫秒），默认 24 小时 */
@@ -39,23 +40,26 @@ interface UpdateCheckState {
   lastKnownLatest: string
 }
 
-const DEFAULT_REGISTRY_URL = 'https://registry.npmjs.org/cc-expand/latest'
 const DEFAULT_INTERVAL_MS = 86_400_000
-const FETCH_TIMEOUT_MS = 3000
 
 function getDefaultCachePath(): string {
   return join(dirname(getUserConfigPath()), 'update-check.json')
 }
 
+/** 默认版本解析器：走 npm view 查询用户配置 registry 上的 cc-expand latest（与 npm install 同源） */
+function resolveSelfLatest(): Promise<string | undefined> {
+  return queryLatestVersion(4000, undefined, 'cc-expand')
+}
+
 export class UpdateCheckService {
   private readonly cachePath: string
-  private readonly registryUrl: string
+  private readonly versionResolver: () => Promise<string | undefined>
   private readonly currentVersion: string
   private readonly intervalMs: number
 
   constructor(options: UpdateCheckServiceOptions) {
     this.cachePath = options.cachePath ?? getDefaultCachePath()
-    this.registryUrl = options.registryUrl ?? DEFAULT_REGISTRY_URL
+    this.versionResolver = options.versionResolver ?? resolveSelfLatest
     this.currentVersion = options.currentVersion
     this.intervalMs = options.intervalMs ?? DEFAULT_INTERVAL_MS
   }
@@ -83,14 +87,9 @@ export class UpdateCheckService {
       }
     }
 
-    // 2. 节流未命中（或 skipCache），发请求
+    // 2. 节流未命中（或 skipCache），走 npm view 查用户 registry（与实际安装同源）
     try {
-      const response = await fetch(this.registryUrl, {
-        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-      })
-      if (!response.ok) return null
-      const data = (await response.json()) as { version?: string }
-      const latest = data.version
+      const latest = await this.versionResolver()
       if (!latest || !semver.valid(latest)) return null
 
       // 3. 写回 state 供下次节流（skipCache 也写回，刷新缓存）
