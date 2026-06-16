@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-06-16
+
+### Fixed
+
+- `ccx patch` / `ccx install` 的 `--version` 参数与 cac 内置版本标志冲突导致无法传值，改为位置参数（如 `ccx patch 2.1.178`、`ccx install 2.1.178`），README 用法同步更新
+
+### Added
+
+- 内部 patch 模式生成 pipeline（维护工具，不随 npm 包发布）：
+  - `PatternDiscovery`：贪心多字段算法从真实二进制 diff 自动发现 patch 模式
+  - `desc-classifier`：启发式描述字段标注
+  - `ShardWriter`：分片模式文件与版本索引写入
+  - `LatestChecker`：npm 最新版检测与版本对比
+  - `pattern:gen` / `pattern:verify` / `pattern:latest-check` 编排脚本，已通过 9 个 Claude Code 真实版本的 patch 等价验证
+- `watch-patch` skill 重写为脚本驱动，支持 JSON 轮询发版
+
+### Changed
+
+- `prepublishOnly` 排除 integration 与 website 测试，发包不再触发 e2e
+
 ## [0.3.1] - 2026-06-14
 
 ### Added
