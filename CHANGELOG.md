@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.7] - 2026-06-16
+
+### Fixed
+
+- `ccx status` 在 `ccx migration` / `ccx setup` 切换 `channel.json` 后仍显示旧版本：status 原先只探测 PATH 上的原生 `claude`（System Version），不读 `channel.json`。现版本解析对齐 `patch`/`setup`——以 `channel.json.version`（Active Version）为权威当前版本，无 channel.json 时回退 PATH 探测，与项目既有的版本源约定一致
+- `ccx status` 在 `channel.json` 损坏（手编或写入被中断）时不再崩溃：`getChannel()` 的 `JSON.parse` 已用 try/catch 隔离，损坏即视作无 channel 回退 PATH 探测
+
+### Added
+
+- `ccx status` 返回结构新增 `activeSource: 'channel' | 'system'`，标注 version 来源
+- `CONTEXT.md` 新增 Active Version / System Version 术语；`docs/adr/0001` 记录 status 以 channel.json 为权威版本的决策
+
 ## [0.3.6] - 2026-06-16
 
 ### Fixed
