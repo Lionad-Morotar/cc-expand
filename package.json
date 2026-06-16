@@ -24,6 +24,10 @@
     "dev:website": "pnpm --filter @cc-expand/website dev",
     "build:website": "pnpm --filter @cc-expand/website generate",
     "watch:patterns": "tsx scripts/watch-patterns.ts",
+    "pattern:gen": "tsx scripts/pattern-gen.ts",
+    "pattern:verify-oss": "tsx scripts/oss-verify.ts",
+    "pattern:latest-check": "tsx scripts/latest-check.ts",
+    "pattern:verify": "tsx scripts/pattern-verify.ts",
     "prepublishOnly": "npm run build && vitest run --exclude tests/integration"
   },
   "keywords": [
