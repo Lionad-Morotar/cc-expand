@@ -1,14 +1,13 @@
 /**
  * cc-expand patch — 交互式 patch 命令
  * 从本地包复制 binary → patch → 保存到 ~/.cc-expand/bin/
+ *
+ * 核心流程委托给 PatchApplier（prepare + execute），本文件只负责参数解析、
+ * 交互式提示、确认与 shell 快捷方式维护。
  */
-import { readFileSync, writeFileSync, copyFileSync, chmodSync, mkdirSync, rmSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import { execSync } from 'node:child_process'
-import { PatchEngine } from '../../core/patch-engine.js'
-import { Verifier } from '../../core/verifier.js'
-import { PackageService } from '../../services/package.js'
+import { PatchApplier } from '../../services/patch-applier.js'
 import { ChannelConfig } from '../../services/channel-config.js'
 import { ConfigService } from '../../services/config.js'
 import { UserConfigService } from '../../services/user-config.js'
@@ -19,11 +18,8 @@ import { makeErrorResult, type CommandResult } from '../result.js'
 import { normalizeVersion } from '../../utils/version.js'
 import { parseTokenCount } from '../../utils/parse-token-count.js'
 
-/** 获取 patched binary 文件名（Windows 需 .exe 扩展名） */
-export function getPatchedBinaryName(targetTokens: number): string {
-  const ext = process.platform === 'win32' ? '.exe' : ''
-  return `claude-${targetTokens}${ext}`
-}
+/** re-export：getPatchedBinaryName 现归属 PatchApplier，此处转发以保持向后兼容（patch-binary-name.test.ts） */
+export { getPatchedBinaryName } from '../../services/patch-applier.js'
 
 export interface PatchData {
   version: string
@@ -50,7 +46,6 @@ export async function patchCommand(
 ): Promise<CommandResult<PatchData>> {
   const configService = options?.configService ?? new ConfigService()
   const userConfigService = options?.userConfigService ?? new UserConfigService()
-  configService.ensureDirs()
 
   // 解析命令行参数
   let targetTokens: number | undefined
@@ -127,42 +122,17 @@ export async function patchCommand(
     )
   }
 
-  // 确保包已安装
   const homeDir = options?.homeDir ?? homedir()
   const packagesDir = options?.packagesDir ?? join(homeDir, '.cc-expand', 'packages')
-  const packageService = new PackageService(packagesDir)
+  const applierOptions = { configService, homeDir, packagesDir }
+  const applier = new PatchApplier()
 
-  if (!packageService.isInstalled(version)) {
-    try {
-      await packageService.install(version)
-    } catch (error) {
-      if (error instanceof CcxError) {
-        return makeErrorResult('patch', error.code, error.message, error.suggestion)
-      }
-      return makeErrorResult(
-        'patch',
-        ErrorCode.BINARY_NOT_FOUND,
-        `Failed to install Claude Code ${version}`,
-        'Check your network connection and npm registry access',
-      )
-    }
+  // 阶段一：install 包 + 获取 pattern（拿到 sourceValue 供交互提示）
+  const prepared = await applier.prepare(version, applierOptions)
+  if (!prepared.ok) {
+    return makeErrorResult('patch', prepared.error.code, prepared.error.message, prepared.error.suggestion)
   }
-
-  const sourceBinaryPath = packageService.getBinaryPath(version)
-
-  // 获取版本对应的模式
-  const patches = await configService.getPatternForVersion(version)
-  if (!patches) {
-    return makeErrorResult(
-      'patch',
-      ErrorCode.PATTERN_NOT_FOUND,
-      `No pattern found for version ${version}`,
-      `Run 'ccx supports' to see supported versions`,
-    )
-  }
-
-  // 获取目标 tokens
-  const sourceValue = patches[0]?.sourceValue ?? '200000'
+  const { patches, sourceValue } = prepared.data
 
   if (targetTokens === undefined) {
     // 交互式模式
@@ -209,92 +179,42 @@ export async function patchCommand(
     }
   }
 
-  // 创建 patched binary 目录
-  const patchBinDir = join(homeDir, '.cc-expand', 'bin')
-  mkdirSync(patchBinDir, { recursive: true })
-  const patchedBinaryPath = join(patchBinDir, getPatchedBinaryName(targetTokens))
-
-  // 复制原始 binary（不修改原始包）
-  copyFileSync(sourceBinaryPath, patchedBinaryPath)
-  chmodSync(patchedBinaryPath, 0o755)
-
-  // Patch
-  const buffer = readFileSync(patchedBinaryPath)
-  const engine = new PatchEngine()
-  const patchResult = engine.patch(buffer, patches, targetTokens)
-
-  if (!patchResult.success) {
-    rmSync(patchedBinaryPath, { force: true })
-    if (patchResult.error instanceof CcxError) {
-      return makeErrorResult('patch', patchResult.error.code, patchResult.error.message, patchResult.error.suggestion)
-    }
-    return makeErrorResult('patch', ErrorCode.PATCH_FAILED, 'Patch failed')
+  // 阶段二：执行 patch（copy → replace → codesign → verify → record）
+  const outcome = await applier.execute(version, targetTokens, prepared.data, applierOptions)
+  if (!outcome.ok) {
+    return makeErrorResult('patch', outcome.error.code, outcome.error.message, outcome.error.suggestion)
   }
-
-  // 写入修改后的二进制
-  writeFileSync(patchedBinaryPath, buffer)
-
-  // macOS codesign（重新签名）
-  let codesignWarning: string | undefined
-  if (process.platform === 'darwin') {
-    try {
-      execSync(`codesign --sign - --force --deep "${patchedBinaryPath}"`, { stdio: 'ignore' })
-    } catch {
-      codesignWarning = 'codesign failed — binary may not be executable'
-    }
-  }
-
-  // 验证
-  const verifier = new Verifier()
-  const verifyResult = await verifier.verify({
-    binaryPath: patchedBinaryPath,
-    targetTokens,
-    sourceValue,
-    patches,
-  })
-
-  if (!verifyResult.success) {
-    rmSync(patchedBinaryPath, { force: true })
-    if (verifyResult.error instanceof CcxError) {
-      return makeErrorResult('patch', verifyResult.error.code, verifyResult.error.message, verifyResult.error.suggestion)
-    }
-    return makeErrorResult('patch', ErrorCode.VERIFICATION_FAILED, 'Verification failed')
-  }
-
-  // 记录
-  configService.recordPatchedVersion(version, targetTokens)
+  const applied = outcome.data
 
   // 自动维护 shell 快捷方式（可由用户配置关闭）
-  let shortcutsUpdated = false
   let maintainSummary = ''
   const autoMaintain = userConfigService.get('autoMaintain')
   if (autoMaintain) {
     maintainSummary = await maintainShellShortcuts({
-      targetTokens,
+      targetTokens: applied.targetTokens,
       skipConfirm,
       homeDir,
     })
-    shortcutsUpdated = true
   }
 
   return {
     success: true,
     command: 'patch',
-    summary: t('command.patch.success', { version, targetTokens }),
+    summary: t('command.patch.success', { version: applied.version, targetTokens: applied.targetTokens }),
     data: {
-      version,
-      targetTokens,
-      sourceValue,
-      replaceCount: patchResult.replaceCount ?? 0,
-      binaryPath: patchedBinaryPath,
-      details: patchResult.details,
-      shortcutsUpdated,
+      version: applied.version,
+      targetTokens: applied.targetTokens,
+      sourceValue: applied.sourceValue,
+      replaceCount: applied.replaceCount,
+      binaryPath: applied.binaryPath,
+      details: applied.details,
+      shortcutsUpdated: !!autoMaintain,
       maintainSummary: maintainSummary || undefined,
     },
     next: [
-      `ccx run ${targetTokens}`,
-      `cc ${targetTokens}`,
+      `ccx run ${applied.targetTokens}`,
+      `cc ${applied.targetTokens}`,
     ],
-    warnings: codesignWarning ? [codesignWarning] : undefined,
+    warnings: applied.codesignWarning ? [applied.codesignWarning] : undefined,
   }
 }

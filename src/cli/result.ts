@@ -30,6 +30,7 @@ export const EXIT_CODES: Record<ErrorCode, number> = {
   [ErrorCode.PERMISSION_DENIED]: 77,
   [ErrorCode.NETWORK_ERROR]: 69,
   [ErrorCode.SELF_UPDATE_FAILED]: 70,
+  [ErrorCode.PATTERN_DISCOVERY_FAILED]: 70,
 }
 
 export function getExitCode(code?: ErrorCode): number {
