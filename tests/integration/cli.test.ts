@@ -256,6 +256,34 @@ describe('CLI Integration', () => {
     rmSync(tempDir, { recursive: true, force: true })
   })
 
+  it('should show migration command in help', () => {
+    const output = execFileSync('node', [CLI_PATH, '--help'], {
+      encoding: 'utf-8',
+    })
+
+    expect(output).toContain('migration')
+  })
+
+  it('should error when migration has no patches to migrate', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'cc-expand-migration-e2e-'))
+    const env = { ...process.env, HOME: tempDir }
+    let threw = false
+    try {
+      execFileSync('node', [CLI_PATH, 'migration', '2.1.178'], {
+        encoding: 'utf-8',
+        env,
+        stdio: ['pipe', 'pipe', 'pipe'],
+      })
+    } catch (error: any) {
+      threw = true
+      const combined = (error.stdout || '') + (error.stderr || '')
+      expect(combined).toContain('No existing patches')
+      expect(error.status).toBe(64)
+    }
+    expect(threw).toBe(true)
+    rmSync(tempDir, { recursive: true, force: true })
+  })
+
   // Note: status command requires a working Claude Code binary with responsive --version
   // This test is skipped in CI where claude may not be available or may hang
   it.skip('should show status with found binary (requires working claude binary)', () => {

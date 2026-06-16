@@ -25,6 +25,10 @@ _Avoid_: upgrade（语义模糊，可被理解为 CC 升级）、update（三重
 2. **CC binary update** —— install 新版 Claude Code 二进制并 patch，由 `ccx install` + `ccx patch` 完成
 3. **Pattern update** —— 拉取最新 patch 模式，已是远程按需 + ETag 缓存，用户无感，无需手动
 
+**Migration（迁移）**:
+把某个 CC 版本已 patch 的全部 targets（token 配置）整体重新 patch 到另一个 CC 版本，供版本升级场景一键迁移。由 `ccx migration [version]` 命令触发；默认源版本取当前 channel/discovery 版本（回退到 `versions.json` 中 `patchedAt` 最新的版本），目标版本默认 `latest`。是 "CC binary update"（update 第 2 义）的批量复用形态——区别于 `patch`（交互式、单 target、需手动指定）。复用 `versions.json` 的 `patchedVersions[version].targets` 作为迁移源。
+_Avoid_: upgrade、sync、re-patch（re-patch 仅是实现动作，不是用户概念）
+
 **Pattern（模式）**:
 针对特定 Claude Code 版本 + 平台的 patch 指令集，托管在阿里云 OSS。每个 CC 版本对应一个 pattern shard，按 ETag 条件请求缓存到 `~/.cc-expand/cache/patterns/`。
 _Avoid_: rule、config、recipe、patch（patch 是动词动作，pattern 是名词资源）
@@ -33,6 +37,7 @@ _Avoid_: rule、config、recipe、patch（patch 是动词动作，pattern 是名
 
 - **`channel` 与 `install method` 必须严格区分**。前者回答"用户的 Claude Code 装在哪"（5 种渠道），后者回答"用户的 cc-expand 用什么装的"（5 种包管理器/分发）。任何代码、文档、对话中混用都会导致 self-update 执行错误的更新命令。
 - **`update` 单独出现时永远歧义**。必须追问或根据上下文锁定到三重含义之一。README 中的"Version Update Mechanism"特指 pattern update（第 3 种）。
+- **`migration` 与 `patch` 的边界**。两者都产生 patched binary，但意图不同：`patch` 是「为某版本设定/调整 token 配置」（交互、单 target、可首次设定）；`migration` 是「把既有配置原样搬到新版本」（非交互、批量、仅升级场景）。当用户说「升级后还要重新 patch」时，正确引导是 `migration` 而非重复 `patch`。
 
 ## 示例对话
 

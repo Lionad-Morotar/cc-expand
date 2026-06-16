@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { LatestChecker } from '../../src/services/latest-checker.js'
+import { LatestChecker, queryLatestVersion } from '../../src/services/latest-checker.js'
 
 describe('LatestChecker', () => {
   describe('check()', () => {
@@ -26,5 +26,34 @@ describe('LatestChecker', () => {
       expect(result.needWork).toBe(true)
       expect(result.processed).toEqual(['2.1.160', '2.1.161'])
     })
+  })
+})
+
+describe('queryLatestVersion', () => {
+  // fake execFile：(cmd, args, opts, cb) => cb(error, stdout)
+  type ExecCb = (error: Error | null, stdout: string) => void
+  function fakeExec(stdout: string, error: Error | null = null) {
+    return (_cmd: unknown, _args: unknown, _opts: unknown, cb: ExecCb) =>
+      cb(error, stdout)
+  }
+
+  it('returns parsed version from npm JSON string output', async () => {
+    const v = await queryLatestVersion(4000, fakeExec('"2.1.178"') as any)
+    expect(v).toBe('2.1.178')
+  })
+
+  it('returns version from plain (non-JSON) semver output', async () => {
+    const v = await queryLatestVersion(4000, fakeExec('2.1.178\n') as any)
+    expect(v).toBe('2.1.178')
+  })
+
+  it('returns undefined on exec error (timeout/network)', async () => {
+    const v = await queryLatestVersion(4000, fakeExec('', new Error('timed out')) as any)
+    expect(v).toBeUndefined()
+  })
+
+  it('returns undefined for non-semver garbage output', async () => {
+    const v = await queryLatestVersion(4000, fakeExec('garbage') as any)
+    expect(v).toBeUndefined()
   })
 })

@@ -21,6 +21,9 @@ export type I18nKey =
   | 'command.verify.patched'
   | 'command.verify.unpatched'
   | 'command.patch.success'
+  | 'command.migration.success'
+  | 'command.migration.dryRun'
+  | 'command.migration.alreadyAtVersion'
   | 'command.list.summary'
   | 'command.selfUpdate.npxHint'
   | 'command.selfUpdate.success'
@@ -62,6 +65,9 @@ const translations: Translations = {
     'command.verify.patched': 'Claude Code {version} is fully patched',
     'command.verify.unpatched': 'Claude Code {version} is unpatched ({count} original constants found)',
     'command.patch.success': 'Patched Claude Code {version} to {targetTokens} tokens',
+    'command.migration.success': 'Migrated {count} target(s) from {from} to {to}',
+    'command.migration.dryRun': 'Would migrate {count} target(s) from {from} to {to} (preview, not applied)',
+    'command.migration.alreadyAtVersion': 'Already at version {version}, nothing to migrate',
     'command.list.summary': '{count} versions listed',
     'command.selfUpdate.npxHint': 'npx always uses the latest version, no self-update needed',
     'command.selfUpdate.success': 'Updated to the latest version. Restart `ccx` to take effect.',
@@ -100,6 +106,9 @@ const translations: Translations = {
     'command.verify.patched': 'Claude Code {version} 已完成 patch',
     'command.verify.unpatched': 'Claude Code {version} 未 patch（发现 {count} 处原始常量）',
     'command.patch.success': '已将 Claude Code {version} patch 到 {targetTokens} tokens',
+    'command.migration.success': '已将 {count} 个 target 从 {from} 迁移到 {to}',
+    'command.migration.dryRun': '将把 {count} 个 target 从 {from} 迁移到 {to}（预览，未执行）',
+    'command.migration.alreadyAtVersion': '已是版本 {version}，无需迁移',
     'command.list.summary': '{count} 个版本',
     'command.selfUpdate.npxHint': 'npx 每次自动拉取最新版，无需 self-update',
     'command.selfUpdate.success': '已更新到最新版，下次运行 ccx 即生效',

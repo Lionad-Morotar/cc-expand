@@ -26,6 +26,7 @@ import { restoreCommand } from './commands/restore.js'
 import { verifyCommand } from './commands/verify.js'
 import { runCommand } from './commands/run.js'
 import { patchCommand } from './commands/patch.js'
+import { migrationCommand } from './commands/migration.js'
 import { listCommand } from './commands/list.js'
 import { selfUpdateCommand } from './commands/self-update.js'
 
@@ -183,6 +184,22 @@ async function main(): Promise<void> {
       if (options.yes) args.push('--yes')
       const result = await patchCommand(args)
       await renderResult(renderer, result, 'patch')
+    })
+
+  cli
+    .command('migration [version]', 'Migrate existing patches to a target version')
+    .option('--from <version>', 'Source version to migrate from')
+    .option('-y, --yes', 'Skip confirmation')
+    .option('--dry-run', 'Preview without applying')
+    .action(async (positionalVersion: string | undefined, options: Record<string, unknown>) => {
+      const renderer = getRenderer(options)
+      const args: string[] = []
+      if (positionalVersion) args.push(positionalVersion)
+      if (options.from) args.push('--from', String(options.from))
+      if (options.yes) args.push('--yes')
+      if (options.dryRun) args.push('--dry-run')
+      const result = await migrationCommand(args)
+      await renderResult(renderer, result, 'migration')
     })
 
   cli
