@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { patchCommand } from '../../../src/cli/commands/patch.js'
+import { ConfigService } from '../../../src/services/config.js'
 
 describe('patch command argument validation', () => {
   let tempDir: string
@@ -58,15 +59,40 @@ describe('patch command argument validation', () => {
     }
   })
 
-  it('should reject --version without value', async () => {
-    const result = await patchCommand(['--version'])
-    expect(result.success).toBe(false)
-    expect(result.error?.message).toContain('--version requires a value')
+  /** 预置本地 fake package，让 isInstalled 为真从而跳过真实下载 */
+  function presetFakePackage(version: string): void {
+    const binDir = join(tempDir, '.cc-expand', 'packages', version, 'bin')
+    mkdirSync(binDir, { recursive: true })
+    writeFileSync(join(binDir, 'claude'), 'fake-binary')
+  }
+
+  /** stub ConfigService：getPatternForVersion 返回 null，避免请求 OSS pattern */
+  const stubConfig = {
+    ensureDirs: () => {},
+    getPatternForVersion: async () => null,
+    recordPatchedVersion: () => {},
+  } as unknown as ConfigService
+
+  it('should accept version as positional argument', async () => {
+    presetFakePackage('2.1.170')
+    const result = await patchCommand(['2.1.170'], { configService: stubConfig })
+    // version 被解析后会走到 pattern 缺失，错误信息含版本号，且不再是 "No version specified"
+    expect(result.error?.message ?? '').not.toContain('No version specified')
+    expect(result.error?.message ?? '').toContain('2.1.170')
   })
 
-  it('should reject --version followed by another flag', async () => {
-    const result = await patchCommand(['--version', '--yes'])
-    expect(result.success).toBe(false)
-    expect(result.error?.message).toContain('--version requires a value')
+  it('should accept version positional alongside --target', async () => {
+    presetFakePackage('2.1.170')
+    const result = await patchCommand(['2.1.170', '--target', '500000'], { configService: stubConfig })
+    expect(result.error?.message ?? '').not.toContain('No version specified')
+    expect(result.error?.message ?? '').not.toContain('Invalid target tokens')
+  })
+
+  it('should not mistake --target value for version', async () => {
+    presetFakePackage('2.1.170')
+    // --target 的值 500000 不应被当成 version；version 应解析为末尾的位置参数 2.1.170
+    const result = await patchCommand(['--target', '500000', '2.1.170'], { configService: stubConfig })
+    expect(result.error?.message ?? '').not.toContain('No version specified')
+    expect(result.error?.message ?? '').toContain('2.1.170')
   })
 })

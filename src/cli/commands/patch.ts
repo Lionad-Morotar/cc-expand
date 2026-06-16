@@ -82,18 +82,10 @@ export async function patchCommand(
       i++
     } else if (args[i] === '--yes' || args[i] === '-y') {
       skipConfirm = true
-    } else if (args[i] === '--version' || args[i] === '-v') {
-      const next = args[i + 1]
-      if (next === undefined || next.startsWith('-')) {
-        return makeErrorResult(
-          'patch',
-          ErrorCode.INVALID_TARGET,
-          `--version requires a value`,
-          `Usage: ccx patch --version 2.1.170`,
-        )
-      }
-      version = normalizeVersion(next)
-      i++
+    } else if (!args[i].startsWith('-') && version === undefined) {
+      // 位置参数：Claude Code 版本。必须在消费完 flag 值后识别，
+      // 否则 ccx patch --target 500000 2.1.170 里的 500000 会被误判为版本
+      version = normalizeVersion(args[i])
     }
   }
 
@@ -131,7 +123,7 @@ export async function patchCommand(
       'patch',
       ErrorCode.BINARY_NOT_FOUND,
       'No version specified',
-      'Use --version or run setup first to select a version',
+      'Provide a version (e.g. ccx patch 2.1.170) or run setup first to select a version',
     )
   }
 

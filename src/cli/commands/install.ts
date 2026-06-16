@@ -26,21 +26,12 @@ export async function installCommand(
   args: string[] = [],
   options?: InstallOptions,
 ): Promise<CommandResult<InstallData>> {
-  // 解析版本号：支持位置参数或 --version
+  // 解析版本号：位置参数（如 install 2.1.170），缺省为 latest
   let version = 'latest'
-  for (let i = 0; i < args.length; i++) {
-    if ((args[i] === '--version' || args[i] === '-v') && args[i + 1]) {
-      version = normalizeVersion(args[i + 1])
-      i++
+  for (const arg of args) {
+    if (!arg.startsWith('-')) {
+      version = normalizeVersion(arg)
       break
-    }
-  }
-  if (version === 'latest') {
-    for (const arg of args) {
-      if (!arg.startsWith('-')) {
-        version = normalizeVersion(arg)
-        break
-      }
     }
   }
 

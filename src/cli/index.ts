@@ -122,11 +122,9 @@ async function main(): Promise<void> {
 
   cli
     .command('install [version]', 'Download Claude Code via npm')
-    .option('-v, --version <ver>', 'Claude Code version')
     .action(async (positionalVersion: string | undefined, options: Record<string, unknown>) => {
       const renderer = getRenderer(options)
       const args: string[] = []
-      if (options.version) args.push('--version', String(options.version))
       if (positionalVersion) args.push(positionalVersion)
       const result = await installCommand(args)
       await renderResult(renderer, result, 'install')
@@ -174,15 +172,14 @@ async function main(): Promise<void> {
     })
 
   cli
-    .command('patch', 'Patch local Claude Code binary')
+    .command('patch [version]', 'Patch local Claude Code binary')
     .option('-t, --target <count>', 'Target context window size')
-    .option('-v, --version <ver>', 'Claude Code version')
     .option('-y, --yes', 'Skip confirmation')
-    .action(async (options: Record<string, unknown>) => {
+    .action(async (positionalVersion: string | undefined, options: Record<string, unknown>) => {
       const renderer = getRenderer(options)
       const args: string[] = []
+      if (positionalVersion) args.push(positionalVersion)
       if (options.target) args.push('--target', String(options.target))
-      if (options.version) args.push('--version', String(options.version))
       if (options.yes) args.push('--yes')
       const result = await patchCommand(args)
       await renderResult(renderer, result, 'patch')
