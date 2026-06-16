@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-06-16
+
+### Added
+
+- `ccx migration [version]`：把源版本已 patch 的 token 配置批量迁移到目标版本，升级 Claude Code 后无需逐个重新 patch。源解析优先级 `--from` > discovery 当前版本 > `patchedAt` 最新；支持 `--from <version>`、`--dry-run`、`-y`
+- `ccx status` / `ccx list`：检测到 npm 新版本且当前已 patch 时，next 建议 `ccx migration latest`
+- `ccx install` 有历史 patch 记录时建议 migration（首次仍建议 patch）；`ccx verify` 未 patch 且有历史记录时建议 migration
+- `PatchApplier` 深模块：`patch` 与 `migration` 共用核心流程（prepare + execute 两阶段）
+
+### Changed
+
+- `ccx patch` 核心逻辑重构为调用 `PatchApplier`，外部行为不变（净 -117 行内联逻辑）
+
+### Fixed
+
+- `ccx status` / `ccx list` 此前的 latest 检测会让进程挂起最多约 30 秒（npm 子进程未终止），改用带超时自动终止的 `queryLatestVersion`，失败静默跳过不破坏主输出
+- `ccx migration`：`channel.json` 路径写入与 `setup` 对齐（含版本目录）；`--from` 缺值不再被静默忽略且支持 `v` 前缀；npm 解析失败时不再以字面 `latest` 继续执行（避免落盘脏记录）
+- `isVersionGreater` 对畸形版本（如 `2.1.x-beta`）保守返回 false，避免误判
+- 补 `PATTERN_DISCOVERY_FAILED` 的退出码映射（0.3.3 遗漏）
+
 ## [0.3.3] - 2026-06-16
 
 ### Fixed
