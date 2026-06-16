@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-06-16
+
+### Fixed
+
+- `ccx config set installMethod` 不再被拒：config 命令白名单补齐 `installMethod`/`autoUpdateCheck`/`updateCheckInterval`（服务层早已支持，CLI 白名单漏同步），修复 `ccx self-update` 在 fnm/nvm 等非标准路径下检测失败后引导用户配置却被 config 拒绝的契约分裂
+- 新增 `installMethod`（npm/pnpm/yarn/npx/unknown）与 `updateCheckInterval`（正整数毫秒）的值校验，非法值返回 `INVALID_TARGET`
+
 ## [0.3.2] - 2026-06-16
 
 ### Fixed
