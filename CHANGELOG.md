@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-06-16
+
+### Fixed
+
+- `ccx status` 在目标版本已 patch（如刚 `ccx migration latest` 完成）时不再重复建议 `ccx migration latest`：next 现要求 latest 既新于当前版本、又尚未 patch
+
 ## [0.3.4] - 2026-06-16
 
 ### Added
