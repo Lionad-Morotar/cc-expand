@@ -9,6 +9,10 @@ Claude Code 二进制在用户系统上的安装来源。
 值域：`brew`、`npx`、`npm-global`、`pnpm-global`、`direct`。持久化在 `~/.cc-expand/channel.json`，供 patch/run 流程选择正确的二进制。
 _Avoid_: source、distribution、location、installation
 
+**Active Version（激活版本）**:
+cc-expand 当前生效的 Claude Code 版本，持久化在 `~/.cc-expand/channel.json` 的 `version` 字段。由 `setup`/`migration` 写入，`patch`/`setup`/`status` 读取，代表 cc-expand 状态机的"当前位置"。区别于 **System Version**——PATH 上原生 `claude` 二进制的版本（未被 cc-expand 管理的系统默认）。
+_Avoid_: current version（口语歧义）、installed version（混淆"是否已 install 包"）
+
 **Install Method（安装方式）**:
 cc-expand 自身被安装到用户系统所用的包管理器或分发途径。
 值域：`npm`、`pnpm`、`yarn`、`npx`、`unknown`。仅用于 self-update 流程，决定执行哪条更新命令。持久化在用户偏好 `~/.config/cc-expand/config.json` 的 `installMethod` 字段。
@@ -38,6 +42,7 @@ _Avoid_: rule、config、recipe、patch（patch 是动词动作，pattern 是名
 - **`channel` 与 `install method` 必须严格区分**。前者回答"用户的 Claude Code 装在哪"（5 种渠道），后者回答"用户的 cc-expand 用什么装的"（5 种包管理器/分发）。任何代码、文档、对话中混用都会导致 self-update 执行错误的更新命令。
 - **`update` 单独出现时永远歧义**。必须追问或根据上下文锁定到三重含义之一。README 中的"Version Update Mechanism"特指 pattern update（第 3 种）。
 - **`migration` 与 `patch` 的边界**。两者都产生 patched binary，但意图不同：`patch` 是「为某版本设定/调整 token 配置」（交互、单 target、可首次设定）；`migration` 是「把既有配置原样搬到新版本」（非交互、批量、仅升级场景）。当用户说「升级后还要重新 patch」时，正确引导是 `migration` 而非重复 `patch`。
+- **`status` 报告的版本以 Active Version（`channel.json`）为准，而非 System Version（PATH 原生 `claude`）**。`setup`/`migration` 切换 channel 后，`status` 必须反映新版本；若仍显示旧版本，说明 status 未读 `channel.json`（v0.3.7 前的 bug）。无 `channel.json` 时回退 DiscoveryService，照顾未 `setup` 的用户——这与 `patch`/`setup` 读 channel.json 的优先级一致。
 
 ## 示例对话
 

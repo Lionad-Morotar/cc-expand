@@ -4,8 +4,11 @@
  * 引导用户走更短的升级路径。latest 查询用 queryLatestVersion（execFile timeout 自动 kill），
  * 失败/超时静默返回 undefined，绝不破坏主输出或阻塞进程退出。
  */
+import { homedir } from 'node:os'
+import { join } from 'node:path'
 import { DiscoveryService } from '../../services/discovery.js'
 import { ConfigService } from '../../services/config.js'
+import { ChannelConfig, type ChannelConfigData } from '../../services/channel-config.js'
 import { queryLatestVersion } from '../../services/latest-checker.js'
 import { readShortcutState } from '../../services/shell-profile.js'
 import { isVersionGreater } from '../../utils/version.js'
@@ -24,6 +27,8 @@ export interface StatusOptions {
 export interface StatusData {
   version?: string
   binaryPath?: string
+  /** version 来源：channel（channel.json 激活版本）或 system（PATH 原生 claude）。见 ADR 0001 */
+  activeSource?: 'channel' | 'system'
   patched: boolean
   targets?: number[]
   patchedAt?: string
@@ -66,38 +71,58 @@ async function buildMigrationHint(
 export async function statusCommand(options?: StatusOptions): Promise<CommandResult<StatusData>> {
   const discovery = options?.discoveryService ?? new DiscoveryService()
   const configService = options?.configService ?? new ConfigService()
+  const homeDir = options?.homeDir ?? homedir()
 
   let binaryPath: string | undefined
   let version: string | undefined
+  // Active Version（channel.json）优先于 System Version（PATH 探测），与 patch/setup 的版本源对齐。见 ADR 0001
+  let activeSource: 'channel' | 'system'
 
+  // channel.json 损坏（手编/写入被中断）时 getChannel 内的 JSON.parse 会抛 SyntaxError——
+  // 隔离它：损坏即视作无 channel，回退 PATH 探测，绝不让 status 崩溃
+  let channel: ChannelConfigData | undefined
   try {
-    binaryPath = await discovery.findClaudeBinary()
-    version = await discovery.getBinaryVersion(binaryPath)
-  } catch (error) {
-    if (error instanceof CcxError && error.code === ErrorCode.BINARY_NOT_FOUND) {
-      const userConfig = configService.getUserConfig()
-      const installedVersions = Object.entries(userConfig.patchedVersions).map(([v, info]) => ({
-        version: v,
-        targets: info.targets,
-        patchedAt: info.patchedAt,
-        current: false,
-      }))
+    channel = new ChannelConfig(join(homeDir, '.cc-expand')).getChannel()
+  } catch {
+    channel = undefined
+  }
+  if (channel?.version) {
+    // channel.json 存在：migration/setup 已选定激活版本，以此为准（即使 PATH 上仍是旧版本）
+    version = channel.version
+    binaryPath = channel.path
+    activeSource = 'channel'
+  } else {
+    // 无 channel.json（未 setup 的用户）：回退探测 PATH/NPX 上的原生 claude
+    activeSource = 'system'
+    try {
+      binaryPath = await discovery.findClaudeBinary()
+      version = await discovery.getBinaryVersion(binaryPath)
+    } catch (error) {
+      if (error instanceof CcxError && error.code === ErrorCode.BINARY_NOT_FOUND) {
+        const userConfig = configService.getUserConfig()
+        const installedVersions = Object.entries(userConfig.patchedVersions).map(([v, info]) => ({
+          version: v,
+          targets: info.targets,
+          patchedAt: info.patchedAt,
+          current: false,
+        }))
 
-      return {
-        success: true,
-        command: 'status',
-        summary: t('command.status.noBinary'),
-        data: {
-          patched: false,
-          installedVersions,
-        },
+        return {
+          success: true,
+          command: 'status',
+          summary: t('command.status.noBinary'),
+          data: {
+            patched: false,
+            installedVersions,
+          },
+        }
       }
-    }
 
-    if (error instanceof CcxError) {
-      return makeErrorResult('status', error.code, error.message, error.suggestion)
+      if (error instanceof CcxError) {
+        return makeErrorResult('status', error.code, error.message, error.suggestion)
+      }
+      throw error
     }
-    throw error
   }
 
   const userConfig = configService.getUserConfig()
@@ -125,6 +150,7 @@ export async function statusCommand(options?: StatusOptions): Promise<CommandRes
     data: {
       version,
       binaryPath,
+      activeSource,
       patched: !!patchedInfo,
       targets: patchedInfo?.targets,
       patchedAt: patchedInfo?.patchedAt,

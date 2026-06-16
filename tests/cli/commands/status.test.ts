@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { statusCommand } from '../../../src/cli/commands/status.js'
+import { ChannelConfig } from '../../../src/services/channel-config.js'
 import { CcxError, ErrorCode } from '../../../src/types/index.js'
 
 describe('status command', () => {
@@ -165,5 +166,130 @@ describe('status command', () => {
 
     expect(result.data?.patched).toBe(true)
     expect(result.next).toBeUndefined()
+  })
+
+  // --- Active Version (channel.json) 优先于 System Version (PATH) ---
+  // 见 ADR 0001：status 应与 patch/setup 对齐，以 channel.json.version 为权威当前版本
+  it('reports active version from channel.json when present (post-migration)', async () => {
+    // PATH 上仍是旧版本 2.1.177（模拟 migration 未改 PATH 原生二进制）
+    const mockDiscovery = {
+      findClaudeBinary: vi.fn().mockResolvedValue('/usr/local/bin/claude'),
+      getBinaryVersion: vi.fn().mockResolvedValue('2.1.177'),
+    }
+    const mockConfig = {
+      getUserConfig: vi.fn().mockReturnValue({
+        patchedVersions: {
+          '2.1.177': { targets: [1000000], patchedAt: '2026-06-15T00:00:00Z' },
+          '2.1.178': { targets: [1000000, 500000], patchedAt: '2026-06-16T00:00:00Z' },
+        },
+      }),
+    }
+
+    // channel.json 已被 migration 切到 2.1.178
+    const configDir = join(tempDir, '.cc-expand')
+    mkdirSync(configDir, { recursive: true })
+    new ChannelConfig(configDir).saveChannel({
+      channel: 'local',
+      path: join(configDir, 'packages', '2.1.178'),
+      version: '2.1.178',
+    })
+
+    const result = await statusCommand({
+      discoveryService: mockDiscovery as any,
+      configService: mockConfig as any,
+      latestResolver: async () => '2.1.178',
+    })
+
+    // 关键：version 来自 channel（2.1.178），而非 PATH 的 2.1.177
+    expect(result.data?.version).toBe('2.1.178')
+    expect(result.data?.activeSource).toBe('channel')
+    expect(result.data?.patched).toBe(true)
+    expect(result.data?.targets).toEqual([1000000, 500000])
+    // 已是 latest，不应重复建议 migration
+    expect(result.next).toBeUndefined()
+  })
+
+  it('reports active version as unpatched when channel version has no patch record', async () => {
+    const mockDiscovery = {
+      findClaudeBinary: vi.fn().mockResolvedValue('/usr/local/bin/claude'),
+      getBinaryVersion: vi.fn().mockResolvedValue('2.1.177'),
+    }
+    const mockConfig = {
+      getUserConfig: vi.fn().mockReturnValue({
+        patchedVersions: {
+          '2.1.177': { targets: [1000000], patchedAt: '2026-06-15T00:00:00Z' },
+        },
+      }),
+    }
+    // channel 指向 2.1.178，但 2.1.178 尚未 patch（如 setup 选定版本后未 patch）
+    const configDir = join(tempDir, '.cc-expand')
+    mkdirSync(configDir, { recursive: true })
+    new ChannelConfig(configDir).saveChannel({
+      channel: 'local',
+      path: join(configDir, 'packages', '2.1.178'),
+      version: '2.1.178',
+    })
+
+    const result = await statusCommand({
+      discoveryService: mockDiscovery as any,
+      configService: mockConfig as any,
+    })
+
+    expect(result.data?.version).toBe('2.1.178')
+    expect(result.data?.activeSource).toBe('channel')
+    expect(result.data?.patched).toBe(false)
+  })
+
+  it('falls back to system version (PATH) with activeSource=system when no channel.json', async () => {
+    // 不写 channel.json —— 模拟未 setup 的老用户，行为须保持不变
+    const mockDiscovery = {
+      findClaudeBinary: vi.fn().mockResolvedValue('/usr/local/bin/claude'),
+      getBinaryVersion: vi.fn().mockResolvedValue('2.1.170'),
+    }
+    const mockConfig = {
+      getUserConfig: vi.fn().mockReturnValue({
+        patchedVersions: {
+          '2.1.170': { targets: [256000], patchedAt: '2026-06-10T00:00:00Z' },
+        },
+      }),
+    }
+
+    const result = await statusCommand({
+      discoveryService: mockDiscovery as any,
+      configService: mockConfig as any,
+      latestResolver: async () => '2.1.170',
+    })
+
+    expect(result.data?.version).toBe('2.1.170')
+    expect(result.data?.activeSource).toBe('system')
+    expect(result.data?.patched).toBe(true)
+  })
+
+  it('falls back to system version when channel.json is corrupted (must not crash)', async () => {
+    const mockDiscovery = {
+      findClaudeBinary: vi.fn().mockResolvedValue('/usr/local/bin/claude'),
+      getBinaryVersion: vi.fn().mockResolvedValue('2.1.170'),
+    }
+    const mockConfig = {
+      getUserConfig: vi.fn().mockReturnValue({
+        patchedVersions: {
+          '2.1.170': { targets: [256000], patchedAt: '2026-06-10T00:00:00Z' },
+        },
+      }),
+    }
+    // channel.json 损坏（非法 JSON，如手编或写入被中断）——status 不得崩溃，应回退 PATH 探测
+    const configDir = join(tempDir, '.cc-expand')
+    mkdirSync(configDir, { recursive: true })
+    writeFileSync(join(configDir, 'channel.json'), '{ not valid json')
+
+    const result = await statusCommand({
+      discoveryService: mockDiscovery as any,
+      configService: mockConfig as any,
+      latestResolver: async () => '2.1.170',
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.data?.activeSource).toBe('system')
+    expect(result.data?.version).toBe('2.1.170')
   })
 })
