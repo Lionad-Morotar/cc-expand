@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.6] - 2026-06-16
+
+### Fixed
+
+- `ccx self-update` 的更新检查原先硬编码查官方 `registry.npmjs.org`，而实际 `npm install -g` 走用户配置的 registry（如 npmmirror）。镜像同步窗口内检查判定有新版、npm 却装了镜像里的旧版（退出码仍为 0），self-update 每次都报告"已更新"但实际版本从未变化（用户反复执行始终装不上新版，并非程序循环），末尾隐式检查又提示有更新。现 `UpdateCheckService` 改走 `npm view`，与安装同源，检查源 = 安装源
+- `ccx self-update` 在 spawn 成功后回验实际安装版本：若仍落后 latest（多为镜像延迟），渲染为 `[WARN]` 并提示用 `--registry=https://registry.npmjs.org` 重试，而非谎报"已更新到 X"
+- `ccx self-update` 纳入隐式更新检查排除列表（与 `run` 同），消除"已更新"后紧接自相矛盾的"发现新版本"提示
+- 修复 `self-update` 命令两个遗留 TypeScript 类型错误：`Spawner` 参数收紧为 `readonly string[]`、进程被信号杀死时 `code` 为 `null` 兜底为 `killed`
+
+### Changed
+
+- `queryLatestVersion` 泛化支持 `packageName` 参数（默认 `@anthropic-ai/claude-code`，查 cc-expand 自身传 `cc-expand`）
+- `UpdateCheckService` 的注入边界从 `registryUrl: string` 升级为 `versionResolver: () => Promise<string | undefined>`，测试改用 resolver 注入替代 `globalThis.fetch` mock
+
 ## [0.3.5] - 2026-06-16
 
 ### Fixed
