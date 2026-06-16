@@ -1,10 +1,12 @@
 /**
  * install command — 从 npm 下载 Claude Code 到本地
+ * 成功后根据是否存在历史 patch 记录，next 建议 migration（升级场景）或 patch（首次设定）
  */
 
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { PackageService } from '../../services/package.js'
+import { ConfigService } from '../../services/config.js'
 import { CcxError, ErrorCode } from '../../types/index.js'
 import { t } from '../i18n.js'
 import { makeErrorResult, type CommandResult } from '../result.js'
@@ -20,6 +22,14 @@ export interface InstallOptions {
   /** 覆盖默认的 home 目录（用于测试） */
   homeDir?: string
   packageService?: PackageService
+  /** 注入以读取 patchedVersions 历史，决定 next 建议 patch 还是 migration */
+  configService?: ConfigService
+}
+
+/** 有历史 patch 记录 → 建议 migration；否则建议 patch（首次设定） */
+function nextStepsFor(configService: ConfigService, version: string): string[] {
+  const hasHistory = Object.keys(configService.getUserConfig().patchedVersions ?? {}).length > 0
+  return hasHistory ? [`ccx migration ${version}`] : ['ccx patch --target 270000 --yes']
 }
 
 export async function installCommand(
@@ -38,6 +48,7 @@ export async function installCommand(
   const homeDir = options?.homeDir ?? homedir()
   const packagesDir = join(homeDir, '.cc-expand', 'packages')
   const service = options?.packageService ?? new PackageService(packagesDir)
+  const configService = options?.configService ?? new ConfigService({ homeDir })
 
   let resolvedVersion: string
   try {
@@ -62,6 +73,7 @@ export async function installCommand(
         binaryPath,
         alreadyInstalled: true,
       },
+      next: nextStepsFor(configService, resolvedVersion),
     }
   }
 
@@ -79,7 +91,7 @@ export async function installCommand(
         binaryPath,
         alreadyInstalled: false,
       },
-      next: ['ccx patch --target 270000 --yes'],
+      next: nextStepsFor(configService, installedVersion),
     }
   } catch (error) {
     if (error instanceof CcxError) {

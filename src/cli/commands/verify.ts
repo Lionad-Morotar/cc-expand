@@ -1,5 +1,7 @@
 /**
  * cc-expand verify — 验证 patch 状态
+ * 当发现未 patch 且存在历史 patch 记录时（典型为升级后漏 patch），
+ * next 建议 migration 从历史记录恢复配置。
  */
 import { readFileSync } from 'node:fs'
 import { DiscoveryService } from '../../services/discovery.js'
@@ -59,6 +61,10 @@ export async function verifyCommand(options?: VerifyOptions): Promise<CommandRes
 
   const patched = foundOriginals.length === 0
 
+  // 未 patch 且有历史记录 → 可能升级后漏 patch，建议从历史迁移恢复
+  const hasHistory = Object.keys(configService.getUserConfig().patchedVersions ?? {}).length > 0
+  const next = !patched && hasHistory ? [`ccx migration ${version}`] : undefined
+
   return {
     success: true,
     command: 'verify',
@@ -74,5 +80,6 @@ export async function verifyCommand(options?: VerifyOptions): Promise<CommandRes
       patched,
       foundOriginals,
     },
+    next,
   }
 }

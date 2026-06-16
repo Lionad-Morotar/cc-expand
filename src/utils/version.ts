@@ -28,3 +28,21 @@ export function isValidVersion(version: string): boolean {
   if (normalized === 'latest') return true
   return /^\d+\.\d+\.\d+/.test(normalized)
 }
+
+/**
+ * 比较 a 是否严格大于 b（按 semver 主.次.修 数字逐位比较）
+ * 非法或缺失段视为 0。用于 status/list 判断 npm latest 是否新于当前版本。
+ */
+export function isVersionGreater(a: string, b: string): boolean {
+  const segs = (v: string) => (v.match(/\d+/g) ?? []).map((n) => parseInt(n, 10))
+  const aa = segs(a)
+  const bb = segs(b)
+  // 至少需要 major.minor 两段才可比，否则保守判定不更新（避免畸形版本如 '2.1.x-beta' 误报）
+  if (aa.length < 2 || bb.length < 2) return false
+  for (let i = 0; i < Math.max(aa.length, bb.length, 3); i++) {
+    const x = aa[i] ?? 0
+    const y = bb[i] ?? 0
+    if (x !== y) return x > y
+  }
+  return false
+}

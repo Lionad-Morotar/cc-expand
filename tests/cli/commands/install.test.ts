@@ -24,6 +24,15 @@ describe('install command', () => {
     return new PackageService(packagesDir)
   }
 
+  function seedPatchedHistory(version: string) {
+    const configDir = join(tempDir, '.cc-expand')
+    mkdirSync(configDir, { recursive: true })
+    writeFileSync(
+      join(configDir, 'versions.json'),
+      JSON.stringify({ patchedVersions: { [version]: { targets: [270000], patchedAt: '2026-06-10T00:00:00Z' } } }, null, 2),
+    )
+  }
+
   it('returns structured result when binary is already installed', async () => {
     const service = createFakePackage('2.1.170')
 
@@ -67,5 +76,30 @@ describe('install command', () => {
     } finally {
       PackageService.prototype.resolveVersion = originalResolveVersion
     }
+  })
+
+  it('suggests patch when there is no patch history (first setup)', async () => {
+    const service = createFakePackage('2.1.178')
+
+    const result = await installCommand(['2.1.178'], {
+      homeDir: tempDir,
+      packageService: service,
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.next).toEqual(['ccx patch --target 270000 --yes'])
+  })
+
+  it('suggests migration when patch history exists (upgrade scenario)', async () => {
+    seedPatchedHistory('2.1.177')
+    const service = createFakePackage('2.1.178')
+
+    const result = await installCommand(['2.1.178'], {
+      homeDir: tempDir,
+      packageService: service,
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.next).toEqual(['ccx migration 2.1.178'])
   })
 })

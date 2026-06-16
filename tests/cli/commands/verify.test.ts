@@ -29,6 +29,7 @@ describe('verify command', () => {
         { search: 'PACKAGE_T200000', desc: 'PACKAGE_T', sourceValue: '200000' },
         { search: 'MAX_TOOL_RESULTS200000', desc: 'MAX_TOOL_RESULTS', sourceValue: '200000' },
       ]),
+      getUserConfig: vi.fn().mockReturnValue({ patchedVersions: {} }),
     }
 
     const result = await verifyCommand({
@@ -42,6 +43,7 @@ describe('verify command', () => {
     expect(result.data?.version).toBe('2.1.170')
     expect(result.data?.patched).toBe(false)
     expect(result.data?.foundOriginals).toEqual(['PACKAGE_T', 'MAX_TOOL_RESULTS'])
+    expect(result.next).toBeUndefined() // 无历史记录，不建议 migration
   })
 
   it('returns structured result when binary is patched', async () => {
@@ -56,6 +58,9 @@ describe('verify command', () => {
       getPatternForVersion: vi.fn().mockReturnValue([
         { search: 'PACKAGE_T200000', desc: 'PACKAGE_T', sourceValue: '200000' },
       ]),
+      getUserConfig: vi.fn().mockReturnValue({
+        patchedVersions: { '2.1.161': { targets: [270000], patchedAt: '2026-06-10T00:00:00Z' } },
+      }),
     }
 
     const result = await verifyCommand({
@@ -67,5 +72,29 @@ describe('verify command', () => {
     expect(result.severity).toBeUndefined()
     expect(result.data?.patched).toBe(true)
     expect(result.data?.foundOriginals).toEqual([])
+    expect(result.next).toBeUndefined() // 已 patch，无需建议 migration
+  })
+
+  it('suggests migration when unpatched but history exists', async () => {
+    const mockDiscovery = {
+      findClaudeBinary: vi.fn().mockResolvedValue(binaryPath),
+      getBinaryVersion: vi.fn().mockResolvedValue('2.1.178'),
+    }
+    const mockConfig = {
+      getPatternForVersion: vi.fn().mockResolvedValue([
+        { search: 'PACKAGE_T200000', desc: 'PACKAGE_T', sourceValue: '200000' },
+      ]),
+      getUserConfig: vi.fn().mockReturnValue({
+        patchedVersions: { '2.1.177': { targets: [1000000], patchedAt: '2026-06-15T00:00:00Z' } },
+      }),
+    }
+
+    const result = await verifyCommand({
+      discoveryService: mockDiscovery as any,
+      configService: mockConfig as any,
+    })
+
+    expect(result.data?.patched).toBe(false)
+    expect(result.next).toEqual(['ccx migration 2.1.178'])
   })
 })

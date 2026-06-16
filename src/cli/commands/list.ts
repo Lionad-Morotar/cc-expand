@@ -1,10 +1,14 @@
 /**
  * cc-expand list — 列出已安装和已 patch 的版本
+ * 当存在已 patch 版本且 npm latest 更新时，next 建议 migration。
+ * latest 查询用 queryLatestVersion（execFile timeout 自动 kill），不阻塞进程退出。
  */
 import { readdirSync, existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { ConfigService } from '../../services/config.js'
+import { queryLatestVersion } from '../../services/latest-checker.js'
+import { isVersionGreater } from '../../utils/version.js'
 import { t } from '../i18n.js'
 import { type CommandResult } from '../result.js'
 
@@ -24,6 +28,8 @@ export interface ListOptions {
   patchedOnly?: boolean
   /** 注入 ConfigService（测试用），默认基于 homeDir 新建 */
   configService?: ConfigService
+  /** 解析 latest（注入以避免网络）；缺省用 queryLatestVersion */
+  latestResolver?: (v: string) => Promise<string | undefined>
 }
 
 function compareSemverDesc(a: string, b: string): number {
@@ -80,10 +86,29 @@ export async function listCommand(
     .filter((v) => !patchedOnly || v.patched)
     .sort((a, b) => compareSemverDesc(a.version, b.version))
 
+  // 有已 patch 版本且 npm latest 比本地最高版本更新 → 建议 migration
+  let next: string[] | undefined
+  const topVersion = versions[0]?.version
+  const hasPatched = versions.some((v) => v.patched)
+  if (hasPatched && topVersion) {
+    const resolver = options?.latestResolver ?? (() => queryLatestVersion())
+    let latest: string | undefined
+    try {
+      latest = await resolver('latest')
+    } catch {
+      // resolver 失败静默跳过，不破坏 list 主输出
+      latest = undefined
+    }
+    if (latest && isVersionGreater(latest, topVersion)) {
+      next = ['ccx migration latest']
+    }
+  }
+
   return {
     success: true,
     command: 'list',
     summary: t('command.list.summary', { count: versions.length }),
     data: { versions },
+    next,
   }
 }
