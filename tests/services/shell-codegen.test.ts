@@ -36,7 +36,15 @@ describe('shell-codegen', () => {
     const code = generateBashFunction(256000)
     expect(code).toContain('cc() {')
     expect(code).toContain("alias c='cc 256000'")
-    expect(code).toContain('local default_binary="$HOME/.cc-expand/bin/claude-256000"')
+    expect(code).toContain('binary="$HOME/.cc-expand/bin/claude-256000"')
+  })
+
+  it('version-guards against stale patched binaries (no silent outdated runs)', () => {
+    // cc 函数跑 binary 前必须校验版本：读 channel.json active version，跑 binary --version
+    // 比对，不符则报错（避免静默跑版本孤儿；--version 失败/坏 binary 也算不符）
+    const code = generateBashFunction(256000)
+    expect(code).toContain('channel.json')
+    expect(code).toContain('--version')
   })
 
   it('generates powershell function with given target', () => {

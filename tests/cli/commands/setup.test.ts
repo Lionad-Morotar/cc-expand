@@ -62,7 +62,7 @@ describe('setup command', () => {
     expect(content).toContain('$HOME/.cc-expand/bin/claude-${ctx}')
     expect(content).toContain('$HOME/.cc-expand/bin/claude-270000')
     expect(content).toContain('cc-expand patch --target "$ctx" --yes || {')
-    expect(content).toContain('if [[ ! -x "$default_binary" ]]; then')
+    expect(content).toContain('if [[ ! -x "$binary" ]]; then')
   })
 
   it('should install with --yes without confirm', async () => {
