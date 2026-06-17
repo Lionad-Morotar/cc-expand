@@ -3,6 +3,7 @@
  * 负责在二进制文件中搜索并替换常量字符串
  */
 import { type PatchItem, type PatchResult, CcxError, ErrorCode } from '../types/index.js'
+import { encodeTokenLiteral } from '../utils/encode-token-literal.js'
 
 export interface PatchDetail {
   desc: string
@@ -23,11 +24,25 @@ export class PatchEngine {
    * @returns Patch 结果
    */
   patch(buffer: Buffer, patches: PatchItem[], targetTokens: number): PatchResult & { details: PatchDetail[] } {
-    const targetStr = targetTokens.toString()
     let totalPatches = 0
     const details: PatchDetail[] = []
 
-    for (const { search, desc, sourceValue } of patches) {
+    // 预编码所有 item：任一目标无法在槽位内等长编码则整体失败，buffer 不被修改（原子性）
+    let encoded: string[]
+    try {
+      encoded = patches.map(item => encodeTokenLiteral(targetTokens, item.sourceValue.length))
+    } catch (e) {
+      return {
+        success: false,
+        replaceCount: 0,
+        details,
+        error: e instanceof CcxError ? e : new CcxError(ErrorCode.PATCH_FAILED, String(e)),
+      }
+    }
+
+    for (let i = 0; i < patches.length; i++) {
+      const { search, desc, sourceValue } = patches[i]
+      const targetStr = encoded[i]
       const searchBuf = Buffer.from(search, 'utf8')
       const sourceOffsetInSearch = search.indexOf(sourceValue)
 

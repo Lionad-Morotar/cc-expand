@@ -94,5 +94,43 @@ describe('PatchEngine', () => {
       expect(mutatedText).toContain('X93=256000')
       expect(mutatedText).toContain('rt5=256000')
     })
+
+    it('patches a 7-digit target using an equal-length encoded literal', () => {
+      // 回归：7 位目标（1000000）过去会让 buffer.write 吃掉相邻逗号、破坏 minified JS。
+      // 现在用 "1e6   "(6B, =1000000) 等长编码，逗号完好，文件长度不变（Mach-O 约束）。
+      const buffer = Buffer.from('header_Aj8=200000,Ij_=20000_trailer')
+      const originalLength = buffer.length
+      const engine = new PatchEngine()
+      const patches = [
+        { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
+      ]
+
+      const result = engine.patch(buffer, patches, 1000000)
+
+      expect(result.success).toBe(true)
+      expect(result.replaceCount).toBe(1)
+      const mutatedText = buffer.toString('utf-8')
+      expect(mutatedText).toContain('Aj8=1e6   ,Ij_=20000')
+      expect(mutatedText).not.toContain('200000')
+      expect(buffer.length).toBe(originalLength)
+    })
+
+    it('returns a failure result without mutating the buffer when the target is unencodable', () => {
+      const buffer = Buffer.from('header_Aj8=200000,Ij_=20000_trailer')
+      const originalLength = buffer.length
+      const engine = new PatchEngine()
+      const patches = [
+        { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
+      ]
+      // 1234567: 十进制7位 / 1.234567e6=10位 / 0x12d687=8位，均超 6 字节槽位
+      const result = engine.patch(buffer, patches, 1234567)
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBeInstanceOf(CcxError)
+      expect(result.error?.code).toBe(ErrorCode.INVALID_TARGET)
+      // 原子性：失败时 buffer 不被修改
+      expect(buffer.length).toBe(originalLength)
+      expect(buffer.toString('utf-8')).toContain('Aj8=200000')
+    })
   })
 })

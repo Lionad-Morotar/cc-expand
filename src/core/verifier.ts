@@ -5,6 +5,7 @@
 import { accessSync, constants, readFileSync } from 'node:fs'
 import type { PatchItem } from '../types/index.js'
 import { CcxError, ErrorCode } from '../types/index.js'
+import { encodeTokenLiteral } from '../utils/encode-token-literal.js'
 
 export interface VerifyConfig {
   /** 二进制文件路径 */
@@ -46,29 +47,30 @@ export class Verifier {
     const checks: VerifyCheck[] = []
     const content = readFileSync(config.binaryPath)
 
-    // Check 1: 特定模式替换验证
-    // 对每个 patch 项，验证搜索模式中的 sourceValue 已被替换为 targetTokens
-    const targetStr = config.targetTokens.toString()
+    // Check 1: per-patch 替换验证
+    // 写入的是等长编码字面量（如 1e6   ）。每个 patch 按各自 sourceValue 槽位宽度编码，
+    // 故须逐项校验：(a) 原 search 模式已消失 (b) 该项编码字面量已出现——与 PatchEngine 的
+    // per-patch 编码对称，避免不同槽位宽度时用单一 slotWidth 误判（见 ADR-0002）。
     let allPatched = true
+    let allTargetsPresent = true
     const failedPatches: string[] = []
 
     for (const patch of config.patches) {
-      const searchBuf = Buffer.from(patch.search, 'utf8')
       const sourceOffsetInSearch = patch.search.indexOf(patch.sourceValue)
 
+      // 如果搜索模式中不包含 sourceValue，跳过
       if (sourceOffsetInSearch === -1) {
-        // 如果搜索模式中不包含 sourceValue，跳过
         continue
       }
 
-      // 检查是否还有未替换的模式
+      // (a) 原 search 模式不应再以未替换形式出现
+      const searchBuf = Buffer.from(patch.search, 'utf8')
       let offset = 0
       let foundUnpatched = false
       while (true) {
         const idx = content.indexOf(searchBuf, offset)
         if (idx === -1) break
 
-        // 验证该位置的 sourceValue 是否已被替换
         const replaceAt = idx + sourceOffsetInSearch
         const currentValue = content.subarray(replaceAt, replaceAt + patch.sourceValue.length).toString('utf8')
         if (currentValue === patch.sourceValue) {
@@ -78,19 +80,21 @@ export class Verifier {
         }
         offset = idx + searchBuf.length
       }
-
       if (foundUnpatched) {
         allPatched = false
       }
-    }
 
-    // 检查是否包含新的目标值
-    const hasTarget = content.indexOf(Buffer.from(targetStr)) !== -1
+      // (b) 该 patch 的等长编码字面量应出现（按本 item 的 sourceValue 槽位宽度编码）
+      const expectedLiteral = encodeTokenLiteral(config.targetTokens, patch.sourceValue.length)
+      if (content.indexOf(Buffer.from(expectedLiteral, 'utf8')) === -1) {
+        allTargetsPresent = false
+      }
+    }
 
     checks.push({
       name: 'pattern-replaced',
-      passed: allPatched && hasTarget,
-      message: allPatched && hasTarget
+      passed: allPatched && allTargetsPresent,
+      message: allPatched && allTargetsPresent
         ? undefined
         : `Unpatched patterns: ${failedPatches.join(', ') || 'none found'}`,
     })

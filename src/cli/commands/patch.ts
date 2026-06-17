@@ -17,6 +17,7 @@ import { t } from '../i18n.js'
 import { makeErrorResult, type CommandResult } from '../result.js'
 import { normalizeVersion } from '../../utils/version.js'
 import { parseTokenCount } from '../../utils/parse-token-count.js'
+import { validateTargetInput } from '../../utils/validate-target.js'
 
 /** re-export：getPatchedBinaryName 现归属 PatchApplier，此处转发以保持向后兼容（patch-binary-name.test.ts） */
 export { getPatchedBinaryName } from '../../services/patch-applier.js'
@@ -139,17 +140,7 @@ export async function patchCommand(
     const { input } = await import('@inquirer/prompts')
     const targetInput = await input({
       message: `Current context window: ${sourceValue}\nEnter target tokens (e.g. 256000 or 270k):`,
-      validate: (value: string) => {
-        try {
-          const parsed = parseTokenCount(value)
-          if (String(parsed).length !== sourceValue.length) {
-            return `Must be ${sourceValue.length} digits`
-          }
-          return true
-        } catch (e) {
-          return e instanceof CcxError ? e.message : 'Please enter a valid number'
-        }
-      },
+      validate: (value: string) => validateTargetInput(value, sourceValue),
     })
     targetTokens = parseTokenCount(targetInput)
   }

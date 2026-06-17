@@ -111,5 +111,49 @@ describe('Verifier', () => {
         expect.objectContaining({ name: 'executable', passed: false }),
       )
     })
+
+    it('should pass when a 7-digit target is encoded as a shorter literal', async () => {
+      // patch 到 1000000 时写入的是等长编码字面量 "1e6   "（非十进制 "1000000"）
+      const binaryPath = join(tempDir, 'claude')
+      writeFileSync(binaryPath, 'Aj8=1e6   ,Ij_=20000_X93=1e6   ')
+      chmodSync(binaryPath, 0o755)
+
+      const verifier = new Verifier()
+      const result = await verifier.verify({
+        binaryPath,
+        targetTokens: 1000000,
+        sourceValue: '200000',
+        patches: [
+          { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
+          { search: 'X93=200000', desc: 'teamMemorySync', sourceValue: '200000' },
+        ],
+      })
+
+      expect(result.success).toBe(true)
+      expect(result.checks).toContainEqual(
+        expect.objectContaining({ name: 'pattern-replaced', passed: true }),
+      )
+    })
+
+    it('should verify per-slot when patches have different sourceValue widths', async () => {
+      // 6 位槽 200000 → encode(1000000,6)="1e6   "(6B)；5 位槽 32000 → encode(1000000,5)="1e6  "(5B)
+      // 不同槽位宽度产出不同编码字面量，Verifier 须逐项校验而非用单一 slotWidth
+      const binaryPath = join(tempDir, 'claude')
+      writeFileSync(binaryPath, 'A=1e6   ,_B=1e6  ,_')
+      chmodSync(binaryPath, 0o755)
+
+      const verifier = new Verifier()
+      const result = await verifier.verify({
+        binaryPath,
+        targetTokens: 1000000,
+        sourceValue: '200000',
+        patches: [
+          { search: 'A=200000,', desc: 'six-byte-slot', sourceValue: '200000' },
+          { search: 'B=32000,', desc: 'five-byte-slot', sourceValue: '32000' },
+        ],
+      })
+
+      expect(result.success).toBe(true)
+    })
   })
 })
