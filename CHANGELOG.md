@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.8] - 2026-06-17
+
+### Fixed
+
+- `ccx patch` / `ccx run` 对 ≥100 万 token（7 位）目标崩溃（Bun `Expected CommonJS module to have a function wrapper`）：被 patch 的 `claude` 是 ~215MB Mach-O native binary，patch 必须字节级等长替换；旧 `PatchEngine` 的 `buffer.write` 对 7 位目标多出的字节吃掉相邻 JS 语法字符（`,`/`:`）破坏 minified bundle。新增等长数值编码——目标放不进源槽位时用更短等值字面量（`1000000`→`1e6   `）+ 空格 pad（见 ADR-0002）
+- 交互式 `ccx patch` 输入校验原先按「十进制位数」硬拒 7 位目标，与非交互 `-t` 路径行为分叉：改为按「可编码性」校验，与 patch 引擎一致
+- `Verifier` 校验原先用单一 slotWidth 编码目标字面量，与 `PatchEngine` 的 per-patch 编码不对称（不同宽度 sourceValue 时误判）：改为逐项按 `sourceValue.length` 编码校验
+
+### Added
+
+- 生成的 `cc` shell 函数运行 patched binary 前校验版本（读 `channel.json` active version 比对 `binary --version`），版本不符或 binary 损坏（`--version` 失败）时报错退出，避免静默跑过时的「版本孤儿」binary
+- 纯函数工具 `encodeTokenLiteral`、`validateTargetInput`
+- ADR-0002《Patch 必须等长替换 Mach-O，大目标用数值字面量等长编码》
+
 ## [0.3.7] - 2026-06-16
 
 ### Fixed
