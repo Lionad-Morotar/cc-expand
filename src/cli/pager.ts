@@ -68,21 +68,25 @@ export async function runPager(lines: string[], opts: PagerOptions = {}): Promis
         const ctrl = key.ctrl === true
         const shift = key.shift === true
         // 行翻：上/下箭头、j/k
+        // Why 直接值而非函数式更新：@inquirer/core 的 useState 不支持 (prev)=>next
+        // （与 React 不同），传函数会被当作字面值存入 state，导致 active 变成函数对象、
+        // footer 渲染出函数源码（形如 line (cur)=>…1/12）。useKeypress 每次 render
+        // 重新注册回调，闭包里的 active 即为最新值，直接用它计算新值即可。
         if (name === 'up' || name === 'k') {
-          setActive((cur: number) => Math.max(0, cur - 1))
+          setActive(Math.max(0, active - 1))
           return
         }
         if (name === 'down' || name === 'j') {
-          setActive((cur: number) => Math.min(total - 1, cur + 1))
+          setActive(Math.min(total - 1, active + 1))
           return
         }
         // 页翻：Space/PgDn/Ctrl-F 向下，b/PgUp/Ctrl-B 向上
         if (name === 'space' || name === 'pagedown' || (ctrl && name === 'f')) {
-          setActive((cur: number) => Math.min(total - 1, cur + config.pageSize))
+          setActive(Math.min(total - 1, active + config.pageSize))
           return
         }
         if (name === 'pageup' || name === 'b' || (ctrl && name === 'b')) {
-          setActive((cur: number) => Math.max(0, cur - config.pageSize))
+          setActive(Math.max(0, active - config.pageSize))
           return
         }
         // 跳首行：g（无 shift）。

@@ -158,6 +158,36 @@ describe('runPager', () => {
   }, 5000)
 
   /**
+   * Why 这个回归断言：@inquirer/core 的 useState 不支持函数式更新，曾用
+   * setActive((cur)=>...) 导致 active 变成函数对象、footer 渲染出函数源码
+   * （形如 `line (cur) => Math.min(...)1/12`）。按 down 后 active 必须是数字 1，
+   * footer 显示 line 2/12，且整个输出不含 '=>'。
+   */
+  it('arrow down keeps footer line number numeric (no function-state leak)', async () => {
+    const lines = Array.from({ length: 12 }, (_, i) => `  v9.0.${i}`)
+    const input = makeFakeInput([{ name: 'down' }, { name: 'q' }])
+    const { stream: output, chunks } = makeFakeOutput()
+
+    await runPager(lines, { input, output, pageSize: 10 })
+
+    const joined = chunks.join('')
+    expect(joined).toContain('line 2/12')
+    expect(joined).not.toContain('=>')
+  }, 5000)
+
+  it('space pages down keeping footer line number numeric', async () => {
+    const lines = Array.from({ length: 25 }, (_, i) => `  v10.0.${i}`)
+    const input = makeFakeInput([{ name: 'space' }, { name: 'q' }])
+    const { stream: output, chunks } = makeFakeOutput()
+
+    await runPager(lines, { input, output, pageSize: 10 })
+
+    const joined = chunks.join('')
+    expect(joined).toContain('line 11/25')
+    expect(joined).not.toContain('=>')
+  }, 5000)
+
+  /**
    * Why 这个回归断言：原实现的 `name === 'G'` 是死代码（Shift+G 实际产生
    * {name:'g', shift:true}，先被 `name === 'g'` 首行分支吃掉），footer 永远
    * 停在 line 1/25。这里 down 一次到 line 2，再 Shift+G 必须跳到末行 line 25，
