@@ -6,6 +6,7 @@ import { isatty } from 'node:tty'
 import { createColors } from 'picocolors'
 import { t, setLocale, normalizeLocale, type Locale } from './i18n.js'
 import type { CommandResult } from './result.js'
+import { formatVersionLine } from './version-line.js'
 
 export interface RendererOptions {
   color?: boolean
@@ -22,6 +23,11 @@ export function createRenderer(options: RendererOptions = {}) {
   }
 
   const pc = createColors(color)
+
+  // [OK] header 单一事实源：render 的静态分支与 index.ts 的 pager 分支共用，
+  // 避免 pager 路径漏掉绿色 [OK] 徽章，导致两条输出前缀不一致。
+  const formatOkHeader = (result: CommandResult): string =>
+    `${pc.green('[OK]')} ${result.summary}`
 
   return {
     render(result: CommandResult, commandName: string): string | undefined {
@@ -50,7 +56,7 @@ export function createRenderer(options: RendererOptions = {}) {
         // 命令成功但状态需注意（如 verify 发现未 patch）：黄色而非绿色，避免"验证通过"的视觉误导
         lines.push(`${pc.yellow('[WARN]')} ${result.summary}`)
       } else {
-        lines.push(`${pc.green('[OK]')} ${result.summary}`)
+        lines.push(formatOkHeader(result))
       }
 
       if (result.warnings && result.warnings.length > 0) {
@@ -69,28 +75,22 @@ export function createRenderer(options: RendererOptions = {}) {
         }
       }
 
-      // 为人类可读模式补充列表类数据
+      // 为人类可读模式补充列表类数据；格式化逻辑统一走 formatVersionLine，
+      // 与 pager（动态浏览）共享同一来源，保证静态/动态两处输出逐字符一致
       if (result.data && Array.isArray((result.data as Record<string, unknown>).versions)) {
         const versions = ((result.data as Record<string, unknown>).versions as Array<Record<string, unknown>>)
         if (versions.length > 0) {
           lines.push('')
           for (const item of versions) {
-            const version = String(item.version ?? '')
-            const current = item.current ? ' ← current' : ''
-            const platforms = Array.isArray(item.platforms)
-              ? ` (${item.platforms.join(', ')})`
-              : ''
-            const installed = item.installed === true ? ' [installed]' : ''
-            const patched = item.patched === true ? ' [patched]' : ''
-            const targets = Array.isArray(item.targets)
-              ? ` → ${item.targets.join(', ')}`
-              : ''
-            lines.push(`  ${version}${platforms}${installed}${patched}${targets}${current}`)
+            lines.push(formatVersionLine(item))
           }
         }
       }
 
       return lines.join('\n')
     },
+
+    // 暴露给 index.ts 的 pager 分支，保证 [OK] header 与静态输出逐字符一致
+    formatOkHeader,
   }
 }

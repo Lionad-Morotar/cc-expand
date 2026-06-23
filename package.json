@@ -19,7 +19,7 @@
     "build": "tsup",
     "test": "vitest",
     "test:unit": "vitest run tests/cli",
-    "test:e2e": "npm run build && vitest run tests/integration",
+    "test:e2e": "pnpm build && vitest run tests/integration",
     "dev": "tsup --watch",
     "dev:website": "pnpm --filter @cc-expand/website dev",
     "build:website": "pnpm --filter @cc-expand/website generate",
@@ -28,7 +28,7 @@
     "pattern:verify-oss": "tsx scripts/oss-verify.ts",
     "pattern:latest-check": "tsx scripts/latest-check.ts",
     "pattern:verify": "tsx scripts/pattern-verify.ts",
-    "prepublishOnly": "npm run build && vitest run --exclude tests/integration"
+    "prepublishOnly": "pnpm build && vitest run --exclude tests/integration"
   },
   "keywords": [
     "claude-code",
@@ -57,6 +57,7 @@
     "vitest": "^2.0.0"
   },
   "dependencies": {
+    "@inquirer/core": "^10.0.0",
     "@inquirer/prompts": "^7.0.0",
     "cac": "^7.0.0",
     "picocolors": "^1.1.1",

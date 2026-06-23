@@ -46,6 +46,7 @@ export type I18nKey =
   | 'warning.selfUpdate.registryHint'
   | 'ui.warnings'
   | 'ui.nextSteps'
+  | 'ui.pagerFooter'
   | 'update.hint.available'
 
 type Translations = Record<Locale, Record<I18nKey, string>>
@@ -93,6 +94,7 @@ const translations: Translations = {
     'warning.selfUpdate.registryHint': 'Retry against the official registry to bypass mirror lag, e.g. npm install -g cc-expand@latest --registry=https://registry.npmjs.org',
     'ui.warnings': '⚠ Warnings:',
     'ui.nextSteps': 'Next steps:',
+    'ui.pagerFooter': 'line {line}/{total}  ↑↓/jk move  Space/b page  g/G top/bottom  Ctrl-E bottom  q quit',
     'update.hint.available': 'Update available: {current} → {latest}. Run `ccx self-update` to update.',
   },
   zh: {
@@ -137,6 +139,7 @@ const translations: Translations = {
     'warning.selfUpdate.registryHint': '可指定官方源绕过镜像延迟，例如 npm install -g cc-expand@latest --registry=https://registry.npmjs.org',
     'ui.warnings': '⚠ 注意：',
     'ui.nextSteps': '建议操作：',
+    'ui.pagerFooter': 'line {line}/{total}  ↑↓/jk 移动  Space/b 翻页  g/G 首尾  Ctrl-E 末行  q 退出',
     'update.hint.available': '发现新版本：{current} → {latest}。运行 `ccx self-update` 更新。',
   },
 }

@@ -5,11 +5,14 @@
 
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { isatty } from 'node:tty'
 import cac from 'cac'
 import { CcxError, ErrorCode } from '../types/index.js'
 import { setLocale, normalizeLocale, type Locale } from './i18n.js'
 import { getExitCode, type CommandResult } from './result.js'
 import { createRenderer } from './renderer.js'
+import { formatVersionLine } from './version-line.js'
+import { runPager, DEFAULT_PAGE_SIZE } from './pager.js'
 import { UserConfigService } from '../services/user-config.js'
 import {
   shouldRunUpdateCheck,
@@ -81,7 +84,39 @@ async function main(): Promise<void> {
     renderer: ReturnType<typeof createRenderer>,
     result: CommandResult,
     commandName: string,
+    cliOptions: Record<string, unknown> = {},
   ): Promise<void> {
+    // pager 分支：仅在 TTY 且非 JSON/quiet/--all、且版本数超过单页时启用；
+    // 满足时先打 [OK] summary 行，再让 pager 接管，退出后补一行 hint。
+    // Why 独立分支：renderer.render 必须保持纯函数（返回 string|undefined），
+    // pager 是 index.ts 层的副作用编排，不应侵入渲染层。
+    if (shouldUsePager(result, cliOptions)) {
+      const versions = (result.data as { versions: Array<Record<string, unknown>> }).versions
+      // 复用 renderer 的 [OK] header，保证 pager 路径与 --all 静态路径前缀逐字符一致
+      process.stdout.write(`${renderer.formatOkHeader(result)}\n`)
+      try {
+        await runPager(versions.map((v) => formatVersionLine(v)))
+      } catch {
+        // pager 不可用（如 @inquirer/core 动态加载失败）：擦除已写的 header 行，
+        // 降级为与 --all 一致的静态全量输出，不让命令静默失败或被 CI 误判为成功。
+        // ANSI 擦行在此安全：shouldUsePager 已保证仅在 TTY 触发本分支。
+        process.stdout.write('\x1b[1A\x1b[2K')
+        console.error('Pager unavailable, falling back to full list')
+        const fallback = renderer.render(result, commandName)
+        if (fallback !== undefined) console.log(fallback)
+        if (commandName !== 'run' && updateCheckPromise) {
+          await awaitUpdateCheckHint(updateCheckPromise, (line) => console.error(line))
+        }
+        return
+      }
+      process.stdout.write('\nRun with --all to see full list\n')
+      // 隐式更新检查照常进行
+      if (commandName !== 'run' && updateCheckPromise) {
+        await awaitUpdateCheckHint(updateCheckPromise, (line) => console.error(line))
+      }
+      return
+    }
+
     const rendered = renderer.render(result, commandName)
     if (rendered !== undefined) {
       if (result.success) {
@@ -95,6 +130,25 @@ async function main(): Promise<void> {
     if (commandName !== 'run' && updateCheckPromise) {
       await awaitUpdateCheckHint(updateCheckPromise, (line) => console.error(line))
     }
+  }
+
+  /**
+   * 判定是否走交互 pager 分支。
+   * 降级矩阵：--json / --quiet / 非 TTY（管道/重定向/CI）/ --all 全部退回静态全量输出。
+   */
+  function shouldUsePager(
+    result: CommandResult,
+    cliOptions: Record<string, unknown>,
+  ): boolean {
+    if (!result.success) return false
+    if (cliOptions.json === true) return false
+    if (cliOptions.quiet === true) return false
+    if (cliOptions.all === true) return false
+    // 非 TTY（管道/重定向/CI）：静态全量，保证可被脚本消费
+    if (!isatty(process.stdout.fd)) return false
+    const data = result.data as { versions?: unknown } | undefined
+    if (!data || !Array.isArray(data.versions)) return false
+    return data.versions.length > DEFAULT_PAGE_SIZE
   }
 
   cli
@@ -115,10 +169,11 @@ async function main(): Promise<void> {
 
   cli
     .command('supports', 'List supported Claude Code versions')
+    .option('--all', 'Show full list without pager')
     .action(async (options: Record<string, unknown>) => {
       const renderer = getRenderer(options)
       const result = await supportsCommand()
-      await renderResult(renderer, result, 'supports')
+      await renderResult(renderer, result, 'supports', options)
     })
 
   cli
@@ -205,12 +260,13 @@ async function main(): Promise<void> {
   cli
     .command('list', 'List installed and patched versions')
     .option('--patched', 'Show only patched versions')
+    .option('--all', 'Show full list without pager')
     .action(async (options: Record<string, unknown>) => {
       const renderer = getRenderer(options)
       const args: string[] = []
       if (options.patched) args.push('--patched')
       const result = await listCommand(args)
-      await renderResult(renderer, result, 'list')
+      await renderResult(renderer, result, 'list', options)
     })
 
   cli
