@@ -1,12 +1,20 @@
 /**
  * 监听 patterns/ 目录并自动上传变更到阿里云 OSS
  * 用法: pnpm watch:patterns
+ *
+ * 本文件仅为装配层：负责加载 .env、构造 OSS client、启动 chokidar
+ * 并把事件分发给 PatternUploader。去重 / 缓存持久化 / 重试逻辑全部
+ * 在 scripts/pattern-uploader.ts 中（可单元测试）。
+ *
+ * 启动行为：ignoreInitial 保持 false，启动时仍扫描 patterns/，但
+ * PatternUploader 的持久化缓存会命中未变化文件 → [SKIP]，从而避免
+ * 每次启动全量重传（旧实现的 uploadedHashes 是内存 Map，重启即丢）。
  */
-import { createHash } from 'node:crypto'
-import { readFileSync, existsSync } from 'node:fs'
-import { basename } from 'node:path'
+import { existsSync, readFileSync } from 'node:fs'
+import { basename, join } from 'node:path'
 import chokidar from 'chokidar'
 import OSS from 'ali-oss'
+import { PatternUploader, type UploadOutcome } from './pattern-uploader.js'
 
 /** 从 .env 文件加载环境变量 */
 function loadEnv(): void {
@@ -35,7 +43,8 @@ if (!accessKeyId || !accessKeySecret) {
   process.exit(1)
 }
 
-const client = new OSS({
+// ali-oss 的 put(name, file) 接受 string 路径，结构兼容 UploadClient 接口
+const ossClient = new OSS({
   region: 'oss-cn-shanghai',
   bucket: 'cc-expand',
   accessKeyId,
@@ -43,39 +52,32 @@ const client = new OSS({
   secure: true,
 })
 
-/** 记录已上传文件的内容 hash，用于去重 */
-const uploadedHashes = new Map<string, string>()
+const uploader = new PatternUploader({
+  client: ossClient,
+  cachePath: join(process.cwd(), '.watch-patterns.cache.json'),
+})
 
-/** 计算文件 MD5 hash */
-function getFileHash(filePath: string): string {
-  const content = readFileSync(filePath)
-  return createHash('md5').update(content).digest('hex')
+/** 打印上传结果日志 */
+function logOutcome(filePath: string, outcome: UploadOutcome): void {
+  const name = basename(filePath)
+  if (outcome === 'uploaded') {
+    console.log(`[UPLOAD] patterns/${name}`)
+  } else if (outcome === 'skipped') {
+    console.log(`[SKIP] ${name} (内容未变化)`)
+  } else {
+    console.error(`[FAIL] patterns/${name}`)
+  }
 }
 
-/** 上传文件到 OSS，带重试 */
-async function uploadFile(localPath: string, retryCount = 0): Promise<void> {
-  const objectKey = `patterns/${basename(localPath)}`
-  const hash = getFileHash(localPath)
-  const lastHash = uploadedHashes.get(localPath)
-
-  if (lastHash === hash) {
-    console.log(`[SKIP] ${basename(localPath)} (内容未变化)`)
-    return
-  }
-
-  try {
-    await client.put(objectKey, localPath)
-    uploadedHashes.set(localPath, hash)
-    console.log(`[UPLOAD] ${objectKey}`)
-  } catch (error) {
-    if (retryCount < 3) {
-      const delay = 2 ** retryCount * 1000
-      console.log(`[RETRY] ${objectKey} 将在 ${delay}ms 后重试 (${retryCount + 1}/3)`)
-      await new Promise((resolve) => setTimeout(resolve, delay))
-      return uploadFile(localPath, retryCount + 1)
-    }
-    console.error(`[FAIL] ${objectKey}:`, error instanceof Error ? error.message : String(error))
-  }
+/** 分发 chokidar 事件到上传器 */
+function handleFile(filePath: string, kind: 'ADD' | 'CHANGE'): void {
+  console.log(`[${kind}] ${basename(filePath)}`)
+  uploader
+    .uploadFile(filePath)
+    .then((outcome) => logOutcome(filePath, outcome))
+    .catch((error) => {
+      console.error(`[FAIL] ${basename(filePath)}:`, error instanceof Error ? error.message : String(error))
+    })
 }
 
 /** 启动文件监听 */
@@ -89,14 +91,12 @@ function startWatcher(): void {
 
   watcher.on('add', (filePath) => {
     if (!filePath.endsWith('.json')) return
-    console.log(`[ADD] ${basename(filePath)}`)
-    uploadFile(filePath)
+    handleFile(filePath, 'ADD')
   })
 
   watcher.on('change', (filePath) => {
     if (!filePath.endsWith('.json')) return
-    console.log(`[CHANGE] ${basename(filePath)}`)
-    uploadFile(filePath)
+    handleFile(filePath, 'CHANGE')
   })
 
   watcher.on('ready', () => {
