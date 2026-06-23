@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.9] - 2026-06-23
+
+### Fixed
+
+- `ccx supports current` / `ccx list` 的版本解析改以 `channel.json` 的 active version 为权威来源（与 `patch`/`setup` 一致），避免 ADR-0001 约定在不同命令间分叉
+
+### Added
+
+- `ccx supports` / `ccx list` 增加交互式 pager，支持上下翻页与搜索过滤；同时修复方向键/翻页键触发后 footer 错误渲染函数源码的问题
+
+### Changed
+
+- [internal] `watch-patterns` 重启时通过持久化 hash 缓存避免全量重新上传模式文件，降低 OSS 流量与启动耗时
+
 ## [0.3.8] - 2026-06-17
 
 ### Fixed
