@@ -9,7 +9,7 @@ import { PatternService, type VersionsIndexItem } from './pattern.js'
 import { formatTokenCount } from '@cc-expand/plugin-context-expand'
 import type { PatchItem } from '../types/index.js'
 
-// re-export canonical PatchItem（flow review CR#9）：原本地定义 desc 必填且无 target，
+// re-export canonical PatchItem：原本地定义 desc 必填且无 target，
 // 与 types/index.ts canonical（desc?/target?）分叉。统一到 canonical，pattern.ts 经此 re-export 也得正确形状。
 export type { PatchItem }
 

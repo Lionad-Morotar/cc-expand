@@ -1,5 +1,5 @@
 /**
- * Plugin 体系的类型定义（ADR 0003）。
+ * Plugin 体系的类型定义。
  *
  * 为什么分文件：plugin 类型是新增领域模型，与现有 types/index.ts 的 patch/error 类型解耦，
  * 便于独立演化，也对应"内核零 token 知识"原则——这些类型通用，不耦合 token 细节。

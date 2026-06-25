@@ -32,7 +32,7 @@ export class PatchEngine {
   ): PatchResult & { details: PatchDetail[] } {
     let totalPatches = 0
     const details: PatchDetail[] = []
-    // targetGenerator 可选：注入则用（ADR 0003 内核零 token 知识），否则默认 encodeTokenLiteral（向后兼容）
+    // targetGenerator 可选：注入则用（内核零 token 知识），否则默认 encodeTokenLiteral（向后兼容）
     const gen = targetGenerator ?? ((sv: string) => encodeTokenLiteral(targetTokens, sv.length))
 
     // 预编码所有 item：literal target 用 value（+pad），否则 token-encode。

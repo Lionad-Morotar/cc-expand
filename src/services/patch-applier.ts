@@ -27,7 +27,7 @@ import type { ConfigService } from './config.js'
 import { CcxError, ErrorCode, type PatchItem } from '../types/index.js'
 
 /** 获取 patched binary 文件名（Windows 需 .exe 扩展名）。
- *  参数是 shortVer 组合串（如 "27w-flow"），由 PluginsManager.computeShortVer 生成（ADR 0003 shortVer-hook 命名）。 */
+ *  参数是 shortVer 组合串（如 "27w-flow"），由 PluginsManager.computeShortVer 生成。 */
 export function getPatchedBinaryName(shortVer: string): string {
   const ext = process.platform === 'win32' ? '.exe' : ''
   return `claude-${shortVer}${ext}`
@@ -118,7 +118,7 @@ export class PatchApplier {
 
     // 是否应用 token 扩展：查 internal 中声明 token-encode 策略的 plugin 是否 enabled
     //（PRD story 5：disable token-expansion 后只跑 installed plugin，不扩 token）。
-    // 不硬编码 plugin 名——按 manifest.target.type 策略类型识别（ADR 0003 决策 16 内核零 token 知识）。
+    // 不硬编码 plugin 名——按 manifest.target.type 策略类型识别（内核零 token 知识）。
     // 无 pluginsManager 时默认 true（向后兼容 / 测试）。
     const tokenEnabled = options.pluginsManager?.list().some(
       p => p.source === 'internal' && p.manifest.target?.type === 'token-encode' && p.enabled
@@ -140,7 +140,7 @@ export class PatchApplier {
     }
     const tokenPatches: PatchItem[] = rawTokenPatches ?? []
 
-    // 聚合 installed plugin patches（literal target，ADR 0003：合并一次扫描，按 plugin 归类）
+    // 聚合 installed plugin patches（literal target，合并一次扫描，按 plugin 归类）
     const installedPatches = options.installedPatches ?? []
     const patches = [...tokenPatches, ...installedPatches]
 
@@ -149,7 +149,7 @@ export class PatchApplier {
       data: {
         patches,
         // token 未启用（disable token-expansion）时从 installed patches 推导 sourceValue，
-        // 避免 fallback 到 token 默认值 200000 误导位数提示/verifier（flow review 6）
+        // 避免 fallback 到 token 默认值 200000 误导位数提示/verifier
         sourceValue: tokenPatches[0]?.sourceValue ?? installedPatches[0]?.sourceValue ?? '200000'
       }
     }
@@ -196,7 +196,7 @@ export class PatchApplier {
 
     const buffer = readFileSync(patchedBinaryPath)
     const engine = new PatchEngine()
-    // 传 generator 激活注入路径（ADR 0003：patch-engine 不默认知 encodeTokenLiteral）
+    // 传 generator 激活注入路径（patch-engine 不默认知 encodeTokenLiteral）
     const patchResult = engine.patch(buffer, patches, targetTokens, sv => encodeTokenLiteral(targetTokens, sv.length))
 
     if (!patchResult.success) {

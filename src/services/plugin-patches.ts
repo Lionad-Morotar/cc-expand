@@ -28,7 +28,7 @@ export interface CollectPluginContextOptions {
   version: string
 }
 
-/** 第三方 shard 的 patch item 运行时校验（flow review CR#3）：search/sourceValue 必须为 string，
+/** 第三方 shard 的 patch item 运行时校验：search/sourceValue 必须为 string，
  *  target 若有则须含 string value。非法 item 不进 patches，避免到 PatchEngine 深处才报错。 */
 function isValidPatchItem(p: unknown): p is PatchItem {
   if (!p || typeof p !== 'object') return false
@@ -60,12 +60,12 @@ export async function collectPluginContext(
     const archPatches = shard?.[process.platform]?.[process.arch]
       ?? shard?.[process.platform]?.['universal']
       ?? []
-    // shard 未覆盖当前平台 → 该 plugin 无 patches，warn 提示（flow review CR#11：单 plugin 失败不影响整体）
+    // shard 未覆盖当前平台 → 该 plugin 无 patches，warn 提示（单 plugin 失败不影响整体）
     if (archPatches.length === 0) {
       console.warn(`[ccx] plugin "${p.name}" 无 ${process.platform}/${process.arch} 的 patches，跳过`)
       continue
     }
-    // 校验 patch item 结构，过滤非法（flow review CR#3）
+    // 校验 patch item 结构，过滤非法
     const validPatches = archPatches.filter(isValidPatchItem)
     if (validPatches.length < archPatches.length) {
       console.warn(`[ccx] plugin "${p.name}" 跳过 ${archPatches.length - validPatches.length} 个非法 patch item`)

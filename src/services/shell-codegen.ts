@@ -34,7 +34,7 @@ export function detectConfigFile(homeDir: string): string {
  * 生成 bash/zsh cc 函数和 c alias
  */
 export function generateBashFunction(targetTokens: number): string {
-  // ADR 0003：shell shortcut default 用 shortVer（如 27w），binary 名 claude-<shortVer>
+  // shell shortcut default 用 shortVer（如 27w），binary 名 claude-<shortVer>
   const target = formatTokenCount(targetTokens)
   const lines = [
     '',

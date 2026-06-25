@@ -17,7 +17,7 @@ export function getRunBinaryPath(target: string): string {
 }
 
 /**
- * 把 run 参数解析为 binary 命名后缀（shortVer combo，CR#10）。
+ * 把 run 参数解析为 binary 命名后缀（shortVer combo）。
  * 支持三种形态：
  * - 纯 token：27w / 270000 / 270k → formatTokenCount 规范化
  * - 显式 combo：27w-flow → token 段已规范，原样
@@ -57,7 +57,7 @@ export async function runCommand(
   targetInput?: string,
   options?: RunOptions
 ): Promise<CommandResult<RunData> | void> {
-  // ADR 0003 + CR#10：binary 名用 shortVer combo。支持纯 token（27w/270000）与 combo（27w-flow/270k-flow），
+  // binary 名用 shortVer combo。支持纯 token（27w/270000）与 combo（27w-flow/270k-flow），
   // 首段 token 经 parse+format 规范化，plugin 段保留。
   const shortVer = targetInput ? resolveRunShortVer(targetInput) : formatTokenCount(270000)
   // targetTokens 从规范 shortVer 的 token 段反解（parse(format(n))===n 双向对称保证还原）

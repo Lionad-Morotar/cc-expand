@@ -3,7 +3,7 @@
  * 支持：纯数字、千分位逗号、k/K（千）、w/W（万）、m/M（百万）后缀
  *
  * 为什么支持 m：formatTokenCount 用求余链 M→w→k 生成 shortVer（如 1000000→"1m"），
- * parse 必须能反解，否则 parse(format(n))!==n 双向对称破裂（ADR 0003 决策 8）。
+ * parse 必须能反解，否则 parse(format(n))!==n 双向对称破裂。
  */
 import { CcxError, ErrorCode } from './ccx-error.js'
 
@@ -29,7 +29,7 @@ export function parseTokenCount(input: string | undefined): number {
 
   // 2. shortVer 多段：每段「正整数 + 单位(k/w/m)」，如 27w、25w6k、1m23w4k。
   //    为什么支持多段：formatTokenCount 用求余链 M→w→k 生成多段 shortVer，
-  //    parse 必须能反解，否则 parse(format(n))!==n 双向对称破裂（ADR 0003 决策 8）。
+  //    parse 必须能反解，否则 parse(format(n))!==n 双向对称破裂。
   if (/^(?:\d+[kwm])+$/.test(normalized)) {
     let total = 0
     for (const seg of normalized.matchAll(/(\d+)([kwm])/g)) {

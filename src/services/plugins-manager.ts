@@ -1,5 +1,5 @@
 /**
- * PluginsManager —— plugin 注册表与有序列表的 deep module（ADR 0003）。
+ * PluginsManager —— plugin 注册表与有序列表的 deep module。
  *
  * 为什么注入 internalPlugins：避免硬依赖具体 internal plugin 子包（如 token-expansion），
  * 让本模块可独立单测（fake internal）。生产时由 CLI 层 import 子包 definition 注入。
@@ -109,8 +109,8 @@ export class PluginsManager {
   }
 
   /** 安装或更新 installed plugin。
-   *  - upsert：已存在则更新 manifest 字段、保留 enabled/installedAt（flow review 3，作者改 repo 后 add 即同步）
-   *  - 拒绝与 internal plugin 同名：internal 名是保留命名空间（flow review 5）
+   *  - upsert：已存在则更新 manifest 字段、保留 enabled/installedAt（作者改 repo 后 add 即同步）
+   *  - 拒绝与 internal plugin 同名：internal 名是保留命名空间
    *  返回 'added' | 'updated' | 'conflict' 供调用方分类提示。 */
   add(manifest: PluginManifest): 'added' | 'updated' | 'conflict' {
     if (this.internalPlugins.some(p => p.manifest.name === manifest.name)) {
@@ -151,7 +151,7 @@ export class PluginsManager {
   }
 
   /** internal 改 disabledInternal；installed 改记录的 enabled。
-   *  不存在的 plugin 抛错而非静默（flow review CR#6）：避免 CLI 误报生效、disabledInternal 留垃圾条目。 */
+   *  不存在的 plugin 抛错而非静默：避免 CLI 误报生效、disabledInternal 留垃圾条目。 */
   private setEnabled(name: string, enabled: boolean): void {
     const isInternal = this.internalPlugins.some(p => p.manifest.name === name)
     const registry = this.readRegistry()

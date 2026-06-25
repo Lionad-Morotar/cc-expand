@@ -30,7 +30,7 @@ export function encodeTokenLiteral(target: number, slotWidth: number): string {
   ]
   const shortest = candidates.reduce((a, b) => (a.length <= b.length ? a : b))
 
-  // 仍超槽位 → 无法等长编码，必须报错（写出超长串会破坏 Mach-O，见 ADR-0002）
+  // 仍超槽位 → 无法等长编码，必须报错（写出超长串会破坏 Mach-O）
   if (shortest.length > slotWidth) {
     throw new CcxError(
       ErrorCode.INVALID_TARGET,

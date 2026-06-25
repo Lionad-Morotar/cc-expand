@@ -50,7 +50,7 @@ export class Verifier {
     // Check 1: per-patch 替换验证
     // 写入的是等长编码字面量（如 1e6   ）。每个 patch 按各自 sourceValue 槽位宽度编码，
     // 故须逐项校验：(a) 原 search 模式已消失 (b) 该项编码字面量已出现——与 PatchEngine 的
-    // per-patch 编码对称，避免不同槽位宽度时用单一 slotWidth 误判（见 ADR-0002）。
+    // per-patch 编码对称，避免不同槽位宽度时用单一 slotWidth 误判。
     let allPatched = true
     let allTargetsPresent = true
     const failedPatches: string[] = []
@@ -84,7 +84,7 @@ export class Verifier {
         allPatched = false
       }
 
-      // (b) 该 patch 的等长编码字面量应出现。与 PatchEngine 编码逻辑对称（flow review CR#8）：
+      // (b) 该 patch 的等长编码字面量应出现。与 PatchEngine 编码逻辑对称：
       // literal-target 用 value（pad:right-space 凑等长），否则 token-encode。
       // 旧实现统一 token-encode，导致 installed literal patch 误判 → verify 失败 → binary 被误删。
       let expectedLiteral: string

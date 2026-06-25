@@ -1,5 +1,5 @@
 /**
- * ccx plugins —— plugin 管理命令族（ADR 0003）
+ * ccx plugins —— plugin 管理命令族
  *
  * subcommand: list / enable / disable / remove / add。
  * internalPlugins 由调用方（CLI 层）注入，本命令不硬依赖具体 internal 子包，便于单测（fake）。
@@ -14,7 +14,7 @@ import { makeErrorResult, type CommandResult } from '../result.js'
 
 export interface PluginsCommandOptions {
   internalPlugins: InternalPluginDefinition[]
-  /** 测试隔离用（注入临时 home）；CLI 入口不传，用默认 homedir()，与 patch/status 等命令一致（flow review F7/CR#5） */
+  /** 测试隔离用（注入临时 home）；CLI 入口不传，用默认 homedir()，与 patch/status 等命令一致 */
   homeDir?: string
   /** --plugin xxx yyy 过滤（仅 add） */
   plugin?: string[]
@@ -23,7 +23,7 @@ export interface PluginsCommandOptions {
 }
 
 /** 拉 repo 根的 ccx-plugins.json 索引（GitHub raw, main 分支）。
- *  返回 unknown[]：第三方 repo 内容不可信，由调用方经 validateManifest 校验后再用（flow review 4）。 */
+ *  返回 unknown[]：第三方 repo 内容不可信，由调用方经 validateManifest 校验后再用。 */
 async function fetchPluginsIndex(repo: string): Promise<unknown[]> {
   const url = `https://raw.githubusercontent.com/${repo}/main/ccx-plugins.json`
   const res = await fetch(url)
@@ -33,7 +33,7 @@ async function fetchPluginsIndex(repo: string): Promise<unknown[]> {
 }
 
 /** 第三方 plugin manifest 运行时校验：name 非空 kebab-case、shardBaseUrl 合法 http(s) URL、shortVer 结构正确。
- *  在安装入口尽早失败，避免脏数据持久化到 ~/.cc-expand/plugins.json（flow review 4）。 */
+ *  在安装入口尽早失败，避免脏数据持久化到 ~/.cc-expand/plugins.json。 */
 function validateManifest(m: unknown): m is PluginManifest {
   if (!m || typeof m !== 'object') return false
   const o = m as Record<string, unknown>
@@ -129,7 +129,7 @@ export async function pluginsCommand(
     } catch (e) {
       return makeErrorResult('plugins', ErrorCode.NETWORK_ERROR, `Failed to fetch plugins index: ${(e as Error).message}`)
     }
-    // 运行时校验第三方 manifest（flow review 4）：非法 name/url/shortVer 跳过
+    // 运行时校验第三方 manifest：非法 name/url/shortVer 跳过
     const index = rawIndex.filter(validateManifest)
     const skippedInvalid = rawIndex.length - index.length
     const selected = options.plugin?.length
@@ -148,7 +148,7 @@ export async function pluginsCommand(
       const confirmed = await confirm({ message: `安装 ${selected.length} 个 plugin: ${selected.map(p => p.name).join(', ')}?` })
       if (!confirmed) return { success: true, command: 'plugins', summary: 'cancelled' }
     }
-    // upsert + 同名保护（flow review 3/5）：分类统计 added/updated/conflict
+    // upsert + 同名保护：分类统计 added/updated/conflict
     const added: string[] = []
     const updated: string[] = []
     const conflicted: string[] = []
