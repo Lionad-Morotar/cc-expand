@@ -18,6 +18,7 @@ export interface VersionLineItem {
   installed?: boolean
   patched?: boolean
   targets?: number[] | string[]
+  combos?: string[]
   current?: boolean
 }
 
@@ -36,6 +37,10 @@ export function formatVersionLine(item: VersionLineItem): string {
     : ''
   const installed = item.installed === true ? ' [installed]' : ''
   const patched = item.patched === true ? ' [patched]' : ''
-  const targets = Array.isArray(item.targets) ? ` → ${item.targets.join(', ')}` : ''
+  // plugin 体系：combo 是 binary 命名的权威标识，优先展示；老数据 fallback 到 targets
+  const display = Array.isArray(item.combos) && item.combos.length > 0
+    ? item.combos
+    : (Array.isArray(item.targets) ? item.targets : [])
+  const targets = display.length > 0 ? ` → ${display.join(', ')}` : ''
   return `  ${version}${platforms}${installed}${patched}${targets}${current}`
 }

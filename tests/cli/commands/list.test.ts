@@ -92,7 +92,10 @@ describe('list command', () => {
 
     const result = await listCommand([], { latestResolver: async () => '2.1.178' })
 
-    expect(result.next).toEqual(['ccx migration latest'])
+    expect(result.next).toEqual([
+      'ccx migration latest',
+      'ccx patch remove 2.1.177 1m'
+    ])
   })
 
   it('does not suggest migration when no patched versions exist', async () => {
@@ -101,5 +104,33 @@ describe('list command', () => {
     const result = await listCommand([], { latestResolver: async () => '2.1.178' })
 
     expect(result.next).toBeUndefined()
+  })
+
+  it('shows remove hint even when no migration is suggested', async () => {
+    createPatchedVersions({
+      '2.1.177': { targets: [270000], patchedAt: '2026-06-15T00:00:00.000Z' },
+    })
+
+    const result = await listCommand([], { latestResolver: async () => '2.1.177' })
+
+    expect(result.next).toEqual(['ccx patch remove 2.1.177 27w'])
+  })
+
+  it('prefers combos over legacy targets in display data', async () => {
+    const configPath = join(tempDir, '.cc-expand', 'versions.json')
+    mkdirSync(join(tempDir, '.cc-expand'), { recursive: true })
+    writeFileSync(
+      configPath,
+      JSON.stringify({
+        patchedVersions: {
+          '2.1.186': { targets: [270000], combos: ['27w-flow'], patchedAt: 'x' }
+        }
+      }, null, 2)
+    )
+
+    const result = await listCommand([], { latestResolver: async () => '2.1.160' })
+
+    const v186 = result.data?.versions.find(v => v.version === '2.1.186')
+    expect(v186?.combos).toEqual(['27w-flow'])
   })
 })

@@ -230,13 +230,12 @@ async function main(): Promise<void> {
     })
 
   cli
-    .command('patch [version]', 'Patch local Claude Code binary')
+    .command('patch [action] [version] [combo]', 'Patch or unpatch local Claude Code binary')
     .option('-t, --target <count>', 'Target context window size')
     .option('-y, --yes', 'Skip confirmation')
-    .action(async (positionalVersion: string | undefined, options: Record<string, unknown>) => {
+    .action(async (action: string | undefined, version: string | undefined, combo: string | undefined, options: Record<string, unknown>) => {
       const renderer = getRenderer(options)
-      const args: string[] = []
-      if (positionalVersion) args.push(positionalVersion)
+      const args: string[] = [action, version, combo].filter(Boolean) as string[]
       if (options.target) args.push('--target', String(options.target))
       if (options.yes) args.push('--yes')
       const result = await patchCommand(args)
