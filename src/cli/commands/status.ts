@@ -28,7 +28,7 @@ export interface StatusOptions {
 export interface StatusData {
   version?: string
   binaryPath?: string
-  /** version 来源：channel（channel.json 激活版本）或 system（PATH 原生 claude）。见 ADR 0001 */
+  /** version 来源：channel（channel.json 激活版本）或 system（PATH 原生 claude） */
   activeSource?: 'channel' | 'system'
   patched: boolean
   targets?: number[]
@@ -77,7 +77,7 @@ export async function statusCommand(options?: StatusOptions): Promise<CommandRes
 
   let binaryPath: string | undefined
   let version: string | undefined
-  // Active Version（channel.json）优先于 System Version（PATH 探测），与 patch/setup 的版本源对齐。见 ADR 0001
+  // Active Version（channel.json）优先于 System Version（PATH 探测），与 patch/setup 的版本源对齐
   let activeSource: 'channel' | 'system'
 
   // channel.json 损坏（手编/写入被中断）时 getChannel 内的 JSON.parse 会抛 SyntaxError——

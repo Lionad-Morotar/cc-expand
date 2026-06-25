@@ -36,7 +36,7 @@ export async function supportsCommand(
   // 解析当前激活版本：channel.json（migration/setup 选定）优先于 PATH 探测。
   // Why 不能只用 discovery.findClaudeBinary：PATH 上的 claude 可能是旧的系统安装
   // （如 homebrew），与用户通过 ccx channel 实际激活的版本脱节，曾导致 current 标记
-  // 指向 homebrew 的 2.1.161 而非激活的 2.1.186。与 status/patch/setup 的版本源对齐，见 ADR 0001。
+  // 指向 homebrew 的 2.1.161 而非激活的 2.1.186。与 status/patch/setup 的版本源对齐。
   let currentVersion: string | undefined
   let channel: ChannelConfigData | undefined
   try {
