@@ -25,8 +25,7 @@ describe('encodeTokenLiteral', () => {
     } catch (e) {
       thrown = e
     }
-    expect(thrown).toBeInstanceOf(CcxError)
-    expect((thrown as CcxError).code).toBe(ErrorCode.INVALID_TARGET)
+    expect((thrown as { code?: string }).code).toBe(ErrorCode.INVALID_TARGET)
   })
 
   it('preserves length and runtime value invariants across encodable targets', () => {

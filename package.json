@@ -1,7 +1,7 @@
 {
   "name": "cc-expand",
   "version": "0.3.9",
-  "description": "Expand Claude Code's context window beyond 200k tokens",
+  "description": "Expand Claude Code capabilities via plugin-based binary patching",
   "bin": {
     "cc-expand": "dist/cli.js",
     "ccx": "dist/cli.js"
@@ -57,6 +57,7 @@
     "vitest": "^2.0.0"
   },
   "dependencies": {
+    "@cc-expand/plugin-context-expand": "workspace:*",
     "@inquirer/core": "^10.0.0",
     "@inquirer/prompts": "^7.0.0",
     "cac": "^7.0.0",
