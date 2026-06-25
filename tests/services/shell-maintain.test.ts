@@ -26,7 +26,7 @@ describe('shell-maintain', () => {
     const zshrc = join(tempDir, '.zshrc')
     const content = readFileSync(zshrc, 'utf-8')
     expect(content).toContain('# --- cc-expand generated start ---')
-    expect(content).toContain("alias c='cc 270000'")
+    expect(content).toContain("alias c='cc 27w'")
     expect(summary).toContain('已安装')
   })
 
@@ -50,7 +50,7 @@ describe('shell-maintain', () => {
       'cc() {',
       '  :',
       '}',
-      "alias c='cc 256000'",
+      "alias c='cc 25w6k'",
       '# --- cc-expand generated end ---',
     ].join('\n')
     writeFileSync(zshrc, block)
@@ -62,8 +62,8 @@ describe('shell-maintain', () => {
     })
 
     const content = readFileSync(zshrc, 'utf-8')
-    expect(content).toContain("alias c='cc 270000'")
-    expect(content).not.toContain("alias c='cc 256000'")
+    expect(content).toContain("alias c='cc 27w'")
+    expect(content).not.toContain("alias c='cc 25w6k'")
     expect(summary).toContain('已更新')
   })
 
@@ -74,7 +74,7 @@ describe('shell-maintain', () => {
       'cc() {',
       '  :',
       '}',
-      "alias c='cc 256000'",
+      "alias c='cc 25w6k'",
       '# --- cc-expand generated end ---',
     ].join('\n')
     writeFileSync(zshrc, block)
@@ -86,7 +86,7 @@ describe('shell-maintain', () => {
     })
 
     const content = readFileSync(zshrc, 'utf-8')
-    expect(content).toContain("alias c='cc 256000'")
+    expect(content).toContain("alias c='cc 25w6k'")
     expect(summary).toContain('未更新')
   })
 
@@ -107,7 +107,7 @@ describe('shell-maintain', () => {
       const psProfile = join(psDir, 'Microsoft.PowerShell_profile.ps1')
       const content = readFileSync(psProfile, 'utf-8')
       expect(content).toContain('function cc')
-      expect(content).toContain('cc 270000 @args')
+      expect(content).toContain('cc 27w @args')
       expect(summary).toContain('已安装')
     } finally {
       if (originalPlatform) Object.defineProperty(process, 'platform', originalPlatform)
@@ -125,7 +125,7 @@ describe('shell-maintain', () => {
 
     const content = readFileSync(zshrc, 'utf-8')
     expect(content).toContain('claude --dangerously-skip-permissions')
-    expect(content).not.toContain('.cc-expand/bin/claude-270000')
+    expect(content).not.toContain('.cc-expand/bin/claude-27w')
     expect(summary).toContain('原版')
   })
 
@@ -152,7 +152,7 @@ describe('shell-maintain', () => {
 
     const content = readFileSync(zshrc, 'utf-8')
     // 用户拒绝后仍保留 patched 块
-    expect(content).toContain('.cc-expand/bin/claude-270000')
+    expect(content).toContain('.cc-expand/bin/claude-27w')
     expect(summary).toContain('未更新')
   })
 

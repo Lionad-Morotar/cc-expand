@@ -18,18 +18,18 @@ describe('getRunBinaryPath', () => {
     })
   }
 
-  it('should include .exe extension on Windows', () => {
+  it('should include .exe extension on Windows (shortVer input)', () => {
     setPlatform('win32')
-    expect(getRunBinaryPath('270000')).toMatch(/claude-270000\.exe$/)
+    expect(getRunBinaryPath('27w')).toMatch(/claude-27w\.exe$/)
   })
 
-  it('should have no extension on macOS', () => {
+  it('should have no extension on macOS (shortVer input)', () => {
     setPlatform('darwin')
-    expect(getRunBinaryPath('270000')).toMatch(/claude-270000$/)
+    expect(getRunBinaryPath('27w')).toMatch(/claude-27w$/)
   })
 
-  it('should have no extension on Linux', () => {
+  it('should compose multi-plugin shortVer with - (Linux)', () => {
     setPlatform('linux')
-    expect(getRunBinaryPath('270000')).toMatch(/claude-270000$/)
+    expect(getRunBinaryPath('27w-flow')).toMatch(/claude-27w-flow$/)
   })
 })

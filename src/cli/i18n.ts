@@ -4,50 +4,50 @@
  */
 export type Locale = 'en' | 'zh'
 
-export type I18nKey =
-  | 'command.config.get'
-  | 'command.config.set'
-  | 'command.config.lang'
-  | 'command.status.noBinary'
-  | 'command.status.patched'
-  | 'command.status.unpatched'
-  | 'command.supports.summary'
-  | 'command.supports.unsupportedCurrent'
-  | 'command.install.success'
-  | 'command.install.alreadyInstalled'
-  | 'command.setup.success'
-  | 'command.restore.success'
-  | 'command.restore.shortcutsStillPoint'
-  | 'command.verify.patched'
-  | 'command.verify.unpatched'
-  | 'command.patch.success'
-  | 'command.migration.success'
-  | 'command.migration.dryRun'
-  | 'command.migration.alreadyAtVersion'
-  | 'command.list.summary'
-  | 'command.selfUpdate.npxHint'
-  | 'command.selfUpdate.success'
-  | 'command.selfUpdate.alreadyLatest'
-  | 'command.selfUpdate.updated'
-  | 'command.selfUpdate.stalledSummary'
-  | 'error.invalidTarget'
-  | 'error.unknownKey'
-  | 'error.missingValue'
-  | 'error.missingArgument'
-  | 'error.selfUpdate.unknownMethod'
-  | 'error.selfUpdate.exitCode'
-  | 'error.selfUpdate.eacces'
-  | 'error.selfUpdate.enoent'
-  | 'error.selfUpdate.generic'
-  | 'suggestion.selfUpdate.unknownMethod'
-  | 'suggestion.selfUpdate.eacces'
-  | 'suggestion.selfUpdate.enoent'
-  | 'warning.selfUpdate.stalled'
-  | 'warning.selfUpdate.registryHint'
-  | 'ui.warnings'
-  | 'ui.nextSteps'
-  | 'ui.pagerFooter'
-  | 'update.hint.available'
+export type I18nKey
+  = | 'command.config.get'
+    | 'command.config.set'
+    | 'command.config.lang'
+    | 'command.status.noBinary'
+    | 'command.status.patched'
+    | 'command.status.unpatched'
+    | 'command.supports.summary'
+    | 'command.supports.unsupportedCurrent'
+    | 'command.install.success'
+    | 'command.install.alreadyInstalled'
+    | 'command.setup.success'
+    | 'command.restore.success'
+    | 'command.restore.shortcutsStillPoint'
+    | 'command.verify.patched'
+    | 'command.verify.unpatched'
+    | 'command.patch.success'
+    | 'command.migration.success'
+    | 'command.migration.dryRun'
+    | 'command.migration.alreadyAtVersion'
+    | 'command.list.summary'
+    | 'command.selfUpdate.npxHint'
+    | 'command.selfUpdate.success'
+    | 'command.selfUpdate.alreadyLatest'
+    | 'command.selfUpdate.updated'
+    | 'command.selfUpdate.stalledSummary'
+    | 'error.invalidTarget'
+    | 'error.unknownKey'
+    | 'error.missingValue'
+    | 'error.missingArgument'
+    | 'error.selfUpdate.unknownMethod'
+    | 'error.selfUpdate.exitCode'
+    | 'error.selfUpdate.eacces'
+    | 'error.selfUpdate.enoent'
+    | 'error.selfUpdate.generic'
+    | 'suggestion.selfUpdate.unknownMethod'
+    | 'suggestion.selfUpdate.eacces'
+    | 'suggestion.selfUpdate.enoent'
+    | 'warning.selfUpdate.stalled'
+    | 'warning.selfUpdate.registryHint'
+    | 'ui.warnings'
+    | 'ui.nextSteps'
+    | 'ui.pagerFooter'
+    | 'update.hint.available'
 
 type Translations = Record<Locale, Record<I18nKey, string>>
 
@@ -95,7 +95,7 @@ const translations: Translations = {
     'ui.warnings': '⚠ Warnings:',
     'ui.nextSteps': 'Next steps:',
     'ui.pagerFooter': 'line {line}/{total}  ↑↓/jk move  Space/b page  g/G top/bottom  Ctrl-E bottom  q quit',
-    'update.hint.available': 'Update available: {current} → {latest}. Run `ccx self-update` to update.',
+    'update.hint.available': 'Update available: {current} → {latest}. Run `ccx self-update` to update.'
   },
   zh: {
     'command.config.get': '{key} 的当前值为 {value}',
@@ -140,8 +140,8 @@ const translations: Translations = {
     'ui.warnings': '⚠ 注意：',
     'ui.nextSteps': '建议操作：',
     'ui.pagerFooter': 'line {line}/{total}  ↑↓/jk 移动  Space/b 翻页  g/G 首尾  Ctrl-E 末行  q 退出',
-    'update.hint.available': '发现新版本：{current} → {latest}。运行 `ccx self-update` 更新。',
-  },
+    'update.hint.available': '发现新版本：{current} → {latest}。运行 `ccx self-update` 更新。'
+  }
 }
 
 const SUPPORTED_LOCALES: readonly Locale[] = ['en', 'zh']
@@ -159,7 +159,7 @@ export function isLocale(value: string): value is Locale {
  */
 export function normalizeLocale(
   value: string | undefined | null,
-  fallback: Locale = 'en',
+  fallback: Locale = 'en'
 ): Locale {
   return value != null && isLocale(value) ? value : fallback
 }
@@ -175,7 +175,7 @@ export function getLocale(): Locale {
 export function t(key: I18nKey, params?: Record<string, string | number | boolean>): string {
   // 防御：currentLocale 若被设为非法值，回退到 en 表，避免 translations[bad][key] 崩溃
   const localeMap = translations[currentLocale] ?? translations.en
-  let template = localeMap[key] ?? translations.en[key] ?? key
+  const template = localeMap[key] ?? translations.en[key] ?? key
 
   if (!params) {
     return template

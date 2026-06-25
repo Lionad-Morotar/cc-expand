@@ -24,7 +24,7 @@ export interface MaintainOptions {
 /**
  * 从 profile 内容中提取 cc-expand generated block（含标记行）
  */
-function extractBlock(content: string): { before: string; block: string; after: string } | null {
+function extractBlock(content: string): { before: string, block: string, after: string } | null {
   const startIndex = content.indexOf(START_MARKER)
   const endIndex = content.indexOf(END_MARKER)
 
@@ -36,7 +36,7 @@ function extractBlock(content: string): { before: string; block: string; after: 
   return {
     before: content.slice(0, startIndex),
     block: content.slice(startIndex, blockEnd),
-    after: content.slice(blockEnd),
+    after: content.slice(blockEnd)
   }
 }
 
@@ -71,14 +71,14 @@ export async function maintainShellShortcuts(options: MaintainOptions): Promise<
 
   // 旧块存在但不同：确认或直接覆盖
   if (!options.skipConfirm) {
-    const doConfirm =
-      options.confirm ??
-      (async (msg: string) => {
-        const { confirm } = await import('@inquirer/prompts')
-        return confirm({ message: msg })
-      })
+    const doConfirm
+      = options.confirm
+        ?? (async (msg: string) => {
+          const { confirm } = await import('@inquirer/prompts')
+          return confirm({ message: msg })
+        })
     const ok = await doConfirm(
-      `Update shell shortcuts default target to ${options.targetTokens} tokens?`,
+      `Update shell shortcuts default target to ${options.targetTokens} tokens?`
     )
     if (!ok) {
       return `Shell 快捷方式未更新（当前默认目标与本次 patch 不一致）`
@@ -108,7 +108,7 @@ export interface MaintainToOriginalOptions {
  * 与 maintainShellShortcuts（指向 patched）形成对称操作
  */
 export async function maintainShellShortcutsToOriginal(
-  options: MaintainToOriginalOptions,
+  options: MaintainToOriginalOptions
 ): Promise<string> {
   const homeDir = options.homeDir ?? homedir()
   const configFile = detectConfigFile(homeDir)
@@ -133,14 +133,14 @@ export async function maintainShellShortcutsToOriginal(
 
   // 旧块指向 patched：确认或直接覆盖
   if (!options.skipConfirm) {
-    const doConfirm =
-      options.confirm ??
-      (async (msg: string) => {
-        const { confirm } = await import('@inquirer/prompts')
-        return confirm({ message: msg })
-      })
+    const doConfirm
+      = options.confirm
+        ?? (async (msg: string) => {
+          const { confirm } = await import('@inquirer/prompts')
+          return confirm({ message: msg })
+        })
     const ok = await doConfirm(
-      `Update cc/c shortcuts to launch the original Claude Code?`,
+      `Update cc/c shortcuts to launch the original Claude Code?`
     )
     if (!ok) {
       return `Shell 快捷方式未更新（仍指向 patched binary）`

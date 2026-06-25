@@ -12,6 +12,7 @@ import { ChannelConfig, type ChannelConfigData } from '../../services/channel-co
 import { queryLatestVersion } from '../../services/latest-checker.js'
 import { readShortcutState } from '../../services/shell-profile.js'
 import { isVersionGreater } from '../../utils/version.js'
+import { formatTokenCount } from '@cc-expand/plugin-context-expand'
 import { t } from '../i18n.js'
 import { makeErrorResult, type CommandResult } from '../result.js'
 import { CcxError, ErrorCode } from '../../types/index.js'
@@ -31,6 +32,7 @@ export interface StatusData {
   activeSource?: 'channel' | 'system'
   patched: boolean
   targets?: number[]
+  combos?: string[]
   patchedAt?: string
   shortcuts?: {
     ccTarget?: string
@@ -39,7 +41,7 @@ export interface StatusData {
   }
   installedVersions: Array<{
     version: string
-    targets: number[]
+    targets?: number[]
     patchedAt: string
     current: boolean
   }>
@@ -48,9 +50,9 @@ export interface StatusData {
 /** 当前版本已 patch、npm latest 更新、且 latest 尚未 patch 时，建议 migration；否则无 next */
 async function buildMigrationHint(
   options: StatusOptions | undefined,
-  patchedInfo: { targets: number[]; patchedAt: string } | undefined,
+  patchedInfo: { targets?: number[], patchedAt: string } | undefined,
   currentVersion: string,
-  patchedVersions: Record<string, { targets: number[]; patchedAt: string }>,
+  patchedVersions: Record<string, { targets?: number[], patchedAt: string }>
 ): Promise<string[] | undefined> {
   if (!patchedInfo) return undefined
   const resolver = options?.latestResolver ?? (() => queryLatestVersion())
@@ -102,9 +104,9 @@ export async function statusCommand(options?: StatusOptions): Promise<CommandRes
         const userConfig = configService.getUserConfig()
         const installedVersions = Object.entries(userConfig.patchedVersions).map(([v, info]) => ({
           version: v,
-          targets: info.targets,
+          targets: info.targets ?? [],
           patchedAt: info.patchedAt,
-          current: false,
+          current: false
         }))
 
         return {
@@ -113,8 +115,8 @@ export async function statusCommand(options?: StatusOptions): Promise<CommandRes
           summary: t('command.status.noBinary'),
           data: {
             patched: false,
-            installedVersions,
-          },
+            installedVersions
+          }
         }
       }
 
@@ -130,15 +132,18 @@ export async function statusCommand(options?: StatusOptions): Promise<CommandRes
 
   const shortcutState = readShortcutState(options?.homeDir)
 
+  // plugin 体系：展示优先 combos（shortVer），fallback targets（兼容老 schema）
+  // combos 优先；fallback 把旧 targets 数字经 formatTokenCount 转为 shortVer（与 getUserConfig 迁移逻辑一致，C6）
+  const combos = patchedInfo?.combos ?? patchedInfo?.targets?.map(formatTokenCount) ?? []
   const summary = patchedInfo
-    ? t('command.status.patched', { version, targets: patchedInfo.targets.join(', ') })
+    ? t('command.status.patched', { version, targets: combos.join(', ') })
     : t('command.status.unpatched', { version })
 
   const installedVersions = Object.entries(userConfig.patchedVersions).map(([v, info]) => ({
     version: v,
-    targets: info.targets,
+    targets: info.targets ?? [],
     patchedAt: info.patchedAt,
-    current: v === version,
+    current: v === version
   }))
 
   const next = await buildMigrationHint(options, patchedInfo, version, userConfig.patchedVersions)
@@ -153,14 +158,15 @@ export async function statusCommand(options?: StatusOptions): Promise<CommandRes
       activeSource,
       patched: !!patchedInfo,
       targets: patchedInfo?.targets,
+      combos: patchedInfo?.combos,
       patchedAt: patchedInfo?.patchedAt,
       shortcuts: {
         ccTarget: shortcutState.ccTarget,
         cTarget: shortcutState.cTarget,
-        pointsToPatched: shortcutState.pointsToPatched,
+        pointsToPatched: shortcutState.pointsToPatched
       },
-      installedVersions,
+      installedVersions
     },
-    next,
+    next
   }
 }

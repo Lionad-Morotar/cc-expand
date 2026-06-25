@@ -8,6 +8,8 @@
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { PatchApplier } from '../../services/patch-applier.js'
+import { collectPluginContext } from '../../services/plugin-patches.js'
+import { INTERNAL_PLUGINS } from '../../internal-plugins.js'
 import { ChannelConfig } from '../../services/channel-config.js'
 import { ConfigService } from '../../services/config.js'
 import { UserConfigService } from '../../services/user-config.js'
@@ -28,7 +30,7 @@ export interface PatchData {
   sourceValue: string
   replaceCount: number
   binaryPath: string
-  details: Array<{ desc: string; offset: number }>
+  details: Array<{ desc?: string, offset: number }>
   shortcutsUpdated: boolean
   /** shell 快捷方式维护结果摘要（autoMaintain 关闭时为 undefined） */
   maintainSummary?: string
@@ -43,7 +45,7 @@ export interface PatchOptions {
 
 export async function patchCommand(
   args: string[] = [],
-  options?: PatchOptions,
+  options?: PatchOptions
 ): Promise<CommandResult<PatchData>> {
   const configService = options?.configService ?? new ConfigService()
   const userConfigService = options?.userConfigService ?? new UserConfigService()
@@ -61,18 +63,18 @@ export async function patchCommand(
           'patch',
           ErrorCode.INVALID_TARGET,
           `--target requires a value`,
-          `Usage: ccx patch --target 256000`,
+          `Usage: ccx patch --target 256000`
         )
       }
       try {
         targetTokens = parseTokenCount(next)
       } catch (error) {
-        const message = error instanceof CcxError ? error.message : String(error)
+        const message = (error as Error).message
         return makeErrorResult(
           'patch',
           ErrorCode.INVALID_TARGET,
           message,
-          `Usage: ccx patch --target 256000`,
+          `Usage: ccx patch --target 256000`
         )
       }
       i++
@@ -91,7 +93,7 @@ export async function patchCommand(
       'patch',
       ErrorCode.INVALID_TARGET,
       '--yes requires --target',
-      'Usage: ccx patch --target 256000 --yes',
+      'Usage: ccx patch --target 256000 --yes'
     )
   }
 
@@ -101,7 +103,7 @@ export async function patchCommand(
       'patch',
       ErrorCode.INVALID_TARGET,
       `Invalid target tokens: ${targetTokens}`,
-      `Target must be a positive integer (e.g. 256000)`,
+      `Target must be a positive integer (e.g. 256000)`
     )
   }
 
@@ -119,13 +121,19 @@ export async function patchCommand(
       'patch',
       ErrorCode.BINARY_NOT_FOUND,
       'No version specified',
-      'Provide a version (e.g. ccx patch 2.1.170) or run setup first to select a version',
+      'Provide a version (e.g. ccx patch 2.1.170) or run setup first to select a version'
     )
   }
 
   const homeDir = options?.homeDir ?? homedir()
   const packagesDir = options?.packagesDir ?? join(homeDir, '.cc-expand', 'packages')
-  const applierOptions = { configService, homeDir, packagesDir }
+  // 收集 plugin 上下文（PluginsManager + enabled installed shards），patch 与 migration 共用此 helper（C9 一致性）
+  const { pluginsManager, installedPatches } = await collectPluginContext({
+    internalPlugins: INTERNAL_PLUGINS,
+    homeDir,
+    version
+  })
+  const applierOptions = { configService, homeDir, packagesDir, pluginsManager, installedPatches }
   const applier = new PatchApplier()
 
   // 阶段一：install 包 + 获取 pattern（拿到 sourceValue 供交互提示）
@@ -140,7 +148,7 @@ export async function patchCommand(
     const { input } = await import('@inquirer/prompts')
     const targetInput = await input({
       message: `Current context window: ${sourceValue}\nEnter target tokens (e.g. 256000 or 270k):`,
-      validate: (value: string) => validateTargetInput(value, sourceValue),
+      validate: (value: string) => validateTargetInput(value, sourceValue)
     })
     targetTokens = parseTokenCount(targetInput)
   }
@@ -149,7 +157,7 @@ export async function patchCommand(
   if (!skipConfirm) {
     const { confirm } = await import('@inquirer/prompts')
     const confirmed = await confirm({
-      message: `Replace ${patches.length} constant(s) from ${sourceValue} to ${targetTokens}?`,
+      message: `Replace ${patches.length} constant(s) from ${sourceValue} to ${targetTokens}?`
     })
 
     if (!confirmed) {
@@ -164,8 +172,8 @@ export async function patchCommand(
           replaceCount: 0,
           binaryPath: '',
           details: [],
-          shortcutsUpdated: false,
-        },
+          shortcutsUpdated: false
+        }
       }
     }
   }
@@ -184,7 +192,7 @@ export async function patchCommand(
     maintainSummary = await maintainShellShortcuts({
       targetTokens: applied.targetTokens,
       skipConfirm,
-      homeDir,
+      homeDir
     })
   }
 
@@ -200,12 +208,12 @@ export async function patchCommand(
       binaryPath: applied.binaryPath,
       details: applied.details,
       shortcutsUpdated: !!autoMaintain,
-      maintainSummary: maintainSummary || undefined,
+      maintainSummary: maintainSummary || undefined
     },
     next: [
       `ccx run ${applied.targetTokens}`,
-      `cc ${applied.targetTokens}`,
+      `cc ${applied.targetTokens}`
     ],
-    warnings: applied.codesignWarning ? [applied.codesignWarning] : undefined,
+    warnings: applied.codesignWarning ? [applied.codesignWarning] : undefined
   }
 }

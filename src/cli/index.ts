@@ -17,7 +17,7 @@ import { UserConfigService } from '../services/user-config.js'
 import {
   shouldRunUpdateCheck,
   startUpdateCheck,
-  awaitUpdateCheckHint,
+  awaitUpdateCheckHint
 } from './update-check-runner.js'
 import type { UpdateInfo } from '../services/update-check.js'
 import { configCommand } from './commands/config.js'
@@ -32,6 +32,8 @@ import { patchCommand } from './commands/patch.js'
 import { migrationCommand } from './commands/migration.js'
 import { listCommand } from './commands/list.js'
 import { selfUpdateCommand } from './commands/self-update.js'
+import { pluginsCommand } from './commands/plugins.js'
+import { INTERNAL_PLUGINS } from '../internal-plugins.js'
 
 function getVersion(): string {
   try {
@@ -75,7 +77,7 @@ async function main(): Promise<void> {
       color: options.color as boolean | undefined,
       quiet: options.quiet as boolean | undefined,
       json: options.json as boolean | undefined,
-      locale,
+      locale
     })
   }
 
@@ -84,7 +86,7 @@ async function main(): Promise<void> {
     renderer: ReturnType<typeof createRenderer>,
     result: CommandResult,
     commandName: string,
-    cliOptions: Record<string, unknown> = {},
+    cliOptions: Record<string, unknown> = {}
   ): Promise<void> {
     // pager 分支：仅在 TTY 且非 JSON/quiet/--all、且版本数超过单页时启用；
     // 满足时先打 [OK] summary 行，再让 pager 接管，退出后补一行 hint。
@@ -95,7 +97,7 @@ async function main(): Promise<void> {
       // 复用 renderer 的 [OK] header，保证 pager 路径与 --all 静态路径前缀逐字符一致
       process.stdout.write(`${renderer.formatOkHeader(result)}\n`)
       try {
-        await runPager(versions.map((v) => formatVersionLine(v)))
+        await runPager(versions.map(v => formatVersionLine(v)))
       } catch {
         // pager 不可用（如 @inquirer/core 动态加载失败）：擦除已写的 header 行，
         // 降级为与 --all 一致的静态全量输出，不让命令静默失败或被 CI 误判为成功。
@@ -105,14 +107,14 @@ async function main(): Promise<void> {
         const fallback = renderer.render(result, commandName)
         if (fallback !== undefined) console.log(fallback)
         if (commandName !== 'run' && updateCheckPromise) {
-          await awaitUpdateCheckHint(updateCheckPromise, (line) => console.error(line))
+          await awaitUpdateCheckHint(updateCheckPromise, line => console.error(line))
         }
         return
       }
       process.stdout.write('\nRun with --all to see full list\n')
       // 隐式更新检查照常进行
       if (commandName !== 'run' && updateCheckPromise) {
-        await awaitUpdateCheckHint(updateCheckPromise, (line) => console.error(line))
+        await awaitUpdateCheckHint(updateCheckPromise, line => console.error(line))
       }
       return
     }
@@ -128,7 +130,7 @@ async function main(): Promise<void> {
     }
     // 隐式更新检查：run 命令 exec 接管进程不检查；失败已 exit 不会执行到这
     if (commandName !== 'run' && updateCheckPromise) {
-      await awaitUpdateCheckHint(updateCheckPromise, (line) => console.error(line))
+      await awaitUpdateCheckHint(updateCheckPromise, line => console.error(line))
     }
   }
 
@@ -138,7 +140,7 @@ async function main(): Promise<void> {
    */
   function shouldUsePager(
     result: CommandResult,
-    cliOptions: Record<string, unknown>,
+    cliOptions: Record<string, unknown>
   ): boolean {
     if (!result.success) return false
     if (cliOptions.json === true) return false
@@ -277,6 +279,15 @@ async function main(): Promise<void> {
       await renderResult(renderer, result, 'self-update')
     })
 
+  cli
+    .command('plugins <subcommand> [name]', 'Manage plugins (list/enable/disable/remove/add)')
+    .action(async (subcommand: string, name: string | undefined, options: Record<string, unknown>) => {
+      const renderer = getRenderer(options)
+      const args = [subcommand, name].filter(Boolean) as string[]
+      const result = await pluginsCommand(args, { internalPlugins: INTERNAL_PLUGINS })
+      await renderResult(renderer, result, 'plugins')
+    })
+
   cli.help()
   cli.version(getVersion())
 
@@ -294,7 +305,7 @@ async function main(): Promise<void> {
         color: parsed.options.color as boolean | undefined,
         quiet: parsed.options.quiet as boolean | undefined,
         json: parsed.options.json as boolean | undefined,
-        locale: resolveLocale(parsed.options.locale as string | undefined),
+        locale: resolveLocale(parsed.options.locale as string | undefined)
       })
       const rendered = renderer.render(
         {
@@ -304,10 +315,10 @@ async function main(): Promise<void> {
           error: {
             code: ErrorCode.INVALID_TARGET,
             message: commandName ? `Unknown command: ${commandName}` : 'No command specified',
-            suggestion: 'Run `ccx --help` to see available commands.',
-          },
+            suggestion: 'Run `ccx --help` to see available commands.'
+          }
         },
-        commandName ?? '',
+        commandName ?? ''
       )
       if (rendered !== undefined) {
         console.error(rendered)

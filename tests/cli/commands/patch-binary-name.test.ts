@@ -18,18 +18,18 @@ describe('getPatchedBinaryName', () => {
     })
   }
 
-  it('should include .exe extension on Windows', () => {
+  it('should include .exe extension on Windows (shortVer input)', () => {
     setPlatform('win32')
-    expect(getPatchedBinaryName(270000)).toBe('claude-270000.exe')
+    expect(getPatchedBinaryName('27w')).toBe('claude-27w.exe')
   })
 
-  it('should have no extension on macOS', () => {
+  it('should have no extension on macOS (shortVer input)', () => {
     setPlatform('darwin')
-    expect(getPatchedBinaryName(270000)).toBe('claude-270000')
+    expect(getPatchedBinaryName('27w')).toBe('claude-27w')
   })
 
-  it('should have no extension on Linux', () => {
+  it('should compose multi-plugin shortVer with - (Linux)', () => {
     setPlatform('linux')
-    expect(getPatchedBinaryName(270000)).toBe('claude-270000')
+    expect(getPatchedBinaryName('27w-flow')).toBe('claude-27w-flow')
   })
 })

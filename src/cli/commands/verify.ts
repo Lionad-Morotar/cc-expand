@@ -45,7 +45,7 @@ export async function verifyCommand(options?: VerifyOptions): Promise<CommandRes
       'verify',
       ErrorCode.PATTERN_NOT_FOUND,
       `No pattern data for ${version}`,
-      'Run `ccx supports` to see supported versions',
+      'Run `ccx supports` to see supported versions'
     )
   }
 
@@ -55,7 +55,7 @@ export async function verifyCommand(options?: VerifyOptions): Promise<CommandRes
   const foundOriginals: string[] = []
   for (const patch of patches) {
     if (content.indexOf(Buffer.from(patch.search)) !== -1) {
-      foundOriginals.push(patch.desc)
+      foundOriginals.push(patch.desc ?? '')
     }
   }
 
@@ -78,8 +78,8 @@ export async function verifyCommand(options?: VerifyOptions): Promise<CommandRes
       binaryPath,
       sourceValue,
       patched,
-      foundOriginals,
+      foundOriginals
     },
-    next,
+    next
   }
 }

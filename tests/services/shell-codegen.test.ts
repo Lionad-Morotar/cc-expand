@@ -35,8 +35,8 @@ describe('shell-codegen', () => {
   it('generates bash function with given target', () => {
     const code = generateBashFunction(256000)
     expect(code).toContain('cc() {')
-    expect(code).toContain("alias c='cc 256000'")
-    expect(code).toContain('binary="$HOME/.cc-expand/bin/claude-256000"')
+    expect(code).toContain("alias c='cc 25w6k'")
+    expect(code).toContain('binary="$HOME/.cc-expand/bin/claude-25w6k"')
   })
 
   it('version-guards against stale patched binaries (no silent outdated runs)', () => {
@@ -50,9 +50,9 @@ describe('shell-codegen', () => {
   it('generates powershell function with given target', () => {
     const code = generatePowerShellFunction(256000)
     expect(code).toContain('function cc {')
-    expect(code).toContain('param([string]$ctx = "256000")')
+    expect(code).toContain('param([string]$ctx = "25w6k")')
     expect(code).toContain('function c {')
-    expect(code).toContain('cc 256000 @args')
+    expect(code).toContain('cc 25w6k @args')
   })
 
   it('generateShellFunction uses platform-specific backend', () => {

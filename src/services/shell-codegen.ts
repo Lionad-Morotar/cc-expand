@@ -5,6 +5,7 @@
 
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
+import { formatTokenCount } from '@cc-expand/plugin-context-expand'
 
 /**
  * 检测当前 shell 的配置文件路径
@@ -17,7 +18,7 @@ export function detectConfigFile(homeDir: string): string {
       homeDir,
       'Documents',
       'PowerShell',
-      'Microsoft.PowerShell_profile.ps1',
+      'Microsoft.PowerShell_profile.ps1'
     )
   }
 
@@ -33,7 +34,8 @@ export function detectConfigFile(homeDir: string): string {
  * 生成 bash/zsh cc 函数和 c alias
  */
 export function generateBashFunction(targetTokens: number): string {
-  const target = String(targetTokens)
+  // ADR 0003：shell shortcut default 用 shortVer（如 27w），binary 名 claude-<shortVer>
+  const target = formatTokenCount(targetTokens)
   const lines = [
     '',
     '# --- cc-expand generated start ---',
@@ -41,8 +43,8 @@ export function generateBashFunction(targetTokens: number): string {
     '  local default_flags="--dangerously-skip-permissions"',
     '  local binary',
     '',
-    '  # 数字参数：指定 context window 大小',
-    '  if [[ "$1" =~ ^[0-9]+$ ]]; then',
+    '  # 参数：shortVer（如 27w、1m、27w-flow）',
+    '  if [[ -n "$1" ]]; then',
     '    local ctx="$1"',
     '    shift',
     `    binary="$HOME/.cc-expand/bin/claude-\${ctx}"`,
@@ -78,7 +80,7 @@ export function generateBashFunction(targetTokens: number): string {
     '}',
     `alias c='cc ${target}'`,
     '# --- cc-expand generated end ---',
-    '',
+    ''
   ]
   return lines.join('\n')
 }
@@ -87,7 +89,7 @@ export function generateBashFunction(targetTokens: number): string {
  * 生成 PowerShell 函数（Windows 专用）
  */
 export function generatePowerShellFunction(targetTokens: number): string {
-  const target = String(targetTokens)
+  const target = formatTokenCount(targetTokens)
   const lines = [
     '',
     '# --- cc-expand generated start ---',
@@ -115,7 +117,7 @@ export function generatePowerShellFunction(targetTokens: number): string {
     '',
     'Set-Alias -Name cc-expand-cc -Value cc',
     '# --- cc-expand generated end ---',
-    '',
+    ''
   ]
   return lines.join('\n')
 }
@@ -142,9 +144,9 @@ export function generateRestoredBashFunction(): string {
     '  # restore 后：cc/c 直接调用原版 Claude Code',
     '  claude --dangerously-skip-permissions "$@"',
     '}',
-    "alias c='cc'",
+    'alias c=\'cc\'',
     '# --- cc-expand generated end ---',
-    '',
+    ''
   ]
   return lines.join('\n')
 }
@@ -167,7 +169,7 @@ export function generateRestoredPowerShellFunction(): string {
     '',
     'Set-Alias -Name cc-expand-cc -Value cc',
     '# --- cc-expand generated end ---',
-    '',
+    ''
   ]
   return lines.join('\n')
 }

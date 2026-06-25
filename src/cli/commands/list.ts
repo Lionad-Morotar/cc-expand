@@ -10,7 +10,7 @@ import { ConfigService } from '../../services/config.js'
 import { queryLatestVersion } from '../../services/latest-checker.js'
 import { isVersionGreater } from '../../utils/version.js'
 import { t } from '../i18n.js'
-import { type CommandResult } from '../result.js'
+import type { CommandResult } from '../result.js'
 
 export interface ListData {
   versions: Array<{
@@ -18,6 +18,7 @@ export interface ListData {
     installed: boolean
     patched: boolean
     targets?: number[]
+    combos?: string[]
     binaryPath?: string
     patchedAt?: string
   }>
@@ -33,7 +34,7 @@ export interface ListOptions {
 }
 
 function compareSemverDesc(a: string, b: string): number {
-  const parse = (v: string) => v.split('.').map((n) => parseInt(n, 10))
+  const parse = (v: string) => v.split('.').map(n => parseInt(n, 10))
   const aa = parse(a)
   const bb = parse(b)
   for (let i = 0; i < Math.max(aa.length, bb.length); i++) {
@@ -46,7 +47,7 @@ function compareSemverDesc(a: string, b: string): number {
 
 export async function listCommand(
   args: string[] = [],
-  options?: ListOptions,
+  options?: ListOptions
 ): Promise<CommandResult<ListData>> {
   const patchedOnly = options?.patchedOnly ?? args.includes('--patched')
   const homeDir = options?.homeDir ?? homedir()
@@ -79,17 +80,18 @@ export async function listCommand(
         installed,
         patched: !!patchedInfo,
         targets: patchedInfo?.targets,
+        combos: patchedInfo?.combos,
         binaryPath,
-        patchedAt: patchedInfo?.patchedAt,
+        patchedAt: patchedInfo?.patchedAt
       }
     })
-    .filter((v) => !patchedOnly || v.patched)
+    .filter(v => !patchedOnly || v.patched)
     .sort((a, b) => compareSemverDesc(a.version, b.version))
 
   // 有已 patch 版本且 npm latest 比本地最高版本更新 → 建议 migration
   let next: string[] | undefined
   const topVersion = versions[0]?.version
-  const hasPatched = versions.some((v) => v.patched)
+  const hasPatched = versions.some(v => v.patched)
   if (hasPatched && topVersion) {
     const resolver = options?.latestResolver ?? (() => queryLatestVersion())
     let latest: string | undefined
@@ -109,6 +111,6 @@ export async function listCommand(
     command: 'list',
     summary: t('command.list.summary', { count: versions.length }),
     data: { versions },
-    next,
+    next
   }
 }

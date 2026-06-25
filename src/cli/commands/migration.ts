@@ -8,6 +8,8 @@
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { PatchApplier } from '../../services/patch-applier.js'
+import { collectPluginContext } from '../../services/plugin-patches.js'
+import { INTERNAL_PLUGINS } from '../../internal-plugins.js'
 import { ChannelConfig } from '../../services/channel-config.js'
 import { ConfigService } from '../../services/config.js'
 import { DiscoveryService } from '../../services/discovery.js'
@@ -32,7 +34,7 @@ export interface MigrationData {
   fromVersion: string
   toVersion: string
   migratedTargets: number[]
-  failedTargets: Array<{ target: number; message: string }>
+  failedTargets: Array<{ target: number, message: string }>
   results: MigrationTargetResult[]
   channelUpdated: boolean
   dryRun: boolean
@@ -99,14 +101,14 @@ interface ResolvedSource {
 async function resolveSource(
   configService: ConfigService,
   discoveryService: DiscoveryService,
-  fromVersion: string | undefined,
-): Promise<ResolvedSource | { missing: true; fromVersion?: string }> {
+  fromVersion: string | undefined
+): Promise<ResolvedSource | { missing: true, fromVersion?: string }> {
   const patchedVersions = configService.getUserConfig().patchedVersions ?? {}
 
   // 1. --from 显式指定：必须存在记录，否则按"显式但无效"报错
   if (fromVersion) {
     const info = patchedVersions[fromVersion]
-    if (info && info.targets.length > 0) {
+    if (info && info.targets && info.targets.length > 0) {
       return { version: fromVersion, targets: info.targets }
     }
     return { missing: true, fromVersion }
@@ -118,7 +120,7 @@ async function resolveSource(
     const v = await discoveryService.getBinaryVersion(binaryPath)
     if (v && v !== 'unknown') {
       const info = patchedVersions[v]
-      if (info && info.targets.length > 0) {
+      if (info && info.targets && info.targets.length > 0) {
         return { version: v, targets: info.targets }
       }
     }
@@ -128,10 +130,10 @@ async function resolveSource(
 
   // 3. patchedAt 最新（有非空 targets 的版本）
   const sorted = Object.entries(patchedVersions)
-    .filter(([, info]) => info && info.targets.length > 0)
+    .filter(([, info]) => info && info.targets && info.targets.length > 0)
     .sort((a, b) => (b[1].patchedAt ?? '').localeCompare(a[1].patchedAt ?? ''))
   if (sorted[0]) {
-    return { version: sorted[0][0], targets: sorted[0][1].targets }
+    return { version: sorted[0][0], targets: sorted[0][1].targets ?? [] }
   }
 
   return { missing: true }
@@ -139,7 +141,7 @@ async function resolveSource(
 
 export async function migrationCommand(
   args: string[] = [],
-  options?: MigrationOptions,
+  options?: MigrationOptions
 ): Promise<CommandResult<MigrationData>> {
   const parsed = parseArgs(args)
 
@@ -149,7 +151,7 @@ export async function migrationCommand(
       'migration',
       ErrorCode.INVALID_TARGET,
       `--from requires a value`,
-      `Usage: ccx migration latest --from 2.1.170`,
+      `Usage: ccx migration latest --from 2.1.170`
     )
   }
 
@@ -176,7 +178,7 @@ export async function migrationCommand(
         'migration',
         ErrorCode.BINARY_NOT_FOUND,
         `Failed to resolve latest version`,
-        `Check your network connection, or specify a version: ccx migration 2.1.178`,
+        `Check your network connection, or specify a version: ccx migration 2.1.178`
       )
     }
     toVersion = resolved
@@ -194,7 +196,7 @@ export async function migrationCommand(
       msg,
       source.fromVersion
         ? `Run 'ccx patch ${source.fromVersion}' first, or pick a version that has been patched`
-        : `Run 'ccx patch' first to define your token configuration`,
+        : `Run 'ccx patch' first to define your token configuration`
     )
   }
   const { version: fromVersion, targets: sourceTargets } = source
@@ -212,8 +214,8 @@ export async function migrationCommand(
         failedTargets: [],
         results: [],
         channelUpdated: false,
-        dryRun: parsed.dryRun,
-      },
+        dryRun: parsed.dryRun
+      }
     }
   }
 
@@ -230,13 +232,19 @@ export async function migrationCommand(
         failedTargets: [],
         results: [],
         channelUpdated: false,
-        dryRun: true,
-      },
+        dryRun: true
+      }
     }
   }
 
+  // 收集 plugin 上下文（与 patch 同路径），确保迁移产物 binary 命名（shortVer）与能力集（installed）一致（C9）
+  const { pluginsManager, installedPatches } = await collectPluginContext({
+    internalPlugins: INTERNAL_PLUGINS,
+    homeDir,
+    version: toVersion
+  })
   // 执行迁移：prepare 一次，循环 execute 每个 target
-  const applierOptions = { configService, homeDir, packagesDir, packageService }
+  const applierOptions = { configService, homeDir, packagesDir, packageService, pluginsManager, installedPatches }
   const prepared = await applier.prepare(toVersion, applierOptions)
   if (!prepared.ok) {
     return makeErrorResult('migration', prepared.error.code, prepared.error.message, prepared.error.suggestion)
@@ -244,7 +252,7 @@ export async function migrationCommand(
 
   const results: MigrationTargetResult[] = []
   const migratedTargets: number[] = []
-  const failedTargets: Array<{ target: number; message: string }> = []
+  const failedTargets: Array<{ target: number, message: string }> = []
   for (const target of sourceTargets) {
     const outcome = await applier.execute(toVersion, target, prepared.data, applierOptions)
     if (outcome.ok) {
@@ -253,7 +261,7 @@ export async function migrationCommand(
         target,
         success: true,
         binaryPath: outcome.data.binaryPath,
-        replaceCount: outcome.data.replaceCount,
+        replaceCount: outcome.data.replaceCount
       })
     } else {
       failedTargets.push({ target, message: outcome.error.message })
@@ -267,7 +275,7 @@ export async function migrationCommand(
       'migration',
       ErrorCode.PATCH_FAILED,
       `Failed to migrate any target to ${toVersion}`,
-      failedTargets.map((f) => `target ${f.target}: ${f.message}`).join('; '),
+      failedTargets.map(f => `target ${f.target}: ${f.message}`).join('; ')
     )
   }
 
@@ -278,7 +286,7 @@ export async function migrationCommand(
     const summary = await maintainShellShortcuts({
       targetTokens: migratedTargets[0],
       skipConfirm: parsed.skipConfirm,
-      homeDir,
+      homeDir
     })
     if (summary) warnings.push(summary)
   }
@@ -287,11 +295,11 @@ export async function migrationCommand(
   new ChannelConfig(join(homeDir, '.cc-expand')).saveChannel({
     channel: 'local',
     path: join(packagesDir, toVersion),
-    version: toVersion,
+    version: toVersion
   })
 
   if (failedTargets.length > 0) {
-    warnings.push(`${failedTargets.length} target(s) failed: ${failedTargets.map((f) => f.target).join(', ')}`)
+    warnings.push(`${failedTargets.length} target(s) failed: ${failedTargets.map(f => f.target).join(', ')}`)
   }
 
   return {
@@ -305,10 +313,10 @@ export async function migrationCommand(
       failedTargets,
       results,
       channelUpdated: true,
-      dryRun: false,
+      dryRun: false
     },
     // 列出全部成功 target 的 run 提示（多 target 场景每个都可启动）
-    next: migratedTargets.map((tg) => `ccx run ${tg}`),
-    warnings: warnings.length > 0 ? warnings : undefined,
+    next: migratedTargets.map(tg => `ccx run ${tg}`),
+    warnings: warnings.length > 0 ? warnings : undefined
   }
 }
