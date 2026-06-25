@@ -280,10 +280,12 @@ async function main(): Promise<void> {
     })
 
   cli
-    .command('plugins <subcommand> [name]', 'Manage plugins (list/enable/disable/remove/add)')
-    .action(async (subcommand: string, name: string | undefined, options: Record<string, unknown>) => {
+    .command('plugins [list|enable|disable|remove|add] [name]', 'Manage plugins')
+    .action(async (subcommand: string | undefined, name: string | undefined, options: Record<string, unknown>) => {
       const renderer = getRenderer(options)
-      const args = [subcommand, name].filter(Boolean) as string[]
+      // 无子命令默认 list（直接展示 plugin 状态，优于报错）；subcommand 枚举写在 command name，
+      // 使 -h 的 Usage 行直接显示可选项
+      const args = [subcommand ?? 'list', name].filter(Boolean) as string[]
       const result = await pluginsCommand(args, { internalPlugins: INTERNAL_PLUGINS })
       await renderResult(renderer, result, 'plugins')
     })

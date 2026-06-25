@@ -76,10 +76,13 @@ export async function pluginsCommand(
 
   if (sub === 'list') {
     const plugins = pm.list().map(p => ({ name: p.name, source: p.source, enabled: p.enabled }))
+    // summary 展示每 plugin 的 source + enabled 状态（internal / disabled 直观可见）
+    const fmt = (p: { name: string, source: string, enabled: boolean }) =>
+      `${p.name}(${p.source},${p.enabled ? 'enabled' : 'disabled'})`
     return {
       success: true,
       command: 'plugins',
-      summary: `${plugins.length} plugin(s): ${plugins.map(p => p.name).join(', ') || '(none)'}`,
+      summary: `${plugins.length} plugin(s): ${plugins.map(fmt).join(', ') || '(none)'}`,
       data: { plugins }
     }
   }
