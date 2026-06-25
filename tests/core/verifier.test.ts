@@ -4,6 +4,10 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Verifier } from '../../src/core/verifier.js'
 import { CcxError, ErrorCode } from '../../src/types/index.js'
+import { encodeTokenLiteral } from '../../src/utils/encode-token-literal.js'
+
+/** 构造 token-encode generator（与生产 patch-applier 等价） */
+const tokenGen = (tokens: number) => (slot: number) => encodeTokenLiteral(tokens, slot)
 
 describe('Verifier', () => {
   let tempDir: string
@@ -28,7 +32,7 @@ describe('Verifier', () => {
       // Act
       const result = await verifier.verify({
         binaryPath,
-        targetTokens: 256000,
+        targetGenerator: tokenGen(256000),
         sourceValue: '200000',
         patches: [
           { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
@@ -52,7 +56,7 @@ describe('Verifier', () => {
 
       const result = await verifier.verify({
         binaryPath,
-        targetTokens: 256000,
+        targetGenerator: tokenGen(256000),
         sourceValue: '200000',
         patches: [
           { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
@@ -76,7 +80,7 @@ describe('Verifier', () => {
 
       const result = await verifier.verify({
         binaryPath,
-        targetTokens: 256000,
+        targetGenerator: tokenGen(256000),
         sourceValue: '200000',
         patches: [
           { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
@@ -99,7 +103,7 @@ describe('Verifier', () => {
 
       const result = await verifier.verify({
         binaryPath,
-        targetTokens: 256000,
+        targetGenerator: tokenGen(256000),
         sourceValue: '200000',
         patches: [
           { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
@@ -121,7 +125,7 @@ describe('Verifier', () => {
       const verifier = new Verifier()
       const result = await verifier.verify({
         binaryPath,
-        targetTokens: 1000000,
+        targetGenerator: tokenGen(1000000),
         sourceValue: '200000',
         patches: [
           { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
@@ -145,7 +149,7 @@ describe('Verifier', () => {
       const verifier = new Verifier()
       const result = await verifier.verify({
         binaryPath,
-        targetTokens: 1000000,
+        targetGenerator: tokenGen(1000000),
         sourceValue: '200000',
         patches: [
           { search: 'A=200000,', desc: 'six-byte-slot', sourceValue: '200000' },
@@ -170,7 +174,7 @@ describe('Verifier', () => {
       const verifier = new Verifier()
       const result = await verifier.verify({
         binaryPath,
-        targetTokens: 256000,
+        targetGenerator: tokenGen(256000),
         sourceValue: '200000',
         patches: [
           { search: 'Aj8=200000,Ij_=20000', desc: 'token', sourceValue: '200000' },

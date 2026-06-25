@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import { PatchEngine } from '../../src/core/patch-engine.js'
 import { CcxError, ErrorCode } from '../../src/types/index.js'
+import { encodeTokenLiteral } from '../../src/utils/encode-token-literal.js'
+
+/** 构造 token-encode generator（与生产 patch-applier 等价）：slot → 等长字面量 */
+const tokenGen = (tokens: number) => (slot: number) => encodeTokenLiteral(tokens, slot)
 
 describe('PatchEngine', () => {
   describe('patch()', () => {
@@ -14,7 +18,7 @@ describe('PatchEngine', () => {
       ]
 
       // Act
-      const result = engine.patch(buffer, patches, 256000)
+      const result = engine.patch(buffer, patches, tokenGen(256000))
 
       // Assert: result indicates success
       expect(result.success).toBe(true)
@@ -37,7 +41,7 @@ describe('PatchEngine', () => {
       ]
 
       // Act
-      const result = engine.patch(buffer, patches, 256000)
+      const result = engine.patch(buffer, patches, tokenGen(256000))
 
       // Assert
       expect(result.success).toBe(false)
@@ -57,7 +61,7 @@ describe('PatchEngine', () => {
       ]
 
       // Act
-      const result = engine.patch(buffer, patches, 300000)
+      const result = engine.patch(buffer, patches, tokenGen(300000))
 
       // Assert
       expect(result.success).toBe(true)
@@ -82,7 +86,7 @@ describe('PatchEngine', () => {
       ]
 
       // Act
-      const result = engine.patch(buffer, patches, 256000)
+      const result = engine.patch(buffer, patches, tokenGen(256000))
 
       // Assert
       expect(result.success).toBe(true)
@@ -105,7 +109,7 @@ describe('PatchEngine', () => {
         { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
       ]
 
-      const result = engine.patch(buffer, patches, 1000000)
+      const result = engine.patch(buffer, patches, tokenGen(1000000))
 
       expect(result.success).toBe(true)
       expect(result.replaceCount).toBe(1)
@@ -123,7 +127,7 @@ describe('PatchEngine', () => {
         { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
       ]
       // 1234567: 十进制7位 / 1.234567e6=10位 / 0x12d687=8位，均超 6 字节槽位
-      const result = engine.patch(buffer, patches, 1234567)
+      const result = engine.patch(buffer, patches, tokenGen(1234567))
 
       expect(result.success).toBe(false)
       expect(result.error).toBeInstanceOf(CcxError)
@@ -140,7 +144,7 @@ describe('PatchEngine', () => {
       const patches = [
         { search: 'PLACEHOLDER', sourceValue: 'PLACEHOLDER', target: { value: 'PATCHED!!!!' } },
       ]
-      const result = engine.patch(buffer, patches, 0)
+      const result = engine.patch(buffer, patches, tokenGen(0))
       expect(result.success).toBe(true)
       expect(result.replaceCount).toBe(1)
       const mutated = buffer.toString('utf-8')
@@ -159,7 +163,7 @@ describe('PatchEngine', () => {
         sourceValue: slot,
         target: { value: 'env?x:y', pad: 'right-space' as const },
       }]
-      const result = engine.patch(buffer, patches, 0)
+      const result = engine.patch(buffer, patches, tokenGen(0))
       expect(result.success).toBe(true)
       const mutated = buffer.toString('utf-8')
       expect(mutated).toContain('env?x:y')
@@ -177,7 +181,7 @@ describe('PatchEngine', () => {
         sourceValue: 'SHORT',
         target: { value: 'TOO_LONG_VALUE' },
       }]
-      const result = engine.patch(buffer, patches, 0)
+      const result = engine.patch(buffer, patches, tokenGen(0))
       expect(result.success).toBe(false)
       expect(result.error?.code).toBe(ErrorCode.INVALID_TARGET)
       // 原子性：buffer 不变
@@ -191,7 +195,7 @@ describe('PatchEngine', () => {
       const engine = new PatchEngine()
       const patches = [{ search: 'Aj8=200000,Ij_=20000', sourceValue: '200000', desc: 'token' }]
       // 注入 generator：返回等长自定义值（验证注入，不调 encodeTokenLiteral）
-      const result = engine.patch(buffer, patches, 0, (sv) => 'XX'.padEnd(sv.length, ' '))
+      const result = engine.patch(buffer, patches, (slot) => 'XX'.padEnd(slot, ' '))
       expect(result.success).toBe(true)
       const mutated = buffer.toString('utf-8')
       expect(mutated).toContain('XX')

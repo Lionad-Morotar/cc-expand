@@ -3,7 +3,6 @@
  * 负责在二进制文件中搜索并替换常量字符串
  */
 import { type PatchItem, type PatchResult, CcxError, ErrorCode } from '../types/index.js'
-import { encodeTokenLiteral } from '../utils/encode-token-literal.js'
 import { isCcxError } from '@cc-expand/plugin-context-expand'
 
 export interface PatchDetail {
@@ -27,13 +26,12 @@ export class PatchEngine {
   patch(
     buffer: Buffer,
     patches: PatchItem[],
-    targetTokens: number,
-    targetGenerator?: (sourceValue: string) => string
+    targetGenerator: (slot: number) => string
   ): PatchResult & { details: PatchDetail[] } {
     let totalPatches = 0
     const details: PatchDetail[] = []
-    // targetGenerator 可选：注入则用（内核零 token 知识），否则默认 encodeTokenLiteral（向后兼容）
-    const gen = targetGenerator ?? ((sv: string) => encodeTokenLiteral(targetTokens, sv.length))
+    // token-encode 策略由调用方注入（内核零 token 知识：本引擎不认识 token/encode，只按 slot 长度生成等长字面量）
+    const gen = targetGenerator
 
     // 预编码所有 item：literal target 用 value（+pad），否则 token-encode。
     // 任一无法等长编码则整体失败，buffer 不被修改（原子性）
@@ -54,7 +52,7 @@ export class PatchEngine {
           }
           return v
         }
-        return gen(item.sourceValue)
+        return gen(item.sourceValue.length)
       })
     } catch (e) {
       // 跨包 CcxError 识别用 isCcxError 守卫（instanceof 跨包失效，见子包 ccx-error.ts）

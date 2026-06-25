@@ -5,13 +5,12 @@
 import { accessSync, constants, readFileSync } from 'node:fs'
 import type { PatchItem } from '../types/index.js'
 import { CcxError, ErrorCode } from '../types/index.js'
-import { encodeTokenLiteral } from '../utils/encode-token-literal.js'
 
 export interface VerifyConfig {
   /** 二进制文件路径 */
   binaryPath: string
-  /** 目标 tokens 值 */
-  targetTokens: number
+  /** token-encode 策略：对无 literal target 的 patch，按 slot 生成期望字面量（与 PatchEngine 对称） */
+  targetGenerator: (slot: number) => string
   /** 源 tokens 值 */
   sourceValue: string
   /** patch 项列表 */
@@ -93,7 +92,7 @@ export class Verifier {
           ? patch.target.value.padEnd(patch.sourceValue.length, ' ')
           : patch.target.value
       } else {
-        expectedLiteral = encodeTokenLiteral(config.targetTokens, patch.sourceValue.length)
+        expectedLiteral = config.targetGenerator(patch.sourceValue.length)
       }
       if (content.indexOf(Buffer.from(expectedLiteral, 'utf8')) === -1) {
         allTargetsPresent = false

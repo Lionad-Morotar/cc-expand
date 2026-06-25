@@ -196,8 +196,9 @@ export class PatchApplier {
 
     const buffer = readFileSync(patchedBinaryPath)
     const engine = new PatchEngine()
-    // 传 generator 激活注入路径（patch-engine 不默认知 encodeTokenLiteral）
-    const patchResult = engine.patch(buffer, patches, targetTokens, sv => encodeTokenLiteral(targetTokens, sv.length))
+    // token-encode 策略：按 slot 生成等长字面量，注入 patch-engine 与 verifier（内核零 token 知识）
+    const tokenGen = (slot: number) => encodeTokenLiteral(targetTokens, slot)
+    const patchResult = engine.patch(buffer, patches, tokenGen)
 
     if (!patchResult.success) {
       rmSync(patchedBinaryPath, { force: true })
@@ -224,7 +225,7 @@ export class PatchApplier {
     const verifier = new Verifier()
     const verifyResult = await verifier.verify({
       binaryPath: patchedBinaryPath,
-      targetTokens,
+      targetGenerator: tokenGen,
       sourceValue,
       patches
     })
