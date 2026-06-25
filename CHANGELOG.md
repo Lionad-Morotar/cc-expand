@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0-alpha.1] - 2026-06-25
+
+### Fixed
+- `npm install -g cc-expand@0.4.0-alpha.0` 报 `EUNSUPPORTEDPROTOCOL: workspace:*`：`@cc-expand/plugin-context-expand` 误列在 dependencies（子包已 tsup inline bundle 进 dist，runtime 不需），npm publish 把 pnpm 的 `workspace:*` 协议原样发布导致 npm 无法解析。改移到 devDependencies（`npm install -g` 不装 devDeps，绕开）
+
 ## [0.4.0-alpha.0] - 2026-06-25
 
 ### Added

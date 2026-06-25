@@ -1,6 +1,6 @@
 {
   "name": "cc-expand",
-  "version": "0.4.0-alpha.0",
+  "version": "0.4.0-alpha.1",
   "description": "Expand Claude Code capabilities via plugin-based binary patching",
   "bin": {
     "cc-expand": "dist/cli.js",
@@ -39,6 +39,7 @@
   "author": "Lionad Morotar",
   "license": "MIT",
   "devDependencies": {
+    "@cc-expand/plugin-context-expand": "workspace:*",
     "@napi-rs/canvas": "^1.0.0",
     "@types/ali-oss": "^6.23.3",
     "@types/node": "^22.0.0",
@@ -57,7 +58,6 @@
     "vitest": "^2.0.0"
   },
   "dependencies": {
-    "@cc-expand/plugin-context-expand": "workspace:*",
     "@inquirer/core": "^10.0.0",
     "@inquirer/prompts": "^7.0.0",
     "cac": "^7.0.0",
