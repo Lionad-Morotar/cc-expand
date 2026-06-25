@@ -11,9 +11,9 @@ import { PluginsManager } from '../../services/plugins-manager.js'
 import type { InternalPluginDefinition, PluginManifest } from '../../types/plugins.js'
 
 /** ccx plugins 无子命令时的 help（子命令清单 + 用法），等同 ccx plugins -h */
-export const PLUGINS_HELP = `ccx plugins —— 管理 plugin（list / enable / disable / remove / add）
+export const PLUGINS_HELP_ZH = `ccx plugins —— 管理 plugin（list / enable / disable / remove / add）
 
-Usage:
+用法:
   ccx plugins <subcommand> [name]
 
 子命令:
@@ -23,8 +23,28 @@ Usage:
   remove <name>                           卸载 installed plugin（internal 不可移除）
   add <owner/repo> [--plugin x] [--yes]   从 GitHub repo 安装（读取 ccx-plugins.json 索引）
 
+选项:
+  --no-color, --quiet/-q, --json, --locale/-l <en|zh>, -h/--help`
+
+export const PLUGINS_HELP_EN = `ccx plugins —— manage plugins (list / enable / disable / remove / add)
+
+Usage:
+  ccx plugins <subcommand> [name]
+
+Subcommands:
+  list                                    List all plugins (internal + installed + enabled status)
+  enable <name>                           Enable a plugin
+  disable <name>                          Disable a plugin (keep installed, do not uninstall)
+  remove <name>                           Remove an installed plugin (internal plugins cannot be removed)
+  add <owner/repo> [--plugin x] [--yes]   Install from a GitHub repo (reads ccx-plugins.json index)
+
 Options:
   --no-color, --quiet/-q, --json, --locale/-l <en|zh>, -h/--help`
+
+export function getPluginsHelp(locale: 'en' | 'zh'): string {
+  return locale === 'zh' ? PLUGINS_HELP_ZH : PLUGINS_HELP_EN
+}
+
 import { ErrorCode } from '../../types/index.js'
 import { makeErrorResult, type CommandResult } from '../result.js'
 

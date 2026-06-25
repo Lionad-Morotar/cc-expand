@@ -77,7 +77,7 @@ describe('CLI Integration', () => {
   })
 
   it('patch help explains the remove action and shows examples', () => {
-    const output = execFileSync('node', [CLI_PATH, 'patch', '--help'], {
+    const output = execFileSync('node', [CLI_PATH, '--locale', 'en', 'patch', '--help'], {
       encoding: 'utf-8',
     })
 
@@ -88,7 +88,7 @@ describe('CLI Integration', () => {
   })
 
   it('config help lists subcommands and shows examples', () => {
-    const output = execFileSync('node', [CLI_PATH, 'config', '--help'], {
+    const output = execFileSync('node', [CLI_PATH, '--locale', 'en', 'config', '--help'], {
       encoding: 'utf-8',
     })
 
@@ -99,7 +99,7 @@ describe('CLI Integration', () => {
   })
 
   it('run help uses combo terminology and shows examples', () => {
-    const output = execFileSync('node', [CLI_PATH, 'run', '--help'], {
+    const output = execFileSync('node', [CLI_PATH, '--locale', 'en', 'run', '--help'], {
       encoding: 'utf-8',
     })
 
@@ -110,13 +110,74 @@ describe('CLI Integration', () => {
   })
 
   it('migration help mentions latest and shows examples', () => {
-    const output = execFileSync('node', [CLI_PATH, 'migration', '--help'], {
+    const output = execFileSync('node', [CLI_PATH, '--locale', 'en', 'migration', '--help'], {
       encoding: 'utf-8',
     })
 
     expect(output).toContain('ccx migration [version|latest]')
     expect(output).toContain('Examples:')
     expect(output).toContain('$ ccx migration latest')
+  })
+
+  it('shows English help by default when no locale preference exists', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'cc-expand-locale-help-'))
+    const env = { ...process.env, HOME: tempDir, XDG_CONFIG_HOME: join(tempDir, '.config') }
+
+    const output = execFileSync('node', [CLI_PATH, '--help'], {
+      encoding: 'utf-8',
+      env,
+    })
+
+    expect(output).toContain('Usage:')
+    expect(output).toContain('Commands:')
+    expect(output).toContain('Options:')
+    expect(output).toContain('Manage user preferences')
+
+    rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  it('shows Chinese help with --locale zh flag', () => {
+    const output = execFileSync('node', [CLI_PATH, '--locale', 'zh', 'config', '--help'], {
+      encoding: 'utf-8',
+    })
+
+    expect(output).toContain('用法:')
+    expect(output).toContain('选项:')
+    expect(output).toContain('示例:')
+
+    const globalOutput = execFileSync('node', [CLI_PATH, '--locale', 'zh', '--help'], {
+      encoding: 'utf-8',
+    })
+    expect(globalOutput).toContain('管理用户偏好设置')
+    expect(globalOutput).toContain('命令:')
+  })
+
+  it('shows Chinese help after persisting locale=zh', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'cc-expand-locale-help-'))
+    const env = { ...process.env, HOME: tempDir, XDG_CONFIG_HOME: join(tempDir, '.config') }
+
+    execFileSync('node', [CLI_PATH, 'config', 'set', 'locale', 'zh'], {
+      encoding: 'utf-8',
+      env,
+    })
+
+    const output = execFileSync('node', [CLI_PATH, 'config', '--help'], {
+      encoding: 'utf-8',
+      env,
+    })
+
+    expect(output).toContain('用法:')
+    expect(output).toContain('选项:')
+    expect(output).toContain('示例:')
+
+    const globalOutput = execFileSync('node', [CLI_PATH, '--help'], {
+      encoding: 'utf-8',
+      env,
+    })
+    expect(globalOutput).toContain('管理用户偏好设置')
+    expect(globalOutput).toContain('命令:')
+
+    rmSync(tempDir, { recursive: true, force: true })
   })
 
   it('should show install command in help', () => {

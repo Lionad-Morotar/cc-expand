@@ -8,7 +8,7 @@ import { join } from 'node:path'
 import { isatty } from 'node:tty'
 import cac from 'cac'
 import { CcxError, ErrorCode } from '../types/index.js'
-import { setLocale, normalizeLocale, type Locale } from './i18n.js'
+import { setLocale, normalizeLocale, t, type Locale } from './i18n.js'
 import { getExitCode, type CommandResult } from './result.js'
 import { createRenderer } from './renderer.js'
 import { formatVersionLine } from './version-line.js'
@@ -32,7 +32,7 @@ import { patchCommand } from './commands/patch.js'
 import { migrationCommand } from './commands/migration.js'
 import { listCommand } from './commands/list.js'
 import { selfUpdateCommand } from './commands/self-update.js'
-import { pluginsCommand, PLUGINS_HELP } from './commands/plugins.js'
+import { pluginsCommand, getPluginsHelp } from './commands/plugins.js'
 import { INTERNAL_PLUGINS } from '../internal-plugins.js'
 
 function getVersion(): string {
@@ -48,17 +48,24 @@ function getVersion(): string {
 async function main(): Promise<void> {
   const cli = cac('ccx')
 
-  // 隐式更新检查 promise（与命令 action 并行启动，命令后 await）
-  let updateCheckPromise: Promise<UpdateInfo | null> | null = null
+  // help 在 cac parse 阶段即输出，早于 action callback；
+  // 必须在注册命令前确定本次 locale，才能让 help 文案走 i18n。
+  function parseLocaleFlag(argv: string[]): string | undefined {
+    for (let i = 0; i < argv.length; i++) {
+      const arg = argv[i]
+      if (arg === '-l' || arg === '--locale') {
+        return argv[i + 1]
+      }
+      if (arg.startsWith('--locale=')) {
+        return arg.slice('--locale='.length)
+      }
+      if (arg.startsWith('-l=')) {
+        return arg.slice('-l='.length)
+      }
+    }
+    return undefined
+  }
 
-  cli
-    .option('--no-color', 'Disable ANSI colors')
-    .option('--quiet, -q', 'Suppress non-error output')
-    .option('--json', 'Output structured JSON')
-    .option('--locale, -l <locale>', 'Set locale for this command (en or zh)')
-
-  // 解析本次命令的 locale：优先级为 --locale/-l flag > 持久化用户偏好 > 'en'
-  // 持久化偏好由 UserConfigService 管理（ccx config set locale <value>）
   function resolveLocale(flagValue: string | undefined): Locale {
     if (flagValue !== undefined) {
       return normalizeLocale(flagValue)
@@ -69,6 +76,18 @@ async function main(): Promise<void> {
       return 'en'
     }
   }
+
+  const currentLocale = resolveLocale(parseLocaleFlag(process.argv))
+  setLocale(currentLocale)
+
+  // 隐式更新检查 promise（与命令 action 并行启动，命令后 await）
+  let updateCheckPromise: Promise<UpdateInfo | null> | null = null
+
+  cli
+    .option('--no-color', t('help.global.option.noColor'))
+    .option('--quiet, -q', t('help.global.option.quiet'))
+    .option('--json', t('help.global.option.json'))
+    .option('--locale, -l <locale>', t('help.global.option.locale'))
 
   function getRenderer(options: Record<string, unknown>) {
     const locale = resolveLocale(options.locale as string | undefined)
@@ -153,8 +172,28 @@ async function main(): Promise<void> {
     return data.versions.length > DEFAULT_PAGE_SIZE
   }
 
+  /**
+   * 翻译 cac help 输出的章节标题。
+   * cac 的标题是框架写死的英文，通过 cli.help() 回调在输出前替换为当前 locale。
+   */
+  function localizeHelpSections(sections: Array<{ title?: string, body: string }>): Array<{ title?: string, body: string }> {
+    const titleMap: Record<string, string> = {
+      Usage: t('help.section.usage'),
+      Options: t('help.section.options'),
+      Commands: t('help.section.commands'),
+      Examples: t('help.section.examples'),
+      'For more info, run any command with the `--help` flag': t('help.section.moreInfo')
+    }
+    return sections.map((section) => {
+      if (!section.title) return section
+      const translated = titleMap[section.title]
+      if (!translated) return section
+      return { ...section, title: translated }
+    })
+  }
+
   cli
-    .command('config <subcommand> [key] [value]', 'Manage user preferences')
+    .command('config <subcommand> [key] [value]', t('help.command.config.description'))
     .usage('config <get|set|lang> [key] [value]')
     .example('  $ ccx config get locale')
     .example('  $ ccx config set locale zh')
@@ -167,7 +206,7 @@ async function main(): Promise<void> {
     })
 
   cli
-    .command('status', 'Show current patch status')
+    .command('status', t('help.command.status.description'))
     .action(async (options: Record<string, unknown>) => {
       const renderer = getRenderer(options)
       const result = await statusCommand()
@@ -175,8 +214,8 @@ async function main(): Promise<void> {
     })
 
   cli
-    .command('supports', 'List supported Claude Code versions')
-    .option('--all', 'Show full list without pager')
+    .command('supports', t('help.command.supports.description'))
+    .option('--all', t('help.command.supports.option.all'))
     .action(async (options: Record<string, unknown>) => {
       const renderer = getRenderer(options)
       const result = await supportsCommand()
@@ -184,7 +223,7 @@ async function main(): Promise<void> {
     })
 
   cli
-    .command('install [version]', 'Download Claude Code via npm')
+    .command('install [version]', t('help.command.install.description'))
     .action(async (positionalVersion: string | undefined, options: Record<string, unknown>) => {
       const renderer = getRenderer(options)
       const args: string[] = []
@@ -194,8 +233,8 @@ async function main(): Promise<void> {
     })
 
   cli
-    .command('setup', 'Install shell shortcuts (cc, c)')
-    .option('-y, --yes', 'Skip confirmation')
+    .command('setup', t('help.command.setup.description'))
+    .option('-y, --yes', t('help.command.setup.option.yes'))
     .action(async (options: Record<string, unknown>) => {
       const renderer = getRenderer(options)
       const args: string[] = []
@@ -205,7 +244,7 @@ async function main(): Promise<void> {
     })
 
   cli
-    .command('restore', 'Restore original binary')
+    .command('restore', t('help.command.restore.description'))
     .action(async (options: Record<string, unknown>) => {
       const renderer = getRenderer(options)
       const result = await restoreCommand()
@@ -213,7 +252,7 @@ async function main(): Promise<void> {
     })
 
   cli
-    .command('verify', 'Check patch status')
+    .command('verify', t('help.command.verify.description'))
     .action(async (options: Record<string, unknown>) => {
       const renderer = getRenderer(options)
       const result = await verifyCommand()
@@ -221,7 +260,7 @@ async function main(): Promise<void> {
     })
 
   cli
-    .command('run [combo]', 'Launch patched Claude Code')
+    .command('run [combo]', t('help.command.run.description'))
     .example('  $ ccx run')
     .example('  $ ccx run 27w')
     .example('  $ ccx run 27w-flow')
@@ -238,14 +277,14 @@ async function main(): Promise<void> {
     })
 
   cli
-    .command('patch [action] [version] [combo]', 'Patch or unpatch local Claude Code binary')
+    .command('patch [action] [version] [combo]', t('help.command.patch.description'))
     .usage('patch <version> [options]\n  $ ccx patch remove <version> [combo]')
     .example('  $ ccx patch 2.1.186 --target 270000')
     .example('  $ ccx patch 2.1.186 --target 27w --yes')
     .example('  $ ccx patch remove 2.1.186 27w')
     .example('  $ ccx patch remove 2.1.186')
-    .option('-t, --target <count>', 'Target context window size (e.g. 270000 or 27w)')
-    .option('-y, --yes', 'Skip confirmation')
+    .option('-t, --target <count>', t('help.command.patch.option.target'))
+    .option('-y, --yes', t('help.command.patch.option.yes'))
     .action(async (action: string | undefined, version: string | undefined, combo: string | undefined, options: Record<string, unknown>) => {
       const renderer = getRenderer(options)
       const args: string[] = [action, version, combo].filter(Boolean) as string[]
@@ -256,12 +295,12 @@ async function main(): Promise<void> {
     })
 
   cli
-    .command('migration [version|latest]', 'Migrate existing patches to a target version')
+    .command('migration [version|latest]', t('help.command.migration.description'))
     .example('  $ ccx migration latest')
     .example('  $ ccx migration 2.1.186 --from 2.1.170 --dry-run')
-    .option('--from <version>', 'Source version to migrate from')
-    .option('-y, --yes', 'Skip confirmation')
-    .option('--dry-run', 'Preview without applying')
+    .option('--from <version>', t('help.command.migration.option.from'))
+    .option('-y, --yes', t('help.command.migration.option.yes'))
+    .option('--dry-run', t('help.command.migration.option.dryRun'))
     .action(async (positionalVersion: string | undefined, options: Record<string, unknown>) => {
       const renderer = getRenderer(options)
       const args: string[] = []
@@ -274,9 +313,9 @@ async function main(): Promise<void> {
     })
 
   cli
-    .command('list', 'List installed and patched versions')
-    .option('--patched', 'Show only patched versions')
-    .option('--all', 'Show full list without pager')
+    .command('list', t('help.command.list.description'))
+    .option('--patched', t('help.command.list.option.patched'))
+    .option('--all', t('help.command.list.option.all'))
     .action(async (options: Record<string, unknown>) => {
       const renderer = getRenderer(options)
       const args: string[] = []
@@ -286,7 +325,7 @@ async function main(): Promise<void> {
     })
 
   cli
-    .command('self-update', 'Update cc-expand to the latest npm version')
+    .command('self-update', t('help.command.selfUpdate.description'))
     .action(async (options: Record<string, unknown>) => {
       const renderer = getRenderer(options)
       const result = await selfUpdateCommand()
@@ -294,7 +333,7 @@ async function main(): Promise<void> {
     })
 
   cli
-    .command('plugins [list|enable|disable|remove|add] [name]', 'Manage plugins')
+    .command('plugins [list|enable|disable|remove|add] [name]', t('help.command.plugins.description'))
     .example('  $ ccx plugins list')
     .example('  $ ccx plugins enable flow')
     .example('  $ ccx plugins disable flow')
@@ -302,7 +341,7 @@ async function main(): Promise<void> {
     .action(async (subcommand: string | undefined, name: string | undefined, options: Record<string, unknown>) => {
       // 无子命令默认显示 help（子命令清单 + 用法），等同 ccx plugins -h
       if (!subcommand) {
-        console.log(PLUGINS_HELP)
+        console.log(getPluginsHelp(currentLocale))
         return
       }
       const renderer = getRenderer(options)
@@ -311,8 +350,14 @@ async function main(): Promise<void> {
       await renderResult(renderer, result, 'plugins')
     })
 
-  cli.help()
+  cli.help((sections) => localizeHelpSections(sections))
   cli.version(getVersion())
+
+  // cac 内部写死的 help/version 选项描述需要单独覆盖为当前 locale
+  const helpOption = cli.globalCommand.options.find(o => o.name === 'help')
+  if (helpOption) helpOption.description = t('help.global.option.help')
+  const versionOption = cli.globalCommand.options.find(o => o.name === 'version')
+  if (versionOption) versionOption.description = t('help.global.option.version')
 
   try {
     const parsed = cli.parse(process.argv)
