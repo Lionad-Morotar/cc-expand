@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { PatchEngine } from '../../src/core/patch-engine.js'
 import { PluginsManager } from '../../src/services/plugins-manager.js'
 import { getPatchedBinaryName } from '../../src/services/patch-applier.js'
+import { encodeTokenLiteral } from '@cc-expand/plugin-context-expand'
 
 describe('plugin patch 端到端（抽象验证）', () => {
   it('混合 token + installed literal patches → 替换 + claude-27w-flow 命名', () => {
@@ -29,7 +30,7 @@ describe('plugin patch 端到端（抽象验证）', () => {
       { search: ccflowSlot, sourceValue: ccflowSlot, target: { value: 'process.env.X?"":x', pad: 'right-space' as const } },
     ]
 
-    const result = new PatchEngine().patch(buffer, patches, 270000)
+    const result = new PatchEngine().patch(buffer, patches, (slot: number) => encodeTokenLiteral(270000, slot))
     expect(result.success).toBe(true)
     expect(result.replaceCount).toBe(2)
 
