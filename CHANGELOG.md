@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0-alpha.0] - 2026-06-25
+
+### Added
+- plugin 体系：token 扩展降级为内置 plugin（`token-expansion`），支持从 GitHub repo 安装第三方 plugin（`ccx plugins add/remove/list/enable/disable`）。`ccx patch` 聚合所有 enabled plugin 对同一 binary 一次扫描，产物 binary 命名编码 plugin 集合（如 `claude-27w-flow`）；第三方 plugin 可声明任意等长字节替换（literal target），实现条件移除 CC 跨会话降权包装等能力
+- `ccx run` 支持 combo 参数（`ccx run 27w-flow`、`ccx run 270k-flow`），token 段自动规范化
+- plugin 作者指南（`docs/plugin-authoring.md`，manifest / shard 托管 / shortVer / literal target 说明）
+
+### Changed
+- 项目定位从「扩展 context window」转为「扩展 Claude Code 能力」
+- [internal] patch-engine/verifier 解耦 token 知识（targetGenerator 必传）、CcxError 单一来源、token 工具搬入 `@cc-expand/plugin-context-expand` 子包、versions.json schema 迁移（targets→combos）
+- [internal] 新增 ADR 0003（plugin 统一抽象）、ADR 0004（CcxError 单一来源）架构决策记录
+
+### Fixed
+- `parseTokenCount` 缺 m（百万）后缀与多段 shortVer 解析（`ccx run 1m` / `25w6k` 失败，违反 `parse(format(n))` 双向对称）
+- verifier 对第三方 plugin literal-target patch 的误判（patch 成功但 verify 失败、binary 被误删）
+- disable `token-expansion` 后 token 仍被扩展的逻辑错误
+- `ccx plugins` 无子命令报 missing required args（改为默认显示 help）
+- pager `key.shift` 触发 tsc 构建阻塞
+
 ## [0.3.9] - 2026-06-23
 
 ### Fixed
