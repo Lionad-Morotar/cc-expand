@@ -7,4 +7,4 @@
 export { formatTokenCount } from './format-token-count.js'
 export { encodeTokenLiteral } from './encode-token-literal.js'
 export { parseTokenCount } from './parse-token-count.js'
-export { isCcxError } from './ccx-error.js'
+export { CcxError, ErrorCode, isCcxError } from './ccx-error.js'

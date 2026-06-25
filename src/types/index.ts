@@ -1,19 +1,8 @@
-/**
- * 错误码枚举
- */
-export enum ErrorCode {
-  BINARY_NOT_FOUND = 'BINARY_NOT_FOUND',
-  PATTERN_NOT_FOUND = 'PATTERN_NOT_FOUND',
-  PATCH_FAILED = 'PATCH_FAILED',
-  CODESIGN_FAILED = 'CODESIGN_FAILED',
-  VERIFICATION_FAILED = 'VERIFICATION_FAILED',
-  BACKUP_NOT_FOUND = 'BACKUP_NOT_FOUND',
-  INVALID_TARGET = 'INVALID_TARGET',
-  PERMISSION_DENIED = 'PERMISSION_DENIED',
-  NETWORK_ERROR = 'NETWORK_ERROR',
-  SELF_UPDATE_FAILED = 'SELF_UPDATE_FAILED',
-  PATTERN_DISCOVERY_FAILED = 'PATTERN_DISCOVERY_FAILED'
-}
+// CcxError / ErrorCode 单一来源在 @cc-expand/plugin-context-expand（ADR 0004）：
+// root 依赖子包、子包不能依赖 root（循环），故共享类型定义在子包侧；root re-export 保持
+// 现有 import 路径（from '../types/index.js'）不变，root 与子包用同一个类——instanceof 跨包有效。
+import { CcxError, ErrorCode, isCcxError } from '@cc-expand/plugin-context-expand'
+export { CcxError, ErrorCode, isCcxError }
 
 /**
  * cc-expand 自身的安装方式（区别于 channel：channel 指 CC 二进制渠道）
@@ -21,21 +10,6 @@ export enum ErrorCode {
  * @see CONTEXT.md — installMethod 与 channel 的术语区分
  */
 export type InstallMethod = 'npm' | 'pnpm' | 'yarn' | 'npx' | 'unknown'
-
-/**
- * cc-expand 统一错误类
- * 包含错误码、用户消息和修复建议
- */
-export class CcxError extends Error {
-  constructor(
-    public code: ErrorCode,
-    message: string,
-    public suggestion?: string
-  ) {
-    super(message)
-    this.name = 'CcxError'
-  }
-}
 
 /**
  * 单个 patch 项
