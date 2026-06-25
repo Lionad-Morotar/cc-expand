@@ -20,6 +20,7 @@ import { makeErrorResult, type CommandResult } from '../result.js'
 import { normalizeVersion } from '../../utils/version.js'
 import { parseTokenCount } from '../../utils/parse-token-count.js'
 import { validateTargetInput } from '../../utils/validate-target.js'
+import { patchRemoveCommand } from './patch-remove.js'
 
 /** re-export：getPatchedBinaryName 现归属 PatchApplier，此处转发以保持向后兼容（patch-binary-name.test.ts） */
 export { getPatchedBinaryName } from '../../services/patch-applier.js'
@@ -39,6 +40,7 @@ export interface PatchData {
 export interface PatchOptions {
   configService?: ConfigService
   userConfigService?: UserConfigService
+  patchCleanupService?: import('../../services/patch-cleanup.js').PatchCleanupService
   homeDir?: string
   packagesDir?: string
 }
@@ -46,7 +48,12 @@ export interface PatchOptions {
 export async function patchCommand(
   args: string[] = [],
   options?: PatchOptions
-): Promise<CommandResult<PatchData>> {
+): Promise<CommandResult> {
+  // ccx patch remove <version> [combo] 子命令
+  if (args[0] === 'remove') {
+    return patchRemoveCommand(args.slice(1), options)
+  }
+
   const configService = options?.configService ?? new ConfigService()
   const userConfigService = options?.userConfigService ?? new UserConfigService()
 
