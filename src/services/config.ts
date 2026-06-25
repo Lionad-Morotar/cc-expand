@@ -180,6 +180,34 @@ export class ConfigService {
     this.setUserConfig(config)
   }
 
+  /** 移除指定版本的某个 combo。若移除后 combos 为空，则删除整个版本条目（含 legacy targets）。 */
+  removePatchedCombo(version: string, combo: string): boolean {
+    const config = this.getUserConfig()
+    const existing = config.patchedVersions?.[version]
+    if (!existing || !existing.combos || existing.combos.length === 0) {
+      return false
+    }
+    const index = existing.combos.indexOf(combo)
+    if (index === -1) return false
+    existing.combos.splice(index, 1)
+    if (existing.combos.length === 0) {
+      delete config.patchedVersions[version]
+    }
+    this.setUserConfig(config)
+    return true
+  }
+
+  /** 移除指定版本的全部 patch 记录（targets + combos）。 */
+  removePatchedVersion(version: string): boolean {
+    const config = this.getUserConfig()
+    if (!config.patchedVersions?.[version]) {
+      return false
+    }
+    delete config.patchedVersions[version]
+    this.setUserConfig(config)
+    return true
+  }
+
   /** 获取备份目录路径 */
   getBackupDir(): string {
     return this.backupDir

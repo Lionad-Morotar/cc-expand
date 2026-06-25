@@ -136,4 +136,76 @@ describe('ConfigService', () => {
       expect(config.getUserConfig().patchedVersions['2.1.186']?.combos).toEqual(['custom'])
     })
   })
+
+  describe('removePatchedCombo', () => {
+    function newConfig() {
+      const homeDir = mkdtempSync(join(tmpdir(), 'ccx-cfg-remove-'))
+      return new ConfigService({ homeDir })
+    }
+
+    it('removes an existing combo', () => {
+      const config = newConfig()
+      config.recordPatchedCombo('2.1.186', '27w')
+      config.recordPatchedCombo('2.1.186', '27w-flow')
+
+      const removed = config.removePatchedCombo('2.1.186', '27w')
+
+      expect(removed).toBe(true)
+      expect(config.getUserConfig().patchedVersions['2.1.186']?.combos).toEqual(['27w-flow'])
+    })
+
+    it('returns false when combo does not exist', () => {
+      const config = newConfig()
+      config.recordPatchedCombo('2.1.186', '27w')
+
+      const removed = config.removePatchedCombo('2.1.186', 'missing')
+
+      expect(removed).toBe(false)
+      expect(config.getUserConfig().patchedVersions['2.1.186']?.combos).toEqual(['27w'])
+    })
+
+    it('removes the whole version entry when last combo is removed', () => {
+      const config = newConfig()
+      config.recordPatchedCombo('2.1.186', '27w')
+
+      config.removePatchedCombo('2.1.186', '27w')
+
+      expect(config.getUserConfig().patchedVersions['2.1.186']).toBeUndefined()
+    })
+
+    it('returns false when combo does not exist (even after targets migration)', () => {
+      const config = newConfig()
+      config.setUserConfig({
+        patchedVersions: { '2.1.186': { targets: [270000], patchedAt: 'x' } }
+      })
+
+      const removed = config.removePatchedCombo('2.1.186', '1m')
+
+      expect(removed).toBe(false)
+    })
+  })
+
+  describe('removePatchedVersion', () => {
+    function newConfig() {
+      const homeDir = mkdtempSync(join(tmpdir(), 'ccx-cfg-remove-version-'))
+      return new ConfigService({ homeDir })
+    }
+
+    it('removes the whole version entry', () => {
+      const config = newConfig()
+      config.recordPatchedCombo('2.1.186', '27w')
+      config.recordPatchedCombo('2.1.186', '27w-flow')
+
+      const removed = config.removePatchedVersion('2.1.186')
+
+      expect(removed).toBe(true)
+      expect(config.getUserConfig().patchedVersions['2.1.186']).toBeUndefined()
+    })
+
+    it('returns false when version does not exist', () => {
+      const config = newConfig()
+      const removed = config.removePatchedVersion('2.1.186')
+      expect(removed).toBe(false)
+    })
+  })
 })
