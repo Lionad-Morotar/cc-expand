@@ -9,6 +9,22 @@
  */
 import { PluginsManager } from '../../services/plugins-manager.js'
 import type { InternalPluginDefinition, PluginManifest } from '../../types/plugins.js'
+
+/** ccx plugins 无子命令时的 help（子命令清单 + 用法），等同 ccx plugins -h */
+export const PLUGINS_HELP = `ccx plugins —— 管理 plugin（list / enable / disable / remove / add）
+
+Usage:
+  ccx plugins <subcommand> [name]
+
+子命令:
+  list                                    列出所有 plugin（internal + installed + enabled 状态）
+  enable <name>                           启用 plugin
+  disable <name>                          禁用 plugin（保留安装，不卸载）
+  remove <name>                           卸载 installed plugin（internal 不可移除）
+  add <owner/repo> [--plugin x] [--yes]   从 GitHub repo 安装（读取 ccx-plugins.json 索引）
+
+Options:
+  --no-color, --quiet/-q, --json, --locale/-l <en|zh>, -h/--help`
 import { ErrorCode } from '../../types/index.js'
 import { makeErrorResult, type CommandResult } from '../result.js'
 

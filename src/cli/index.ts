@@ -32,7 +32,7 @@ import { patchCommand } from './commands/patch.js'
 import { migrationCommand } from './commands/migration.js'
 import { listCommand } from './commands/list.js'
 import { selfUpdateCommand } from './commands/self-update.js'
-import { pluginsCommand } from './commands/plugins.js'
+import { pluginsCommand, PLUGINS_HELP } from './commands/plugins.js'
 import { INTERNAL_PLUGINS } from '../internal-plugins.js'
 
 function getVersion(): string {
@@ -282,10 +282,13 @@ async function main(): Promise<void> {
   cli
     .command('plugins [list|enable|disable|remove|add] [name]', 'Manage plugins')
     .action(async (subcommand: string | undefined, name: string | undefined, options: Record<string, unknown>) => {
+      // 无子命令默认显示 help（子命令清单 + 用法），等同 ccx plugins -h
+      if (!subcommand) {
+        console.log(PLUGINS_HELP)
+        return
+      }
       const renderer = getRenderer(options)
-      // 无子命令默认 list（直接展示 plugin 状态，优于报错）；subcommand 枚举写在 command name，
-      // 使 -h 的 Usage 行直接显示可选项
-      const args = [subcommand ?? 'list', name].filter(Boolean) as string[]
+      const args = [subcommand, name].filter(Boolean) as string[]
       const result = await pluginsCommand(args, { internalPlugins: INTERNAL_PLUGINS })
       await renderResult(renderer, result, 'plugins')
     })
