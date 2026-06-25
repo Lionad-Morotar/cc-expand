@@ -34,7 +34,7 @@ function nextStepsFor(configService: ConfigService, version: string): string[] {
 
 export async function installCommand(
   args: string[] = [],
-  options?: InstallOptions,
+  options?: InstallOptions
 ): Promise<CommandResult<InstallData>> {
   // 解析版本号：位置参数（如 install 2.1.170），缺省为 latest
   let version = 'latest'
@@ -58,7 +58,7 @@ export async function installCommand(
       'install',
       ErrorCode.BINARY_NOT_FOUND,
       `Failed to resolve version ${version}`,
-      'Check your network connection and npm registry access',
+      'Check your network connection and npm registry access'
     )
   }
 
@@ -71,9 +71,9 @@ export async function installCommand(
       data: {
         version: resolvedVersion,
         binaryPath,
-        alreadyInstalled: true,
+        alreadyInstalled: true
       },
-      next: nextStepsFor(configService, resolvedVersion),
+      next: nextStepsFor(configService, resolvedVersion)
     }
   }
 
@@ -89,9 +89,9 @@ export async function installCommand(
       data: {
         version: installedVersion,
         binaryPath,
-        alreadyInstalled: false,
+        alreadyInstalled: false
       },
-      next: nextStepsFor(configService, installedVersion),
+      next: nextStepsFor(configService, installedVersion)
     }
   } catch (error) {
     if (error instanceof CcxError) {
@@ -101,7 +101,7 @@ export async function installCommand(
       'install',
       ErrorCode.BINARY_NOT_FOUND,
       `Failed to install Claude Code ${version}`,
-      'Check your network connection and npm registry access',
+      'Check your network connection and npm registry access'
     )
   }
 }

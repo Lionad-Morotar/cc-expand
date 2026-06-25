@@ -34,7 +34,7 @@ export function isValidVersion(version: string): boolean {
  * 非法或缺失段视为 0。用于 status/list 判断 npm latest 是否新于当前版本。
  */
 export function isVersionGreater(a: string, b: string): boolean {
-  const segs = (v: string) => (v.match(/\d+/g) ?? []).map((n) => parseInt(n, 10))
+  const segs = (v: string) => (v.match(/\d+/g) ?? []).map(n => parseInt(n, 10))
   const aa = segs(a)
   const bb = segs(b)
   // 至少需要 major.minor 两段才可比，否则保守判定不更新（避免畸形版本如 '2.1.x-beta' 误报）

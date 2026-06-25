@@ -16,7 +16,7 @@ export interface CommandResult<T = unknown> {
    * - 默认 undefined：成功渲染为绿色 [OK]
    */
   severity?: 'ok' | 'warning'
-  error?: { code: string; message: string; suggestion?: string }
+  error?: { code: string, message: string, suggestion?: string }
 }
 
 export const EXIT_CODES: Record<ErrorCode, number> = {
@@ -30,7 +30,7 @@ export const EXIT_CODES: Record<ErrorCode, number> = {
   [ErrorCode.PERMISSION_DENIED]: 77,
   [ErrorCode.NETWORK_ERROR]: 69,
   [ErrorCode.SELF_UPDATE_FAILED]: 70,
-  [ErrorCode.PATTERN_DISCOVERY_FAILED]: 70,
+  [ErrorCode.PATTERN_DISCOVERY_FAILED]: 70
 }
 
 export function getExitCode(code?: ErrorCode): number {
@@ -42,12 +42,12 @@ export function makeErrorResult<T = unknown>(
   command: string,
   code: ErrorCode,
   message: string,
-  suggestion?: string,
+  suggestion?: string
 ): CommandResult<T> {
   return {
     success: false,
     command,
     summary: message,
-    error: { code, message, suggestion },
+    error: { code, message, suggestion }
   }
 }

@@ -6,7 +6,7 @@ import { ConfigService } from '../../services/config.js'
 import { DiscoveryService } from '../../services/discovery.js'
 import { ChannelConfig, type ChannelConfigData } from '../../services/channel-config.js'
 import { t } from '../i18n.js'
-import { type CommandResult } from '../result.js'
+import type { CommandResult } from '../result.js'
 
 export interface SupportsData {
   currentVersion?: string
@@ -26,7 +26,7 @@ export interface SupportsOptions {
 
 export async function supportsCommand(
   _args: string[] = [],
-  options?: SupportsOptions,
+  options?: SupportsOptions
 ): Promise<CommandResult<SupportsData>> {
   const config = options?.configService ?? new ConfigService()
   const discovery = options?.discoveryService ?? new DiscoveryService()
@@ -58,21 +58,21 @@ export async function supportsCommand(
   }
 
   const versions = index
-    .map((item) => ({
+    .map(item => ({
       version: item.version,
       platforms: item.platforms,
-      current: item.version === currentVersion,
+      current: item.version === currentVersion
     }))
-    .sort((a, b) => a.version.localeCompare(b.version, undefined, { numeric: true }),
+    .sort((a, b) => a.version.localeCompare(b.version, undefined, { numeric: true })
     )
 
   const warnings: string[] = []
-  if (currentVersion && !versions.some((v) => v.version === currentVersion)) {
+  if (currentVersion && !versions.some(v => v.version === currentVersion)) {
     warnings.push(
       t('command.supports.unsupportedCurrent', {
         version: currentVersion,
-        platform: `${process.platform}-${process.arch}`,
-      }),
+        platform: `${process.platform}-${process.arch}`
+      })
     )
   }
 
@@ -82,8 +82,8 @@ export async function supportsCommand(
     summary: t('command.supports.summary', { count: versions.length }),
     data: {
       currentVersion,
-      versions,
+      versions
     },
-    warnings,
+    warnings
   }
 }

@@ -18,7 +18,7 @@ const KNOWN_KEYS: KnownKey[] = [
   'autoMaintain',
   'installMethod',
   'autoUpdateCheck',
-  'updateCheckInterval',
+  'updateCheckInterval'
 ]
 
 /** installMethod 合法值；self-update 引导的 npm/pnpm/yarn 必须在此列（引导可执行性契约） */
@@ -47,7 +47,7 @@ function parseBoolean(rawValue: string): boolean {
   throw new CcxError(
     ErrorCode.INVALID_TARGET,
     `Invalid boolean value: ${rawValue}`,
-    'Use one of: true/false, 1/0, yes/no, on/off',
+    'Use one of: true/false, 1/0, yes/no, on/off'
   )
 }
 
@@ -61,7 +61,7 @@ function parsePositiveInt(rawValue: string): number {
     throw new CcxError(
       ErrorCode.INVALID_TARGET,
       `Invalid updateCheckInterval: ${rawValue}`,
-      'Use a positive integer (milliseconds), e.g. 3600000',
+      'Use a positive integer (milliseconds), e.g. 3600000'
     )
   }
   return n
@@ -69,7 +69,7 @@ function parsePositiveInt(rawValue: string): number {
 
 export async function configCommand(
   args: string[],
-  options?: ConfigCommandOptions,
+  options?: ConfigCommandOptions
 ): Promise<CommandResult> {
   const service = options?.userConfigService ?? new UserConfigService()
   const [subcommand, key, rawValue] = args
@@ -79,7 +79,7 @@ export async function configCommand(
       'config',
       ErrorCode.INVALID_TARGET,
       t('error.missingArgument', { name: 'subcommand' }),
-      'Usage: ccx config get|set|lang',
+      'Usage: ccx config get|set|lang'
     )
   }
 
@@ -89,7 +89,7 @@ export async function configCommand(
         'config',
         ErrorCode.INVALID_TARGET,
         t('error.missingArgument', { name: 'key' }),
-        'Usage: ccx config get <key>',
+        'Usage: ccx config get <key>'
       )
     }
 
@@ -98,7 +98,7 @@ export async function configCommand(
         'config',
         ErrorCode.INVALID_TARGET,
         t('error.unknownKey', { key }),
-        `Supported keys: ${KNOWN_KEYS.join(', ')}`,
+        `Supported keys: ${KNOWN_KEYS.join(', ')}`
       )
     }
 
@@ -107,7 +107,7 @@ export async function configCommand(
       success: true,
       command: 'config',
       summary: t('command.config.get', { key, value: formatValue(value) }),
-      data: { key, value },
+      data: { key, value }
     }
   }
 
@@ -117,7 +117,7 @@ export async function configCommand(
         'config',
         ErrorCode.INVALID_TARGET,
         t('error.missingArgument', { name: 'key' }),
-        'Usage: ccx config set <key> <value>',
+        'Usage: ccx config set <key> <value>'
       )
     }
 
@@ -126,7 +126,7 @@ export async function configCommand(
         'config',
         ErrorCode.INVALID_TARGET,
         t('error.unknownKey', { key }),
-        `Supported keys: ${KNOWN_KEYS.join(', ')}`,
+        `Supported keys: ${KNOWN_KEYS.join(', ')}`
       )
     }
 
@@ -135,7 +135,7 @@ export async function configCommand(
         'config',
         ErrorCode.INVALID_TARGET,
         t('error.missingArgument', { name: 'value' }),
-        'Usage: ccx config set <key> <value>',
+        'Usage: ccx config set <key> <value>'
       )
     }
 
@@ -149,7 +149,7 @@ export async function configCommand(
           'config',
           ErrorCode.INVALID_TARGET,
           message,
-          'Use one of: true/false, 1/0, yes/no, on/off',
+          'Use one of: true/false, 1/0, yes/no, on/off'
         )
       }
     } else if (key === 'locale') {
@@ -159,7 +159,7 @@ export async function configCommand(
           'config',
           ErrorCode.INVALID_TARGET,
           t('error.invalidTarget', { value: rawValue }),
-          'Usage: ccx config set locale en|zh',
+          'Usage: ccx config set locale en|zh'
         )
       }
       value = rawValue
@@ -170,7 +170,7 @@ export async function configCommand(
           'config',
           ErrorCode.INVALID_TARGET,
           t('error.invalidTarget', { value: rawValue }),
-          `Usage: ccx config set installMethod ${INSTALL_METHODS.join('|')}`,
+          `Usage: ccx config set installMethod ${INSTALL_METHODS.join('|')}`
         )
       }
       value = rawValue as InstallMethod
@@ -179,13 +179,13 @@ export async function configCommand(
       try {
         value = parsePositiveInt(rawValue)
       } catch (error) {
-        const message =
-          error instanceof CcxError ? error.message : `Invalid updateCheckInterval: ${rawValue}`
+        const message
+          = error instanceof CcxError ? error.message : `Invalid updateCheckInterval: ${rawValue}`
         return makeErrorResult(
           'config',
           ErrorCode.INVALID_TARGET,
           message,
-          error instanceof CcxError ? error.suggestion : 'Use a positive integer (milliseconds)',
+          error instanceof CcxError ? error.suggestion : 'Use a positive integer (milliseconds)'
         )
       }
     } else {
@@ -197,7 +197,7 @@ export async function configCommand(
       success: true,
       command: 'config',
       summary: t('command.config.set', { key, value: formatValue(value) }),
-      data: { key, value },
+      data: { key, value }
     }
   }
 
@@ -208,7 +208,7 @@ export async function configCommand(
         'config',
         ErrorCode.INVALID_TARGET,
         t('error.invalidTarget', { value: locale ?? '' }),
-        'Usage: ccx config lang en|zh',
+        'Usage: ccx config lang en|zh'
       )
     }
 
@@ -217,7 +217,7 @@ export async function configCommand(
       success: true,
       command: 'config',
       summary: t('command.config.lang', { value: locale }),
-      data: { key: 'locale', value: locale },
+      data: { key: 'locale', value: locale }
     }
   }
 
@@ -225,6 +225,6 @@ export async function configCommand(
     'config',
     ErrorCode.INVALID_TARGET,
     `Unknown subcommand: ${subcommand}`,
-    'Usage: ccx config get|set|lang',
+    'Usage: ccx config get|set|lang'
   )
 }

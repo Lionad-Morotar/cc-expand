@@ -23,7 +23,7 @@ function validateVersion(version: string): void {
   if (normalized === 'latest') return
   if (/^\d+\.\d+\.\d+/.test(normalized)) return
   throw new Error(
-    `Invalid version format: ${version}. Expected semver (e.g. 2.1.170) or "latest"`,
+    `Invalid version format: ${version}. Expected semver (e.g. 2.1.170) or "latest"`
   )
 }
 
@@ -57,7 +57,7 @@ export interface InstallResult {
 export class PackageService {
   constructor(
     private packagesDir: string,
-    private execFileImpl: typeof execFile = execFile,
+    private execFileImpl: typeof execFile = execFile
   ) {}
 
   /**
@@ -94,7 +94,7 @@ export class PackageService {
             return
           }
           resolve(version)
-        },
+        }
       )
     })
   }
@@ -128,12 +128,12 @@ export class PackageService {
       await extract({
         file: wrapperTarball,
         cwd: wrapperDir,
-        strip: 1,
+        strip: 1
       })
 
       // 2. 读取 optionalDependencies，找到平台特定包
       const pkgJson = JSON.parse(
-        readFileSync(join(wrapperDir, 'package.json'), 'utf-8'),
+        readFileSync(join(wrapperDir, 'package.json'), 'utf-8')
       )
       const platform = `${process.platform}-${process.arch}`
       const platformPkgName = `@anthropic-ai/claude-code-${platform}`
@@ -152,13 +152,13 @@ export class PackageService {
         platformTarball = await this.downloadPackage(
           platformPkgName,
           platformVersion,
-          platformDir,
+          platformDir
         )
 
         await extract({
           file: platformTarball,
           cwd: platformDir,
-          strip: 1,
+          strip: 1
         })
 
         // 4. 复制 binary 到目标位置（带竞态保护：再次检查是否已存在）
@@ -205,7 +205,7 @@ export class PackageService {
   private async downloadPackage(
     name: string,
     version: string,
-    destDir: string,
+    destDir: string
   ): Promise<string> {
     return new Promise((resolve, reject) => {
       this.execFileImpl(
@@ -237,7 +237,7 @@ export class PackageService {
             }
             resolve(join(destDir, tarballName))
           }
-        },
+        }
       )
     })
   }

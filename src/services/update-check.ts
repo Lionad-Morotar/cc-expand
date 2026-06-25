@@ -82,7 +82,7 @@ export class UpdateCheckService {
         return {
           hasUpdate: semver.gt(latest, this.currentVersion),
           currentVersion: this.currentVersion,
-          latestVersion: latest,
+          latestVersion: latest
         }
       }
     }
@@ -95,13 +95,13 @@ export class UpdateCheckService {
       // 3. 写回 state 供下次节流（skipCache 也写回，刷新缓存）
       this.writeState({
         lastCheckedAt: new Date().toISOString(),
-        lastKnownLatest: latest,
+        lastKnownLatest: latest
       })
 
       return {
         hasUpdate: semver.gt(latest, this.currentVersion),
         currentVersion: this.currentVersion,
-        latestVersion: latest,
+        latestVersion: latest
       }
     } catch {
       return null
@@ -117,7 +117,7 @@ export class UpdateCheckService {
       if (!parsed.lastCheckedAt || !parsed.lastKnownLatest) return null
       return {
         lastCheckedAt: parsed.lastCheckedAt,
-        lastKnownLatest: parsed.lastKnownLatest,
+        lastKnownLatest: parsed.lastKnownLatest
       }
     } catch {
       return null

@@ -15,7 +15,7 @@ export interface DiscoveryOptions {
 }
 
 const DEFAULT_NPX_DIRS = [
-  join(process.env.HOME || '~', '.npm', '_npx'),
+  join(process.env.HOME || '~', '.npm', '_npx')
 ]
 
 export class DiscoveryService {
@@ -49,7 +49,7 @@ export class DiscoveryService {
     throw new CcxError(
       ErrorCode.BINARY_NOT_FOUND,
       'Claude Code binary not found',
-      'Install with: npm install -g @anthropic-ai/claude-code',
+      'Install with: npm install -g @anthropic-ai/claude-code'
     )
   }
 
@@ -61,7 +61,7 @@ export class DiscoveryService {
   async getBinaryVersion(binaryPath: string): Promise<string> {
     return new Promise((resolve) => {
       const child = execFile(binaryPath, ['--version'], {
-        timeout: 5000,
+        timeout: 5000
       }, (error: Error | null, stdout: string) => {
         if (error) {
           resolve('unknown')
@@ -103,7 +103,7 @@ export class DiscoveryService {
       '@anthropic-ai',
       'claude-code',
       'bin',
-      'claude.exe',
+      'claude.exe'
     )
 
     for (const entry of readdirSync(npxDir)) {

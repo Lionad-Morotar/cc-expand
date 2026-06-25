@@ -18,6 +18,6 @@ export function validateTargetInput(value: string, sourceValue: string): true | 
     encodeTokenLiteral(parsed, sourceValue.length)
     return true
   } catch (e) {
-    return e instanceof CcxError ? e.message : 'Please enter a valid number'
+    return (e as Error).message
   }
 }

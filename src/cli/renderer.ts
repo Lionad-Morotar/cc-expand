@@ -36,7 +36,7 @@ export function createRenderer(options: RendererOptions = {}) {
       if (options.json) {
         const envelope = {
           ...result,
-          locale: options.locale ?? 'en',
+          locale: options.locale ?? 'en'
         }
         return JSON.stringify(envelope, null, 2)
       }
@@ -78,7 +78,7 @@ export function createRenderer(options: RendererOptions = {}) {
       // 为人类可读模式补充列表类数据；格式化逻辑统一走 formatVersionLine，
       // 与 pager（动态浏览）共享同一来源，保证静态/动态两处输出逐字符一致
       if (result.data && Array.isArray((result.data as Record<string, unknown>).versions)) {
-        const versions = ((result.data as Record<string, unknown>).versions as Array<Record<string, unknown>>)
+        const versions = (result.data as Record<string, unknown>).versions as Array<Record<string, unknown>>
         if (versions.length > 0) {
           lines.push('')
           for (const item of versions) {
@@ -91,6 +91,6 @@ export function createRenderer(options: RendererOptions = {}) {
     },
 
     // 暴露给 index.ts 的 pager 分支，保证 [OK] header 与静态输出逐字符一致
-    formatOkHeader,
+    formatOkHeader
   }
 }

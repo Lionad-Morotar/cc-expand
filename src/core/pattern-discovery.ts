@@ -36,7 +36,7 @@ export class PatternDiscovery {
       throw new CcxError(
         ErrorCode.PATTERN_DISCOVERY_FAILED,
         `Expected ${EXPECTED_ANCHOR_COUNT} context-window anchors, found ${anchors.length}`,
-        '二进制结构可能突变(模式增减),需人工核对混淆变量',
+        '二进制结构可能突变(模式增减),需人工核对混淆变量'
       )
     }
 
@@ -53,7 +53,7 @@ export class PatternDiscovery {
       throw new CcxError(
         ErrorCode.PATTERN_DISCOVERY_FAILED,
         `Expected exactly 1 exceeds200k threshold, found ${exceedsMatches.length}`,
-        'exceeds200k 阈值结构可能变化,需人工核对',
+        'exceeds200k 阈值结构可能变化,需人工核对'
       )
     }
     out.push({ search: '>200000:!1}', sourceValue: '200000' })

@@ -21,7 +21,7 @@ import { getNpmCommand, getNpmExecOptions } from './package.js'
 export async function queryLatestVersion(
   timeoutMs = 4000,
   execFileImpl: typeof execFile = execFile,
-  packageName: string = '@anthropic-ai/claude-code',
+  packageName: string = '@anthropic-ai/claude-code'
 ): Promise<string | undefined> {
   return new Promise((resolve) => {
     execFileImpl(
@@ -45,7 +45,7 @@ export async function queryLatestVersion(
         }
         const fallback = trimmed.replace(/^["']|["']$/g, '')
         resolve(/^\d+\.\d+\.\d+/.test(fallback) ? fallback : undefined)
-      },
+      }
     )
   })
 }

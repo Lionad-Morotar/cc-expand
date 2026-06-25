@@ -40,7 +40,7 @@ const UPDATE_COMMANDS: Record<
 > = {
   npm: ['npm', ['install', '-g', 'cc-expand@latest']],
   pnpm: ['pnpm', ['add', '-g', 'cc-expand@latest']],
-  yarn: ['yarn', ['global', 'add', 'cc-expand']],
+  yarn: ['yarn', ['global', 'add', 'cc-expand']]
 }
 
 /** 从 package.json 读取当前 cc-expand 版本 */
@@ -62,7 +62,7 @@ export async function selfUpdateCommand(options?: SelfUpdateOptions): Promise<Co
     return {
       success: true,
       command: 'self-update',
-      summary: t('command.selfUpdate.npxHint'),
+      summary: t('command.selfUpdate.npxHint')
     }
   }
 
@@ -72,7 +72,7 @@ export async function selfUpdateCommand(options?: SelfUpdateOptions): Promise<Co
       'self-update',
       ErrorCode.SELF_UPDATE_FAILED,
       t('error.selfUpdate.unknownMethod'),
-      t('suggestion.selfUpdate.unknownMethod'),
+      t('suggestion.selfUpdate.unknownMethod')
     )
   }
 
@@ -86,7 +86,7 @@ export async function selfUpdateCommand(options?: SelfUpdateOptions): Promise<Co
     return {
       success: true,
       command: 'self-update',
-      summary: t('command.selfUpdate.alreadyLatest', { version: currentVersion }),
+      summary: t('command.selfUpdate.alreadyLatest', { version: currentVersion })
     }
   }
 
@@ -100,7 +100,7 @@ export async function selfUpdateCommand(options?: SelfUpdateOptions): Promise<Co
       return makeErrorResult(
         'self-update',
         ErrorCode.SELF_UPDATE_FAILED,
-        t('error.selfUpdate.exitCode', { code: result.code ?? 'killed' }),
+        t('error.selfUpdate.exitCode', { code: result.code ?? 'killed' })
       )
     }
 
@@ -118,10 +118,10 @@ export async function selfUpdateCommand(options?: SelfUpdateOptions): Promise<Co
           warnings: [
             t('warning.selfUpdate.stalled', {
               actual: actualVersion,
-              latest: info.latestVersion,
+              latest: info.latestVersion
             }),
-            t('warning.selfUpdate.registryHint'),
-          ],
+            t('warning.selfUpdate.registryHint')
+          ]
         }
       }
       return {
@@ -129,8 +129,8 @@ export async function selfUpdateCommand(options?: SelfUpdateOptions): Promise<Co
         command: 'self-update',
         summary: t('command.selfUpdate.updated', {
           from: info.currentVersion,
-          to: info.latestVersion,
-        }),
+          to: info.latestVersion
+        })
       }
     }
 
@@ -138,7 +138,7 @@ export async function selfUpdateCommand(options?: SelfUpdateOptions): Promise<Co
     return {
       success: true,
       command: 'self-update',
-      summary: t('command.selfUpdate.success'),
+      summary: t('command.selfUpdate.success')
     }
   } catch (error) {
     return handleSpawnError(error)
@@ -150,7 +150,7 @@ function createDefaultSpawner(): Spawner {
   return (cmd: string, args: readonly string[]) =>
     new Promise((resolve, reject) => {
       const child = spawn(cmd, args, { stdio: 'inherit' })
-      child.on('close', (code) => resolve({ code }))
+      child.on('close', code => resolve({ code }))
       child.on('error', reject)
     })
 }
@@ -163,7 +163,7 @@ function handleSpawnError(error: unknown): CommandResult {
       'self-update',
       ErrorCode.SELF_UPDATE_FAILED,
       t('error.selfUpdate.eacces'),
-      t('suggestion.selfUpdate.eacces'),
+      t('suggestion.selfUpdate.eacces')
     )
   }
   if (err.code === 'ENOENT') {
@@ -171,12 +171,12 @@ function handleSpawnError(error: unknown): CommandResult {
       'self-update',
       ErrorCode.SELF_UPDATE_FAILED,
       t('error.selfUpdate.enoent', { message: err.message }),
-      t('suggestion.selfUpdate.enoent'),
+      t('suggestion.selfUpdate.enoent')
     )
   }
   return makeErrorResult(
     'self-update',
     ErrorCode.SELF_UPDATE_FAILED,
-    t('error.selfUpdate.generic', { message: err.message ?? String(error) }),
+    t('error.selfUpdate.generic', { message: err.message ?? String(error) })
   )
 }
