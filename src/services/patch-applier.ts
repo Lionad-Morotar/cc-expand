@@ -19,15 +19,18 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { execSync } from 'node:child_process'
 import { PatchEngine } from '../core/patch-engine.js'
+import { encodeTokenLiteral } from '../utils/encode-token-literal.js'
+import type { PluginsManager } from './plugins-manager.js'
 import { Verifier } from '../core/verifier.js'
 import { PackageService } from './package.js'
-import { ConfigService } from './config.js'
+import type { ConfigService } from './config.js'
 import { CcxError, ErrorCode, type PatchItem } from '../types/index.js'
 
-/** 获取 patched binary 文件名（Windows 需 .exe 扩展名） */
-export function getPatchedBinaryName(targetTokens: number): string {
+/** 获取 patched binary 文件名（Windows 需 .exe 扩展名）。
+ *  参数是 shortVer 组合串（如 "27w-flow"），由 PluginsManager.computeShortVer 生成（ADR 0003 shortVer-hook 命名）。 */
+export function getPatchedBinaryName(shortVer: string): string {
   const ext = process.platform === 'win32' ? '.exe' : ''
-  return `claude-${targetTokens}${ext}`
+  return `claude-${shortVer}${ext}`
 }
 
 /** prepare 成功后返回的 pattern 数据 */
@@ -43,7 +46,7 @@ export interface AppliedPatch {
   sourceValue: string
   replaceCount: number
   binaryPath: string
-  details: Array<{ desc: string; offset: number; sourceValue?: string; targetValue?: string }>
+  details: Array<{ desc?: string, offset: number, sourceValue?: string, targetValue?: string }>
   /** codesign 失败时的告警（binary 可能无法执行） */
   codesignWarning?: string
 }
@@ -55,13 +58,13 @@ export interface ApplierError {
   suggestion?: string
 }
 
-export type PrepareOutcome =
-  | { ok: true; data: PreparedPattern }
-  | { ok: false; error: ApplierError }
+export type PrepareOutcome
+  = | { ok: true, data: PreparedPattern }
+    | { ok: false, error: ApplierError }
 
-export type ApplyPatchOutcome =
-  | { ok: true; data: AppliedPatch }
-  | { ok: false; error: ApplierError }
+export type ApplyPatchOutcome
+  = | { ok: true, data: AppliedPatch }
+    | { ok: false, error: ApplierError }
 
 export interface PatchApplierOptions {
   /** 必传：提供 pattern/record 能力 */
@@ -72,6 +75,11 @@ export interface PatchApplierOptions {
   packagesDir?: string
   /** 注入 PackageService（测试用），默认基于 packagesDir 新建 */
   packageService?: PackageService
+  /** 注入 PluginsManager（plugin 命名用）；省略则 fallback 用 String(targetTokens) 作 shortVer */
+  pluginsManager?: PluginsManager
+  /** 注入 installed plugin patches（literal target，来自 enabled installed plugins 的 shard）。
+   *  prepare 把它与 token patches 合并，execute 一次扫描全替换。生产由 patch command 拉 shard 填入。 */
+  installedPatches?: PatchItem[]
 }
 
 export class PatchApplier {
@@ -81,7 +89,7 @@ export class PatchApplier {
    */
   async prepare(
     version: string,
-    options: PatchApplierOptions,
+    options: PatchApplierOptions
   ): Promise<PrepareOutcome> {
     const configService = options.configService
     configService.ensureDirs()
@@ -102,30 +110,48 @@ export class PatchApplier {
           error: {
             code: ErrorCode.BINARY_NOT_FOUND,
             message: `Failed to install Claude Code ${version}`,
-            suggestion: 'Check your network connection and npm registry access',
-          },
+            suggestion: 'Check your network connection and npm registry access'
+          }
         }
       }
     }
 
-    const patches = await configService.getPatternForVersion(version)
-    if (!patches) {
+    // 是否应用 token 扩展：查 internal 中声明 token-encode 策略的 plugin 是否 enabled
+    //（PRD story 5：disable token-expansion 后只跑 installed plugin，不扩 token）。
+    // 不硬编码 plugin 名——按 manifest.target.type 策略类型识别（ADR 0003 决策 16 内核零 token 知识）。
+    // 无 pluginsManager 时默认 true（向后兼容 / 测试）。
+    const tokenEnabled = options.pluginsManager?.list().some(
+      p => p.source === 'internal' && p.manifest.target?.type === 'token-encode' && p.enabled
+    ) ?? true
+
+    const rawTokenPatches = tokenEnabled
+      ? await configService.getPatternForVersion(version)
+      : undefined
+    // token 扩展开启但拿不到 pattern → 报错；关闭（disable token-expansion）则允许只跑 installed plugin
+    if (tokenEnabled && !rawTokenPatches) {
       return {
         ok: false,
         error: {
           code: ErrorCode.PATTERN_NOT_FOUND,
           message: `No pattern found for version ${version}`,
-          suggestion: `Run 'ccx supports' to see supported versions`,
-        },
+          suggestion: `Run 'ccx supports' to see supported versions`
+        }
       }
     }
+    const tokenPatches: PatchItem[] = rawTokenPatches ?? []
+
+    // 聚合 installed plugin patches（literal target，ADR 0003：合并一次扫描，按 plugin 归类）
+    const installedPatches = options.installedPatches ?? []
+    const patches = [...tokenPatches, ...installedPatches]
 
     return {
       ok: true,
       data: {
-        patches: patches as PatchItem[],
-        sourceValue: patches[0]?.sourceValue ?? '200000',
-      },
+        patches,
+        // token 未启用（disable token-expansion）时从 installed patches 推导 sourceValue，
+        // 避免 fallback 到 token 默认值 200000 误导位数提示/verifier（flow review 6）
+        sourceValue: tokenPatches[0]?.sourceValue ?? installedPatches[0]?.sourceValue ?? '200000'
+      }
     }
   }
 
@@ -137,7 +163,7 @@ export class PatchApplier {
     version: string,
     targetTokens: number,
     prepared: PreparedPattern,
-    options: PatchApplierOptions,
+    options: PatchApplierOptions
   ): Promise<ApplyPatchOutcome> {
     const configService = options.configService
     const homeDir = options.homeDir ?? homedir()
@@ -152,22 +178,26 @@ export class PatchApplier {
         error: {
           code: ErrorCode.BINARY_NOT_FOUND,
           message: `Claude Code ${version} is not installed`,
-          suggestion: `Run 'ccx install ${version}' or 'ccx migration ${version}' first`,
-        },
+          suggestion: `Run 'ccx install ${version}' or 'ccx migration ${version}' first`
+        }
       }
     }
 
     // 复制原始 binary（不修改原始包）并执行常量替换
     const patchBinDir = join(homeDir, '.cc-expand', 'bin')
     mkdirSync(patchBinDir, { recursive: true })
-    const patchedBinaryPath = join(patchBinDir, getPatchedBinaryName(targetTokens))
+    // binary 名用 shortVer 组合（如 claude-27w-flow）。
+    // 用 || 而非 ??：computeShortVer 在无 enabled plugin 时返回 ''（C4 兜底），需回退数字避免畸形名 claude-
+    const shortVer = options.pluginsManager?.computeShortVer({ targetTokens }) || String(targetTokens)
+    const patchedBinaryPath = join(patchBinDir, getPatchedBinaryName(shortVer))
 
     copyFileSync(sourceBinaryPath, patchedBinaryPath)
     chmodSync(patchedBinaryPath, 0o755)
 
     const buffer = readFileSync(patchedBinaryPath)
     const engine = new PatchEngine()
-    const patchResult = engine.patch(buffer, patches, targetTokens)
+    // 传 generator 激活注入路径（ADR 0003：patch-engine 不默认知 encodeTokenLiteral）
+    const patchResult = engine.patch(buffer, patches, targetTokens, sv => encodeTokenLiteral(targetTokens, sv.length))
 
     if (!patchResult.success) {
       rmSync(patchedBinaryPath, { force: true })
@@ -175,7 +205,7 @@ export class PatchApplier {
         ok: false,
         error: patchResult.error
           ? { code: patchResult.error.code, message: patchResult.error.message, suggestion: patchResult.error.suggestion }
-          : { code: ErrorCode.PATCH_FAILED, message: 'Patch failed' },
+          : { code: ErrorCode.PATCH_FAILED, message: 'Patch failed' }
       }
     }
     writeFileSync(patchedBinaryPath, buffer)
@@ -196,7 +226,7 @@ export class PatchApplier {
       binaryPath: patchedBinaryPath,
       targetTokens,
       sourceValue,
-      patches,
+      patches
     })
     if (!verifyResult.success) {
       rmSync(patchedBinaryPath, { force: true })
@@ -204,12 +234,12 @@ export class PatchApplier {
         ok: false,
         error: verifyResult.error
           ? { code: verifyResult.error.code, message: verifyResult.error.message, suggestion: verifyResult.error.suggestion }
-          : { code: ErrorCode.VERIFICATION_FAILED, message: 'Verification failed' },
+          : { code: ErrorCode.VERIFICATION_FAILED, message: 'Verification failed' }
       }
     }
 
-    // 记录到 versions.json
-    configService.recordPatchedVersion(version, targetTokens)
+    // 记录到 versions.json（plugin 体系：combos = shortVer 组合，如 "27w-flow"）
+    configService.recordPatchedCombo(version, shortVer)
 
     return {
       ok: true,
@@ -220,8 +250,8 @@ export class PatchApplier {
         replaceCount: patchResult.replaceCount ?? 0,
         binaryPath: patchedBinaryPath,
         details: patchResult.details,
-        codesignWarning,
-      },
+        codesignWarning
+      }
     }
   }
 }

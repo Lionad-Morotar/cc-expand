@@ -132,5 +132,70 @@ describe('PatchEngine', () => {
       expect(buffer.length).toBe(originalLength)
       expect(buffer.toString('utf-8')).toContain('Aj8=200000')
     })
+
+    it('patches using literal target (equal-length value, no token-encode)', () => {
+      // installed plugin 风格：固定字节替换，不依赖 targetTokens
+      const buffer = Buffer.from('header_PLACEHOLDER_trailer')
+      const engine = new PatchEngine()
+      const patches = [
+        { search: 'PLACEHOLDER', sourceValue: 'PLACEHOLDER', target: { value: 'PATCHED!!!!' } },
+      ]
+      const result = engine.patch(buffer, patches, 0)
+      expect(result.success).toBe(true)
+      expect(result.replaceCount).toBe(1)
+      const mutated = buffer.toString('utf-8')
+      expect(mutated).toContain('PATCHED!!!!')
+      expect(mutated).not.toContain('PLACEHOLDER')
+    })
+
+    it('patches literal target with pad:"right-space" (cc-flow 风格：短表达式 + pad)', () => {
+      // 模拟 cc-flow：大槽位（sourceValue 20B）+ 短 target value + right-space pad 到等长
+      const slot = 'A'.repeat(20)
+      const buffer = Buffer.from('x' + slot + 'y')
+      const originalLength = buffer.length
+      const engine = new PatchEngine()
+      const patches = [{
+        search: slot,
+        sourceValue: slot,
+        target: { value: 'env?x:y', pad: 'right-space' as const },
+      }]
+      const result = engine.patch(buffer, patches, 0)
+      expect(result.success).toBe(true)
+      const mutated = buffer.toString('utf-8')
+      expect(mutated).toContain('env?x:y')
+      // 'env?x:y' (7B) + 13 空格 = 20B 等长
+      expect(mutated).toMatch(/env\?x:y {13}/)
+      expect(buffer.length).toBe(originalLength)
+    })
+
+    it('rejects literal target longer than slot (INVALID_TARGET, atomic)', () => {
+      const buffer = Buffer.from('header_SHORT_trailer')
+      const originalLength = buffer.length
+      const engine = new PatchEngine()
+      const patches = [{
+        search: 'SHORT',
+        sourceValue: 'SHORT',
+        target: { value: 'TOO_LONG_VALUE' },
+      }]
+      const result = engine.patch(buffer, patches, 0)
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe(ErrorCode.INVALID_TARGET)
+      // 原子性：buffer 不变
+      expect(buffer.length).toBe(originalLength)
+      expect(buffer.toString('utf-8')).toContain('SHORT')
+    })
+
+    it('uses injected targetGenerator when provided (overrides default encode)', () => {
+      // ADR 0003 内核零 token 知识：generator 注入路径，绕过 encodeTokenLiteral
+      const buffer = Buffer.from('header_Aj8=200000,Ij_=20000_trailer')
+      const engine = new PatchEngine()
+      const patches = [{ search: 'Aj8=200000,Ij_=20000', sourceValue: '200000', desc: 'token' }]
+      // 注入 generator：返回等长自定义值（验证注入，不调 encodeTokenLiteral）
+      const result = engine.patch(buffer, patches, 0, (sv) => 'XX'.padEnd(sv.length, ' '))
+      expect(result.success).toBe(true)
+      const mutated = buffer.toString('utf-8')
+      expect(mutated).toContain('XX')
+      expect(mutated).not.toContain('200000')
+    })
   })
 })

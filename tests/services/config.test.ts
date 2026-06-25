@@ -1,4 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
+import { tmpdir } from 'node:os'
+import { mkdtempSync } from 'node:fs'
+import { join } from 'node:path'
 import { ConfigService } from '../../src/services/config.js'
 import { PatternService } from '../../src/services/pattern.js'
 import type { OsPatterns, VersionsIndexItem } from '../../src/services/pattern.js'
@@ -97,6 +100,40 @@ describe('ConfigService', () => {
       const result = await config.getSupportedVersions()
 
       expect(result).toEqual([])
+    })
+  })
+
+  describe('combos schema (plugin 体系迁移)', () => {
+    function newConfig() {
+      const homeDir = mkdtempSync(join(tmpdir(), 'ccx-cfg-'))
+      return new ConfigService({ homeDir })
+    }
+
+    it('recordPatchedCombo writes combos (idempotent)', () => {
+      const config = newConfig()
+      config.recordPatchedCombo('2.1.186', '27w-flow')
+      config.recordPatchedCombo('2.1.186', '27w-flow') // 幂等
+      expect(config.getUserConfig().patchedVersions['2.1.186']?.combos).toEqual(['27w-flow'])
+    })
+
+    it('migrates legacy targets → combos via formatTokenCount (targets retained)', () => {
+      const config = newConfig()
+      config.setUserConfig({
+        patchedVersions: { '2.1.186': { targets: [270000, 1000000], patchedAt: '2026-06-24' } },
+      })
+      const migrated = config.getUserConfig()
+      expect(migrated.patchedVersions['2.1.186']?.combos).toEqual(['27w', '1m'])
+      // targets 保留（status/list 兼容）
+      expect(migrated.patchedVersions['2.1.186']?.targets).toEqual([270000, 1000000])
+    })
+
+    it('does not overwrite existing combos when targets also present', () => {
+      const config = newConfig()
+      config.setUserConfig({
+        patchedVersions: { '2.1.186': { targets: [270000], combos: ['custom'], patchedAt: 'x' } },
+      })
+      // 已有 combos，不迁移覆盖
+      expect(config.getUserConfig().patchedVersions['2.1.186']?.combos).toEqual(['custom'])
     })
   })
 })

@@ -12,7 +12,7 @@ export enum ErrorCode {
   PERMISSION_DENIED = 'PERMISSION_DENIED',
   NETWORK_ERROR = 'NETWORK_ERROR',
   SELF_UPDATE_FAILED = 'SELF_UPDATE_FAILED',
-  PATTERN_DISCOVERY_FAILED = 'PATTERN_DISCOVERY_FAILED',
+  PATTERN_DISCOVERY_FAILED = 'PATTERN_DISCOVERY_FAILED'
 }
 
 /**
@@ -30,7 +30,7 @@ export class CcxError extends Error {
   constructor(
     public code: ErrorCode,
     message: string,
-    public suggestion?: string,
+    public suggestion?: string
   ) {
     super(message)
     this.name = 'CcxError'
@@ -43,10 +43,12 @@ export class CcxError extends Error {
 export interface PatchItem {
   /** 搜索模式（包含版本特定变量名和常量值） */
   search: string
-  /** 描述 */
-  desc: string
-  /** 源常量值 */
+  /** 描述（可选，patch 结果展示用） */
+  desc?: string
+  /** 源常量值（被覆盖的子串；其长度 = 等长槽位宽度） */
   sourceValue: string
+  /** literal target：固定等长替换（installed plugin 用）；省略则走 token-encode（internal token-expansion） */
+  target?: { value: string, pad?: 'right-space' }
 }
 
 /**

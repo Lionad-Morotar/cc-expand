@@ -155,5 +155,33 @@ describe('Verifier', () => {
 
       expect(result.success).toBe(true)
     })
+
+    it('should verify literal-target patches (installed plugin) without false failure (flow CR#8)', async () => {
+      // installed plugin 的 literal patch：sourceValue 是 30B 槽位，target.value 短 + pad:right-space 凑等长。
+      // 旧 verifier 对所有 patch 统一 encodeTokenLiteral 生成期望值，literal patch 会被误判 → binary 误删。
+      const slot = 'A'.repeat(30)
+      const literalValue = 'process.env.X?"":y' // 17B
+      const padded = literalValue.padEnd(30, ' ')
+      const binaryPath = join(tempDir, 'claude')
+      // token 槽 200000→256000；literal 槽 slot→padded
+      writeFileSync(binaryPath, 'Aj8=256000,Ij_=20000___' + padded)
+      chmodSync(binaryPath, 0o755)
+
+      const verifier = new Verifier()
+      const result = await verifier.verify({
+        binaryPath,
+        targetTokens: 256000,
+        sourceValue: '200000',
+        patches: [
+          { search: 'Aj8=200000,Ij_=20000', desc: 'token', sourceValue: '200000' },
+          { search: slot, desc: 'cc-flow', sourceValue: slot, target: { value: literalValue, pad: 'right-space' } },
+        ],
+      })
+
+      expect(result.success).toBe(true)
+      expect(result.checks).toContainEqual(
+        expect.objectContaining({ name: 'pattern-replaced', passed: true }),
+      )
+    })
   })
 })
