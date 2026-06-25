@@ -21,12 +21,13 @@ import { getNpmCommand, getNpmExecOptions } from './package.js'
 export async function queryLatestVersion(
   timeoutMs = 4000,
   execFileImpl: typeof execFile = execFile,
-  packageName: string = '@anthropic-ai/claude-code'
+  packageName: string = '@anthropic-ai/claude-code',
+  distTag: string = 'latest'
 ): Promise<string | undefined> {
   return new Promise((resolve) => {
     execFileImpl(
       getNpmCommand(),
-      ['view', `${packageName}@latest`, 'version', '--json'],
+      ['view', `${packageName}@${distTag}`, 'version', '--json'],
       { timeout: timeoutMs, ...getNpmExecOptions() },
       (error: Error | null, stdout: string) => {
         if (error) {

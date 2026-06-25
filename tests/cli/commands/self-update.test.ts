@@ -21,6 +21,7 @@ describe('self-update command', () => {
         hasUpdate,
         currentVersion: '0.3.0',
         latestVersion: latest,
+        channel: 'latest',
       }),
     }
   }
@@ -174,5 +175,37 @@ describe('self-update command', () => {
     expect(result.severity).toBeUndefined()
     expect(result.warnings).toBeUndefined()
     expect(result.summary).toContain('0.3.5')
+  })
+
+  it('prerelease currentVersion（alpha）→ spawn cc-expand@alpha，不降级 stable', async () => {
+    const spawner = vi.fn().mockResolvedValue({ code: 0 })
+    await selfUpdateCommand({
+      installMethodDetector: makeDetector('npm'),
+      updateCheckService: {
+        check: vi.fn().mockResolvedValue({
+          hasUpdate: true,
+          currentVersion: '0.4.0-alpha.1',
+          latestVersion: '0.4.0-alpha.2',
+          channel: 'alpha',
+        }),
+      },
+      spawner,
+      currentVersion: '0.4.0-alpha.1',
+    })
+    expect(spawner).toHaveBeenCalledWith('npm', ['install', '-g', 'cc-expand@alpha'])
+  })
+
+  it('prerelease 通道查询失败 → 提示手动更新，不 spawn（防降级 stable）', async () => {
+    const spawner = vi.fn()
+    const result = await selfUpdateCommand({
+      installMethodDetector: makeDetector('npm'),
+      updateCheckService: { check: vi.fn().mockResolvedValue(null) },
+      spawner,
+      currentVersion: '0.4.0-alpha.1',
+    })
+    expect(spawner).not.toHaveBeenCalled()
+    expect(result.success).toBe(false)
+    expect(result.error?.code).toBe('SELF_UPDATE_FAILED')
+    expect(result.error?.message).toMatch(/alpha|channel/i)
   })
 })

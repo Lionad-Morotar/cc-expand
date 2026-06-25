@@ -67,4 +67,15 @@ describe('queryLatestVersion', () => {
     expect(v).toBe('0.3.5')
     expect((capturedArgs as readonly string[]).join(' ')).toContain('cc-expand@latest')
   })
+
+  it('支持 distTag（alpha 通道），args 含 cc-expand@alpha', async () => {
+    let capturedArgs: unknown
+    const spyExec = (_cmd: unknown, args: unknown, _opts: unknown, cb: ExecCb) => {
+      capturedArgs = args
+      cb(null, '"0.4.0-alpha.2"')
+    }
+    const v = await queryLatestVersion(4000, spyExec as any, 'cc-expand', 'alpha')
+    expect(v).toBe('0.4.0-alpha.2')
+    expect((capturedArgs as readonly string[]).join(' ')).toContain('cc-expand@alpha')
+  })
 })

@@ -39,6 +39,8 @@ export type I18nKey
     | 'error.selfUpdate.eacces'
     | 'error.selfUpdate.enoent'
     | 'error.selfUpdate.generic'
+    | 'error.selfUpdate.prereleaseChannelUnknown'
+    | 'suggestion.selfUpdate.prereleaseChannelUnknown'
     | 'suggestion.selfUpdate.unknownMethod'
     | 'suggestion.selfUpdate.eacces'
     | 'suggestion.selfUpdate.enoent'
@@ -87,6 +89,8 @@ const translations: Translations = {
     'error.selfUpdate.eacces': 'Permission denied, cannot write to global install directory',
     'error.selfUpdate.enoent': 'Command not found: {message}',
     'error.selfUpdate.generic': 'Update failed: {message}',
+    'error.selfUpdate.prereleaseChannelUnknown': 'Cannot determine the latest {channel} version (npm query failed). Refusing to auto-update to avoid downgrading to stable.',
+    'suggestion.selfUpdate.prereleaseChannelUnknown': 'Update manually: npm install -g cc-expand@{channel}',
     'suggestion.selfUpdate.unknownMethod': 'Declare explicitly via `ccx config set installMethod <npm|pnpm|yarn>`',
     'suggestion.selfUpdate.eacces': 'Configure npm prefix to a user directory (npm config set prefix ~/.npm-global), or use sudo (not recommended)',
     'suggestion.selfUpdate.enoent': 'Ensure the package manager is installed and in PATH',
@@ -132,6 +136,8 @@ const translations: Translations = {
     'error.selfUpdate.eacces': '权限不足，无法写入全局安装目录',
     'error.selfUpdate.enoent': '未找到命令：{message}',
     'error.selfUpdate.generic': '更新失败：{message}',
+    'error.selfUpdate.prereleaseChannelUnknown': '无法确定 {channel} 通道的最新版本（npm 查询失败）。为避免降级到 stable，已中止自动更新。',
+    'suggestion.selfUpdate.prereleaseChannelUnknown': '请手动更新：npm install -g cc-expand@{channel}',
     'suggestion.selfUpdate.unknownMethod': '请用 `ccx config set installMethod <npm|pnpm|yarn>` 显式声明',
     'suggestion.selfUpdate.eacces': '建议配置 npm prefix 到用户目录（npm config set prefix ~/.npm-global），或用 sudo（不推荐，可能破坏权限）',
     'suggestion.selfUpdate.enoent': '请确认对应的包管理器已安装并在 PATH 中',

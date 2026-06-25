@@ -36,6 +36,7 @@ describe('UpdateCheckService', () => {
       hasUpdate: true,
       currentVersion: '0.3.0',
       latestVersion: '0.3.1',
+      channel: 'latest',
     })
   })
 
@@ -58,6 +59,7 @@ describe('UpdateCheckService', () => {
       hasUpdate: true,
       currentVersion: '0.3.0',
       latestVersion: '0.3.1',
+      channel: 'latest',
     })
     expect(resolver).not.toHaveBeenCalled()
   })
@@ -98,6 +100,7 @@ describe('UpdateCheckService', () => {
       hasUpdate: false,
       currentVersion: '0.3.0',
       latestVersion: '0.3.0',
+      channel: 'latest',
     })
   })
 
@@ -163,6 +166,23 @@ describe('UpdateCheckService', () => {
       hasUpdate: true,
       currentVersion: '0.3.0',
       latestVersion: '0.3.1',
+      channel: 'latest',
+    })
+  })
+
+  it('prerelease currentVersion → channel alpha，按对应通道比较', async () => {
+    const resolver = vi.fn(async () => '0.4.0-alpha.2')
+    const service = new UpdateCheckService({
+      cachePath,
+      currentVersion: '0.4.0-alpha.1',
+      versionResolver: resolver,
+    })
+    const result = await service.check()
+    expect(result).toEqual({
+      hasUpdate: true,
+      currentVersion: '0.4.0-alpha.1',
+      latestVersion: '0.4.0-alpha.2',
+      channel: 'alpha',
     })
   })
 })
