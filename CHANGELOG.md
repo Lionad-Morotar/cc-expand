@@ -95,7 +95,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `ccx migration [version]`：把源版本已 patch 的 token 配置批量迁移到目标版本，升级 Claude Code 后无需逐个重新 patch。源解析优先级 `--from` > discovery 当前版本 > `patchedAt` 最新；支持 `--from <version>`、`--dry-run`、`-y`
+- `ccx migration [version|latest]`：把源版本已 patch 的 token 配置批量迁移到目标版本，升级 Claude Code 后无需逐个重新 patch。源解析优先级 `--from` > discovery 当前版本 > `patchedAt` 最新；支持 `--from <version>`、`--dry-run`、`-y`
 - `ccx status` / `ccx list`：检测到 npm 新版本且当前已 patch 时，next 建议 `ccx migration latest`
 - `ccx install` 有历史 patch 记录时建议 migration（首次仍建议 patch）；`ccx verify` 未 patch 且有历史记录时建议 migration
 - `PatchApplier` 深模块：`patch` 与 `migration` 共用核心流程（prepare + execute 两阶段）

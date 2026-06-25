@@ -76,6 +76,49 @@ describe('CLI Integration', () => {
     expect(threw).toBe(true)
   })
 
+  it('patch help explains the remove action and shows examples', () => {
+    const output = execFileSync('node', [CLI_PATH, 'patch', '--help'], {
+      encoding: 'utf-8',
+    })
+
+    expect(output).toContain('ccx patch remove <version> [combo]')
+    expect(output).toContain('Examples:')
+    expect(output).toContain('$ ccx patch 2.1.186 --target 270000')
+    expect(output).toContain('$ ccx patch remove 2.1.186 27w')
+  })
+
+  it('config help lists subcommands and shows examples', () => {
+    const output = execFileSync('node', [CLI_PATH, 'config', '--help'], {
+      encoding: 'utf-8',
+    })
+
+    expect(output).toContain('ccx config <get|set|lang> [key] [value]')
+    expect(output).toContain('Examples:')
+    expect(output).toContain('$ ccx config get locale')
+    expect(output).toContain('$ ccx config set locale zh')
+  })
+
+  it('run help uses combo terminology and shows examples', () => {
+    const output = execFileSync('node', [CLI_PATH, 'run', '--help'], {
+      encoding: 'utf-8',
+    })
+
+    expect(output).toContain('ccx run [combo]')
+    expect(output).toContain('Examples:')
+    expect(output).toContain('$ ccx run')
+    expect(output).toContain('$ ccx run 27w-flow')
+  })
+
+  it('migration help mentions latest and shows examples', () => {
+    const output = execFileSync('node', [CLI_PATH, 'migration', '--help'], {
+      encoding: 'utf-8',
+    })
+
+    expect(output).toContain('ccx migration [version|latest]')
+    expect(output).toContain('Examples:')
+    expect(output).toContain('$ ccx migration latest')
+  })
+
   it('should show install command in help', () => {
     const output = execFileSync('node', [CLI_PATH, '--help'], {
       encoding: 'utf-8',

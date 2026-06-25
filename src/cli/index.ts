@@ -155,6 +155,11 @@ async function main(): Promise<void> {
 
   cli
     .command('config <subcommand> [key] [value]', 'Manage user preferences')
+    .usage('config <get|set|lang> [key] [value]')
+    .example('  $ ccx config get locale')
+    .example('  $ ccx config set locale zh')
+    .example('  $ ccx config set autoMaintain true')
+    .example('  $ ccx config lang zh')
     .action(async (subcommand: string, key: string | undefined, value: string | undefined, options: Record<string, unknown>) => {
       const renderer = getRenderer(options)
       const result = await configCommand([subcommand, key, value].filter(Boolean) as string[])
@@ -216,10 +221,13 @@ async function main(): Promise<void> {
     })
 
   cli
-    .command('run [tokens]', 'Launch patched Claude Code')
-    .action(async (tokens: string | undefined, options: Record<string, unknown>) => {
+    .command('run [combo]', 'Launch patched Claude Code')
+    .example('  $ ccx run')
+    .example('  $ ccx run 27w')
+    .example('  $ ccx run 27w-flow')
+    .action(async (combo: string | undefined, options: Record<string, unknown>) => {
       const renderer = getRenderer(options)
-      const result = await runCommand(tokens)
+      const result = await runCommand(combo)
       if (result && !result.success) {
         // run 失败时（binary 缺失或 spawn 失败）打印错误，否则用户只看到退出码看不到原因
         const rendered = renderer.render(result, 'run')
@@ -231,7 +239,12 @@ async function main(): Promise<void> {
 
   cli
     .command('patch [action] [version] [combo]', 'Patch or unpatch local Claude Code binary')
-    .option('-t, --target <count>', 'Target context window size')
+    .usage('patch <version> [options]\n  $ ccx patch remove <version> [combo]')
+    .example('  $ ccx patch 2.1.186 --target 270000')
+    .example('  $ ccx patch 2.1.186 --target 27w --yes')
+    .example('  $ ccx patch remove 2.1.186 27w')
+    .example('  $ ccx patch remove 2.1.186')
+    .option('-t, --target <count>', 'Target context window size (e.g. 270000 or 27w)')
     .option('-y, --yes', 'Skip confirmation')
     .action(async (action: string | undefined, version: string | undefined, combo: string | undefined, options: Record<string, unknown>) => {
       const renderer = getRenderer(options)
@@ -243,7 +256,9 @@ async function main(): Promise<void> {
     })
 
   cli
-    .command('migration [version]', 'Migrate existing patches to a target version')
+    .command('migration [version|latest]', 'Migrate existing patches to a target version')
+    .example('  $ ccx migration latest')
+    .example('  $ ccx migration 2.1.186 --from 2.1.170 --dry-run')
     .option('--from <version>', 'Source version to migrate from')
     .option('-y, --yes', 'Skip confirmation')
     .option('--dry-run', 'Preview without applying')
@@ -280,6 +295,10 @@ async function main(): Promise<void> {
 
   cli
     .command('plugins [list|enable|disable|remove|add] [name]', 'Manage plugins')
+    .example('  $ ccx plugins list')
+    .example('  $ ccx plugins enable flow')
+    .example('  $ ccx plugins disable flow')
+    .example('  $ ccx plugins add owner/repo')
     .action(async (subcommand: string | undefined, name: string | undefined, options: Record<string, unknown>) => {
       // 无子命令默认显示 help（子命令清单 + 用法），等同 ccx plugins -h
       if (!subcommand) {

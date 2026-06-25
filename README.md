@@ -66,7 +66,7 @@ npx cc-expand <command>
 |---------|-------------|
 | `cc-expand install [version]` | Download Claude Code from npm to `~/.cc-expand/packages/` |
 | `cc-expand patch [version]` | Copy binary from local package, patch it, and save to `~/.cc-expand/bin/` |
-| `cc-expand run [tokens]` | Launch the patched Claude Code binary |
+| `cc-expand run [combo]` | Launch the patched Claude Code binary |
 | `cc-expand setup` | Install shell shortcuts (`cc`, `c` aliases for quickly opening the patched Claude Code) |
 | `cc-expand restore` | Restore original binary from backup |
 | `cc-expand verify` | Verify whether the binary has been patched |
