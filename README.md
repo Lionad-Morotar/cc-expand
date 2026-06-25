@@ -1,14 +1,20 @@
 <p align="center">
+  <h1 align="center">cc-expand</h1>
+  <p align="center">Expand Claude Code capabilities via plugin-based binary patching</p>
   <img src="https://mgear-image.oss-cn-shanghai.aliyuncs.com/image/other/20260610223551529.webp" width="800" alt="cc-expand logo">
 </p>
 
 <h1 align="center">cc-expand</h1>
 
 <p align="center">
+  <h1 align="center">cc-expand</h1>
+  <p align="center">Expand Claude Code capabilities via plugin-based binary patching</p>
   <span>Resize your CC's context window freely</span>
 </p>
 
 <p align="center">
+  <h1 align="center">cc-expand</h1>
+  <p align="center">Expand Claude Code capabilities via plugin-based binary patching</p>
   <a href="README.md">English</a> | <a href="README.zh.md">中文</a>
 </p>
 
@@ -117,3 +123,18 @@ Please star to support me in developing more interesting apps.
 ## License
 
 MIT © Lionad Morotar
+
+## Plugins (v0.4+)
+
+ccx 从 token 扩展升级为能力扩展平台（ADR 0003）：plugin 是 patch 的一等抽象，token 扩展降级为内置 plugin。
+
+```bash
+ccx plugins add owner/repo   # 安装
+cx plugins list               # 查看
+ccx plugins enable/disable <name>
+ccx plugins remove <name>
+```
+
+binary 命名编码 plugin 集合（如 `claude-27w-flow`）。
+
+详见 [Plugin 作者指南](docs/plugin-authoring.md) 与 [ADR 0003](docs/adr/0003-plugin-unified-patch-abstraction.md)。
