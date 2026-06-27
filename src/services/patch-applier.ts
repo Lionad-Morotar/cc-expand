@@ -19,10 +19,12 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { execSync } from 'node:child_process'
 import { PatchEngine } from '../core/patch-engine.js'
+import { PatternDiscovery } from '../core/pattern-discovery.js'
 import { encodeTokenLiteral } from '../utils/encode-token-literal.js'
 import type { PluginsManager } from './plugins-manager.js'
 import { Verifier } from '../core/verifier.js'
 import { PackageService } from './package.js'
+import { classifyDesc } from './desc-classifier.js'
 import type { ConfigService } from './config.js'
 import { CcxError, ErrorCode, type PatchItem } from '../types/index.js'
 
@@ -124,25 +126,59 @@ export class PatchApplier {
       p => p.source === 'internal' && p.manifest.target?.type === 'token-encode' && p.enabled
     ) ?? true
 
-    const rawTokenPatches = tokenEnabled
+    let rawTokenPatches = tokenEnabled
       ? await configService.getPatternForVersion(version)
       : undefined
-    // token 扩展开启但拿不到 pattern → 报错；关闭（disable token-expansion）则允许只跑 installed plugin
-    if (tokenEnabled && !rawTokenPatches) {
-      return {
-        ok: false,
-        error: {
-          code: ErrorCode.PATTERN_NOT_FOUND,
-          message: `No pattern found for version ${version}`,
-          suggestion: `Run 'ccx supports' to see supported versions`
+
+    // 远程/本地缓存均无 pattern 时，从已安装 binary 做本地 discovery 兜底。
+    // 这样 OSS pattern 未及时更新时，新版本 Claude Code 仍能先被 patch。
+    // undefined 或空数组均视为缺失，都会触发 discovery（避免 OSS 返回空 shard 导致无 patches）。
+    if (tokenEnabled && !rawTokenPatches?.length) {
+      try {
+        const buffer = readFileSync(packageService.getBinaryPath(version))
+        const discovered = new PatternDiscovery().discover(buffer)
+        rawTokenPatches = discovered.map((d) => ({ ...d, desc: classifyDesc(d.search) }))
+      } catch {
+        // discovery 失败（结构不变量不满足）仍按原错误返回，不暴露内部异常
+        return {
+          ok: false,
+          error: {
+            code: ErrorCode.PATTERN_NOT_FOUND,
+            message: `No pattern found for version ${version}`,
+            suggestion: `Run 'ccx supports' to see supported versions`
+          }
         }
       }
     }
+
     const tokenPatches: PatchItem[] = rawTokenPatches ?? []
 
     // 聚合 installed plugin patches（literal target，合并一次扫描，按 plugin 归类）
     const installedPatches = options.installedPatches ?? []
     const patches = [...tokenPatches, ...installedPatches]
+
+    // 无可用 patches 时提前失败，避免 PatchEngine 返回“No patches applied”这种
+    // 更像 binary 结构不匹配的误导信息。常见原因：token-expansion 被禁用且无 installed plugin，
+    // 或 token 启用但 pattern 完全缺失且本地 discovery 也未命中。
+    if (patches.length === 0) {
+      // 调试信息：帮助区分是插件状态问题还是 pattern 缺失问题
+      console.warn(
+        `[PatchApplier] no patches available for ${version}: ` +
+        `tokenEnabled=${tokenEnabled}, tokenPatches=${rawTokenPatches?.length ?? 0}, installedPatches=${installedPatches.length}`
+      )
+      return {
+        ok: false,
+        error: {
+          code: ErrorCode.PATTERN_NOT_FOUND,
+          message: tokenEnabled
+            ? `No pattern found for version ${version}`
+            : 'Token expansion is disabled and no installed plugins provide patches',
+          suggestion: tokenEnabled
+            ? `Run 'ccx supports' to see supported versions`
+            : `Enable token-expansion with 'ccx plugins enable token-expansion' or install a patch plugin`
+        }
+      }
+    }
 
     return {
       ok: true,
