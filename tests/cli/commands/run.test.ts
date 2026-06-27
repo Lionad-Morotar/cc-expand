@@ -127,4 +127,20 @@ describe('run command', () => {
   it('rejects combo with invalid token segment (CR#10)', async () => {
     await expect(runCommand('abc-flow')).rejects.toThrow('Invalid target tokens')
   })
+
+  it('--print-binary outputs binary path and does not spawn', async () => {
+    createBinary('claude-27w')
+    const logs: string[] = []
+    const originalLog = console.log
+    console.log = (msg: string) => logs.push(msg)
+    try {
+      const result = await runCommand('270k', { printBinary: true })
+      expect(result).toBeDefined()
+      expect((result as { success: boolean }).success).toBe(true)
+      expect(logs).toHaveLength(1)
+      expect(logs[0]).toMatch(/claude-27w$/)
+    } finally {
+      console.log = originalLog
+    }
+  })
 })

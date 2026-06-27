@@ -192,6 +192,15 @@ export async function patchCommand(
   }
   const applied = outcome.data
 
+  // patch 成功后把该版本记为 active channel，使 shell 快捷方式的版本校验以此为基准，
+  // 避免 patch 了新版本后旧 channel.json 仍指向上一版本导致启动失败。
+  const configDir = join(homeDir, '.cc-expand')
+  new ChannelConfig(configDir).saveChannel({
+    channel: 'local',
+    path: join(configDir, 'packages', applied.version),
+    version: applied.version
+  })
+
   // 自动维护 shell 快捷方式（可由用户配置关闭）
   let maintainSummary = ''
   const autoMaintain = userConfigService.get('autoMaintain')

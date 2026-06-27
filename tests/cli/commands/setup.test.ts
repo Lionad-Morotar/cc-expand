@@ -59,10 +59,9 @@ describe('setup command', () => {
     expect(result.success).toBe(true)
     expect(content).toContain('cc()')
     expect(content).toContain("alias c='cc 27w'")
-    expect(content).toContain('$HOME/.cc-expand/bin/claude-${ctx}')
-    expect(content).toContain('$HOME/.cc-expand/bin/claude-27w')
+    expect(content).toContain('cc-expand run "$ctx" --print-binary 2>/dev/null')
     expect(content).toContain('cc-expand patch --target "$ctx" --yes || {')
-    expect(content).toContain('if [[ ! -x "$binary" ]]; then')
+    expect(content).toContain('if [[ -z "$binary" || ! -x "$binary" ]]; then')
   })
 
   it('should install with --yes without confirm', async () => {

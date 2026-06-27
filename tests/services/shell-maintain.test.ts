@@ -152,7 +152,7 @@ describe('shell-maintain', () => {
 
     const content = readFileSync(zshrc, 'utf-8')
     // 用户拒绝后仍保留 patched 块
-    expect(content).toContain('.cc-expand/bin/claude-27w')
+    expect(content).toContain('cc-expand run 27w --print-binary 2>/dev/null')
     expect(summary).toContain('未更新')
   })
 

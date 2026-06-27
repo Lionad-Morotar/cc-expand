@@ -51,6 +51,8 @@ export interface RunOptions {
   exitOnChildExit?: boolean
   /** 注入 spawn 实现（测试用），默认使用 node:child_process.spawn */
   spawn?: SpawnFn
+  /** 仅打印 binary 路径（不启动），供 shell 快捷方式定位 */
+  printBinary?: boolean
 }
 
 export async function runCommand(
@@ -72,6 +74,17 @@ export async function runCommand(
       `Patched binary '${shortVer}' not found`,
       `Run: ccx patch --target ${shortVer}`
     )
+  }
+
+  // --print-binary：只输出路径，不 spawn。shell 快捷方式用它定位 binary 后再做版本校验。
+  if (options?.printBinary) {
+    console.log(binaryPath)
+    return {
+      success: true,
+      command: 'run',
+      summary: binaryPath,
+      data: { binaryPath, targetTokens }
+    }
   }
 
   const doSpawn = options?.spawn ?? defaultSpawn

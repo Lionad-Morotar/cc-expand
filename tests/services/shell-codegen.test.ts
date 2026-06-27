@@ -36,7 +36,19 @@ describe('shell-codegen', () => {
     const code = generateBashFunction(256000)
     expect(code).toContain('cc() {')
     expect(code).toContain("alias c='cc 25w6k'")
-    expect(code).toContain('binary="$HOME/.cc-expand/bin/claude-25w6k"')
+    // 支持 shortVer 或纯数字 target，通过 ccx run --print-binary 定位 binary
+    expect(code).toContain('cc-expand run "$ctx" --print-binary 2>/dev/null')
+    expect(code).toContain('cc-expand patch --target "$ctx" --yes')
+  })
+
+  it('uses command grep to avoid rg alias breaking version guard', () => {
+    const code = generateBashFunction(256000)
+    expect(code).toContain('command grep -oE')
+    // 所有 grep -oE 出现处都必须带 command 前缀，避免用户把 grep alias 成 rg
+    const total = (code.match(/grep -oE/g) ?? []).length
+    const withCommand = (code.match(/command grep -oE/g) ?? []).length
+    expect(total).toBeGreaterThan(0)
+    expect(total).toBe(withCommand)
   })
 
   it('version-guards against stale patched binaries (no silent outdated runs)', () => {

@@ -89,6 +89,7 @@ export type I18nKey
     | 'help.command.migration.option.dryRun'
     | 'help.command.list.option.patched'
     | 'help.command.list.option.all'
+    | 'help.command.run.option.printBinary'
 
 type Translations = Record<Locale, Record<I18nKey, string>>
 
@@ -177,7 +178,8 @@ const translations: Translations = {
     'help.command.migration.option.yes': 'Skip confirmation',
     'help.command.migration.option.dryRun': 'Preview without applying',
     'help.command.list.option.patched': 'Show only patched versions',
-    'help.command.list.option.all': 'Show full list without pager'
+    'help.command.list.option.all': 'Show full list without pager',
+    'help.command.run.option.printBinary': 'Print the patched binary path and exit'
   },
   zh: {
     'command.config.get': '{key} 的当前值为 {value}',
@@ -263,7 +265,8 @@ const translations: Translations = {
     'help.command.migration.option.yes': '跳过确认',
     'help.command.migration.option.dryRun': '预览而不应用',
     'help.command.list.option.patched': '只显示已 patch 的版本',
-    'help.command.list.option.all': '不使用分页显示完整列表'
+    'help.command.list.option.all': '不使用分页显示完整列表',
+    'help.command.run.option.printBinary': '输出已 patch 的 binary 路径并退出'
   }
 }
 

@@ -264,14 +264,19 @@ async function main(): Promise<void> {
     .example('  $ ccx run')
     .example('  $ ccx run 27w')
     .example('  $ ccx run 27w-flow')
+    .option('--print-binary', t('help.command.run.option.printBinary'))
     .action(async (combo: string | undefined, options: Record<string, unknown>) => {
       const renderer = getRenderer(options)
-      const result = await runCommand(combo)
+      const result = await runCommand(combo, { printBinary: !!options.printBinary })
       if (result && !result.success) {
         // run 失败时（binary 缺失或 spawn 失败）打印错误，否则用户只看到退出码看不到原因
         const rendered = renderer.render(result, 'run')
         if (rendered !== undefined) console.error(rendered)
         process.exit(getExitCode(result.error?.code as ErrorCode | undefined))
+      }
+      if (options.printBinary && result && result.success) {
+        // --print-binary 已直接输出 binary 路径，无需渲染，直接退出
+        process.exit(0)
       }
       // run 成功时 child 进程接管 stdio，无需渲染，也跳过更新检查（promise 被 exec 遗弃）
     })
