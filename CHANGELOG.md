@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0-alpha.2] - 2026-06-27
+
+### Added
+- `ccx run --print-binary`：输出已 patch 的 binary 路径并退出，供 shell 快捷方式定位。
+- `cc` shell 函数支持纯数字 target（如 `cc 700000`），由 `ccx run` 按 shortVer 规则解析到正确的 `claude-70w` 等 binary。
+- `PatchApplier` 本地 PatternDiscovery fallback：OSS pattern 缺失时从已安装 binary 自动发现 pattern，新版本 Claude Code 无需等待远程 shard。
+
+### Fixed
+- 禁用 `token-expansion` 且无 installed plugin 时，`ccx patch` 返回清晰错误提示，不再误导为 "binary 结构不匹配"。
+- 生成的 `cc` shell 函数版本校验改用 `command grep`，避免用户将 `grep` alias 为 `rg` 时 `-E` 语法报错。
+- `ccx patch` 成功后同步写入 `channel.json`，修复 shell 版本校验与最新 patch 版本不一致导致启动失败的问题。
+
 ## [0.4.0-alpha.1] - 2026-06-25
 
 ### Fixed
