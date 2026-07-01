@@ -14,7 +14,7 @@ describe('PatchEngine', () => {
 
       const engine = new PatchEngine()
       const patches = [
-        { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
+        { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' }
       ]
 
       // Act
@@ -37,7 +37,7 @@ describe('PatchEngine', () => {
       const buffer = Buffer.from('some_random_data_without_the_constant')
       const engine = new PatchEngine()
       const patches = [
-        { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
+        { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' }
       ]
 
       // Act
@@ -52,12 +52,12 @@ describe('PatchEngine', () => {
     it('should replace multiple occurrences', () => {
       // Arrange: buffer with multiple occurrences of the pattern
       const buffer = Buffer.from(
-        'Aj8=200000,Ij_=20000_junk_Aj8=200000,Ij_=20000_junk_Aj8=200000,Ij_=20000',
+        'Aj8=200000,Ij_=20000_junk_Aj8=200000,Ij_=20000_junk_Aj8=200000,Ij_=20000'
       )
 
       const engine = new PatchEngine()
       const patches = [
-        { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
+        { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' }
       ]
 
       // Act
@@ -75,14 +75,14 @@ describe('PatchEngine', () => {
     it('should patch multiple different patterns', () => {
       // Arrange: buffer with multiple different patterns
       const buffer = Buffer.from(
-        'Aj8=200000,Ij_=20000_X93=200000_rt5=200000',
+        'Aj8=200000,Ij_=20000_X93=200000_rt5=200000'
       )
 
       const engine = new PatchEngine()
       const patches = [
         { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
         { search: 'X93=200000', desc: 'teamMemorySync', sourceValue: '200000' },
-        { search: 'rt5=200000', desc: 'skill tool budget', sourceValue: '200000' },
+        { search: 'rt5=200000', desc: 'skill tool budget', sourceValue: '200000' }
       ]
 
       // Act
@@ -106,7 +106,7 @@ describe('PatchEngine', () => {
       const originalLength = buffer.length
       const engine = new PatchEngine()
       const patches = [
-        { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
+        { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' }
       ]
 
       const result = engine.patch(buffer, patches, tokenGen(1000000))
@@ -124,7 +124,7 @@ describe('PatchEngine', () => {
       const originalLength = buffer.length
       const engine = new PatchEngine()
       const patches = [
-        { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
+        { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' }
       ]
       // 1234567: 十进制7位 / 1.234567e6=10位 / 0x12d687=8位，均超 6 字节槽位
       const result = engine.patch(buffer, patches, tokenGen(1234567))
@@ -142,7 +142,7 @@ describe('PatchEngine', () => {
       const buffer = Buffer.from('header_PLACEHOLDER_trailer')
       const engine = new PatchEngine()
       const patches = [
-        { search: 'PLACEHOLDER', sourceValue: 'PLACEHOLDER', target: { value: 'PATCHED!!!!' } },
+        { search: 'PLACEHOLDER', sourceValue: 'PLACEHOLDER', target: { value: 'PATCHED!!!!' } }
       ]
       const result = engine.patch(buffer, patches, tokenGen(0))
       expect(result.success).toBe(true)
@@ -161,7 +161,7 @@ describe('PatchEngine', () => {
       const patches = [{
         search: slot,
         sourceValue: slot,
-        target: { value: 'env?x:y', pad: 'right-space' as const },
+        target: { value: 'env?x:y', pad: 'right-space' as const }
       }]
       const result = engine.patch(buffer, patches, tokenGen(0))
       expect(result.success).toBe(true)
@@ -179,7 +179,7 @@ describe('PatchEngine', () => {
       const patches = [{
         search: 'SHORT',
         sourceValue: 'SHORT',
-        target: { value: 'TOO_LONG_VALUE' },
+        target: { value: 'TOO_LONG_VALUE' }
       }]
       const result = engine.patch(buffer, patches, tokenGen(0))
       expect(result.success).toBe(false)
@@ -195,7 +195,7 @@ describe('PatchEngine', () => {
       const engine = new PatchEngine()
       const patches = [{ search: 'Aj8=200000,Ij_=20000', sourceValue: '200000', desc: 'token' }]
       // 注入 generator：返回等长自定义值（验证注入，不调 encodeTokenLiteral）
-      const result = engine.patch(buffer, patches, (slot) => 'XX'.padEnd(slot, ' '))
+      const result = engine.patch(buffer, patches, slot => 'XX'.padEnd(slot, ' '))
       expect(result.success).toBe(true)
       const mutated = buffer.toString('utf-8')
       expect(mutated).toContain('XX')

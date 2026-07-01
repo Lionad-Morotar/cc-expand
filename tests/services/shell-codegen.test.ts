@@ -8,7 +8,7 @@ import {
   generatePowerShellFunction,
   generateShellFunction,
   generateRestoredBashFunction,
-  generateRestoredShellFunction,
+  generateRestoredShellFunction
 } from '../../src/services/shell-codegen.js'
 
 describe('shell-codegen', () => {
@@ -35,7 +35,7 @@ describe('shell-codegen', () => {
   it('generates bash function with given target', () => {
     const code = generateBashFunction(256000)
     expect(code).toContain('cc() {')
-    expect(code).toContain("alias c='cc 25w6k'")
+    expect(code).toContain('alias c=\'cc 25w6k\'')
     // 支持 shortVer 或纯数字 target，通过 ccx run --print-binary 定位 binary
     expect(code).toContain('cc-expand run "$ctx" --print-binary 2>/dev/null')
     expect(code).toContain('cc-expand patch --target "$ctx" --yes')
@@ -82,7 +82,7 @@ describe('shell-codegen', () => {
     const code = generateRestoredBashFunction()
     expect(code).toContain('cc() {')
     expect(code).toContain('claude --dangerously-skip-permissions "$@"')
-    expect(code).toContain("alias c='cc'")
+    expect(code).toContain('alias c=\'cc\'')
     // restore 块不应引用 patched binary 路径
     expect(code).not.toContain('.cc-expand/bin/claude-')
     expect(code).toContain('# --- cc-expand generated start ---')

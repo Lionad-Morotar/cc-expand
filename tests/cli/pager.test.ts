@@ -8,7 +8,7 @@ import { describe, it, expect } from 'vitest'
 import { Readable, Writable } from 'node:stream'
 import {
   formatVersionLine,
-  type VersionLineItem,
+  type VersionLineItem
 } from '../../src/cli/version-line.js'
 import { runPager, DEFAULT_PAGE_SIZE } from '../../src/cli/pager.js'
 import { createRenderer } from '../../src/cli/renderer.js'
@@ -18,7 +18,7 @@ describe('formatVersionLine', () => {
     const item: VersionLineItem = {
       version: '2.1.170',
       platforms: ['darwin-arm64', 'linux-x64'],
-      current: false,
+      current: false
     }
     const expected = '  2.1.170 (darwin-arm64, linux-x64)'
     expect(formatVersionLine(item)).toBe(expected)
@@ -30,9 +30,9 @@ describe('formatVersionLine', () => {
         success: true,
         command: 'supports',
         summary: 'Supported: 1',
-        data: { versions: [item] },
+        data: { versions: [item] }
       },
-      'supports',
+      'supports'
     )
     expect(rendered).toContain(expected)
   })
@@ -43,7 +43,7 @@ describe('formatVersionLine', () => {
       installed: true,
       patched: true,
       targets: [256000, 270000],
-      current: false,
+      current: false
     }
     const expected = '  2.1.170 [installed] [patched] → 256000, 270000'
     expect(formatVersionLine(item)).toBe(expected)
@@ -54,9 +54,9 @@ describe('formatVersionLine', () => {
         success: true,
         command: 'list',
         summary: 'Installed: 1',
-        data: { versions: [item] },
+        data: { versions: [item] }
       },
-      'list',
+      'list'
     )
     expect(rendered).toContain(expected)
   })
@@ -65,7 +65,7 @@ describe('formatVersionLine', () => {
     const item: VersionLineItem = {
       version: '2.1.170',
       platforms: ['darwin-arm64'],
-      current: true,
+      current: true
     }
     expect(formatVersionLine(item)).toBe('  2.1.170 (darwin-arm64) ← current')
   })
@@ -102,7 +102,7 @@ describe('runPager', () => {
    * 而非 { name:'G' }（后者在生产环境永远不会出现）。
    */
   function makeFakeInput(
-    keySequence: Array<{ name: string; shift?: boolean; ctrl?: boolean }>,
+    keySequence: Array<{ name: string, shift?: boolean, ctrl?: boolean }>
   ): Readable {
     const stream = new Readable({ read() {} })
     stream.isTTY = true
@@ -115,13 +115,13 @@ describe('runPager', () => {
     return stream
   }
 
-  function makeFakeOutput(rows?: number): { stream: Writable; chunks: string[] } {
+  function makeFakeOutput(rows?: number): { stream: Writable, chunks: string[] } {
     const chunks: string[] = []
     const stream = new Writable({
       write(chunk: Buffer, _enc, cb) {
         chunks.push(chunk.toString())
         cb()
-      },
+      }
     })
     if (rows !== undefined) {
       ;(stream as unknown as { rows: number }).rows = rows
@@ -135,7 +135,7 @@ describe('runPager', () => {
     const { stream: output } = makeFakeOutput()
 
     await expect(
-      runPager(lines, { input, output, pageSize: 10 }),
+      runPager(lines, { input, output, pageSize: 10 })
     ).resolves.toBeUndefined()
   }, 5000)
 
@@ -148,12 +148,12 @@ describe('runPager', () => {
       { name: 'pagedown' },
       { name: 'g', shift: true },
       { name: 'g' },
-      { name: 'q' },
+      { name: 'q' }
     ])
     const { stream: output } = makeFakeOutput()
 
     await expect(
-      runPager(lines, { input, output, pageSize: 10 }),
+      runPager(lines, { input, output, pageSize: 10 })
     ).resolves.toBeUndefined()
   }, 5000)
 
@@ -198,7 +198,7 @@ describe('runPager', () => {
     const input = makeFakeInput([
       { name: 'down' },
       { name: 'g', shift: true },
-      { name: 'q' },
+      { name: 'q' }
     ])
     const { stream: output, chunks } = makeFakeOutput()
 
@@ -212,7 +212,7 @@ describe('runPager', () => {
     const lines = Array.from({ length: 25 }, (_, i) => `  v5.0.${i}`)
     const input = makeFakeInput([
       { name: 'e', ctrl: true },
-      { name: 'q' },
+      { name: 'q' }
     ])
     const { stream: output, chunks } = makeFakeOutput()
 
@@ -253,7 +253,7 @@ describe('runPager', () => {
     const { stream: output } = makeFakeOutput()
 
     await expect(
-      runPager(lines, { input, output, pageSize: 10 }),
+      runPager(lines, { input, output, pageSize: 10 })
     ).resolves.toBeUndefined()
   }, 5000)
 
@@ -270,7 +270,7 @@ describe('runPager', () => {
     const { stream: output } = makeFakeOutput()
 
     await expect(
-      runPager(lines, { input, output, pageSize: 10 }),
+      runPager(lines, { input, output, pageSize: 10 })
     ).resolves.toBeUndefined()
   }, 5000)
 })

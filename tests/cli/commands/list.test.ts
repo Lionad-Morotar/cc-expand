@@ -26,7 +26,7 @@ describe('list command', () => {
   }
 
   function createPatchedVersions(
-    versions: Record<string, { targets: number[]; patchedAt: string }>,
+    versions: Record<string, { targets: number[], patchedAt: string }>
   ) {
     const configPath = join(tempDir, '.cc-expand', 'versions.json')
     mkdirSync(join(tempDir, '.cc-expand'), { recursive: true })
@@ -40,21 +40,21 @@ describe('list command', () => {
     const result = await listCommand([], { latestResolver: async () => '2.1.160' })
 
     expect(result.success).toBe(true)
-    expect(result.data?.versions.map((v) => v.version)).toEqual(['2.1.170', '2.1.161'])
-    expect(result.data?.versions.every((v) => v.installed)).toBe(true)
+    expect(result.data?.versions.map(v => v.version)).toEqual(['2.1.170', '2.1.161'])
+    expect(result.data?.versions.every(v => v.installed)).toBe(true)
   })
 
   it('marks patched versions correctly', async () => {
     createInstalledVersion('2.1.170')
     createInstalledVersion('2.1.161')
     createPatchedVersions({
-      '2.1.170': { targets: [270000], patchedAt: '2026-06-10T00:00:00.000Z' },
+      '2.1.170': { targets: [270000], patchedAt: '2026-06-10T00:00:00.000Z' }
     })
 
     const result = await listCommand([], { latestResolver: async () => '2.1.160' })
 
-    const v170 = result.data?.versions.find((v) => v.version === '2.1.170')
-    const v161 = result.data?.versions.find((v) => v.version === '2.1.161')
+    const v170 = result.data?.versions.find(v => v.version === '2.1.170')
+    const v161 = result.data?.versions.find(v => v.version === '2.1.161')
     expect(v170?.patched).toBe(true)
     expect(v170?.targets).toEqual([270000])
     expect(v161?.patched).toBe(false)
@@ -64,7 +64,7 @@ describe('list command', () => {
     createInstalledVersion('2.1.170')
     createInstalledVersion('2.1.161')
     createPatchedVersions({
-      '2.1.170': { targets: [270000], patchedAt: '2026-06-10T00:00:00.000Z' },
+      '2.1.170': { targets: [270000], patchedAt: '2026-06-10T00:00:00.000Z' }
     })
 
     const result = await listCommand(['--patched'], { latestResolver: async () => '2.1.160' })
@@ -75,7 +75,7 @@ describe('list command', () => {
 
   it('includes only patched versions when none installed', async () => {
     createPatchedVersions({
-      '2.1.170': { targets: [270000], patchedAt: '2026-06-10T00:00:00.000Z' },
+      '2.1.170': { targets: [270000], patchedAt: '2026-06-10T00:00:00.000Z' }
     })
 
     const result = await listCommand([], { latestResolver: async () => '2.1.160' })
@@ -87,7 +87,7 @@ describe('list command', () => {
 
   it('suggests migration when a patched version exists and latest is newer', async () => {
     createPatchedVersions({
-      '2.1.177': { targets: [1000000], patchedAt: '2026-06-15T00:00:00.000Z' },
+      '2.1.177': { targets: [1000000], patchedAt: '2026-06-15T00:00:00.000Z' }
     })
 
     const result = await listCommand([], { latestResolver: async () => '2.1.178' })
@@ -108,7 +108,7 @@ describe('list command', () => {
 
   it('shows remove hint even when no migration is suggested', async () => {
     createPatchedVersions({
-      '2.1.177': { targets: [270000], patchedAt: '2026-06-15T00:00:00.000Z' },
+      '2.1.177': { targets: [270000], patchedAt: '2026-06-15T00:00:00.000Z' }
     })
 
     const result = await listCommand([], { latestResolver: async () => '2.1.177' })

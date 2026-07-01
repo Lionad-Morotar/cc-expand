@@ -28,7 +28,7 @@ describe('UpdateCheckService', () => {
     const service = new UpdateCheckService({
       cachePath,
       currentVersion: '0.3.0',
-      versionResolver: async () => '0.3.1',
+      versionResolver: async () => '0.3.1'
     })
     const result = await service.check()
 
@@ -36,14 +36,14 @@ describe('UpdateCheckService', () => {
       hasUpdate: true,
       currentVersion: '0.3.0',
       latestVersion: '0.3.1',
-      channel: 'latest',
+      channel: 'latest'
     })
   })
 
   it('节流命中（state 在 intervalMs 内）时不查 resolver，用缓存比较', async () => {
     const state = {
       lastCheckedAt: new Date().toISOString(),
-      lastKnownLatest: '0.3.1',
+      lastKnownLatest: '0.3.1'
     }
     writeFileSync(cachePath, JSON.stringify(state))
 
@@ -51,7 +51,7 @@ describe('UpdateCheckService', () => {
     const service = new UpdateCheckService({
       cachePath,
       currentVersion: '0.3.0',
-      versionResolver: resolver,
+      versionResolver: resolver
     })
     const result = await service.check()
 
@@ -59,7 +59,7 @@ describe('UpdateCheckService', () => {
       hasUpdate: true,
       currentVersion: '0.3.0',
       latestVersion: '0.3.1',
-      channel: 'latest',
+      channel: 'latest'
     })
     expect(resolver).not.toHaveBeenCalled()
   })
@@ -68,7 +68,7 @@ describe('UpdateCheckService', () => {
     const service = new UpdateCheckService({
       cachePath,
       currentVersion: '0.3.0',
-      versionResolver: async () => undefined,
+      versionResolver: async () => undefined
     })
     const result = await service.check()
 
@@ -81,7 +81,7 @@ describe('UpdateCheckService', () => {
       currentVersion: '0.3.0',
       versionResolver: async () => {
         throw new Error('network')
-      },
+      }
     })
     const result = await service.check()
 
@@ -92,7 +92,7 @@ describe('UpdateCheckService', () => {
     const service = new UpdateCheckService({
       cachePath,
       currentVersion: '0.3.0',
-      versionResolver: async () => '0.3.0',
+      versionResolver: async () => '0.3.0'
     })
     const result = await service.check()
 
@@ -100,7 +100,7 @@ describe('UpdateCheckService', () => {
       hasUpdate: false,
       currentVersion: '0.3.0',
       latestVersion: '0.3.0',
-      channel: 'latest',
+      channel: 'latest'
     })
   })
 
@@ -108,7 +108,7 @@ describe('UpdateCheckService', () => {
     const service = new UpdateCheckService({
       cachePath,
       currentVersion: '0.3.0',
-      versionResolver: async () => '0.3.1',
+      versionResolver: async () => '0.3.1'
     })
     await service.check()
 
@@ -125,7 +125,7 @@ describe('UpdateCheckService', () => {
     const service = new UpdateCheckService({
       cachePath,
       currentVersion: '0.3.0',
-      versionResolver: async () => '0.3.1',
+      versionResolver: async () => '0.3.1'
     })
     const result = await service.check()
 
@@ -136,7 +136,7 @@ describe('UpdateCheckService', () => {
     const service = new UpdateCheckService({
       cachePath,
       currentVersion: '0.3.0',
-      versionResolver: async () => 'not-a-version',
+      versionResolver: async () => 'not-a-version'
     })
     const result = await service.check()
 
@@ -147,7 +147,7 @@ describe('UpdateCheckService', () => {
     // 预置新鲜缓存：缓存的 latest 与 current 相同（缓存比较会得 hasUpdate=false）
     const state = {
       lastCheckedAt: new Date().toISOString(),
-      lastKnownLatest: '0.3.0',
+      lastKnownLatest: '0.3.0'
     }
     writeFileSync(cachePath, JSON.stringify(state))
 
@@ -156,7 +156,7 @@ describe('UpdateCheckService', () => {
     const service = new UpdateCheckService({
       cachePath,
       currentVersion: '0.3.0',
-      versionResolver: resolver,
+      versionResolver: resolver
     })
     // skipCache 绕过节流，强制查真实 0.3.1
     const result = await service.check({ skipCache: true })
@@ -166,7 +166,7 @@ describe('UpdateCheckService', () => {
       hasUpdate: true,
       currentVersion: '0.3.0',
       latestVersion: '0.3.1',
-      channel: 'latest',
+      channel: 'latest'
     })
   })
 
@@ -175,14 +175,14 @@ describe('UpdateCheckService', () => {
     const service = new UpdateCheckService({
       cachePath,
       currentVersion: '0.4.0-alpha.1',
-      versionResolver: resolver,
+      versionResolver: resolver
     })
     const result = await service.check()
     expect(result).toEqual({
       hasUpdate: true,
       currentVersion: '0.4.0-alpha.1',
       latestVersion: '0.4.0-alpha.2',
-      channel: 'alpha',
+      channel: 'alpha'
     })
   })
 })

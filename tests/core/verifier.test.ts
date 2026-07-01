@@ -36,14 +36,14 @@ describe('Verifier', () => {
         sourceValue: '200000',
         patches: [
           { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
-          { search: 'X93=200000', desc: 'teamMemorySync', sourceValue: '200000' },
-        ],
+          { search: 'X93=200000', desc: 'teamMemorySync', sourceValue: '200000' }
+        ]
       })
 
       // Assert
       expect(result.success).toBe(true)
       expect(result.checks).toContainEqual(
-        expect.objectContaining({ name: 'pattern-replaced', passed: true }),
+        expect.objectContaining({ name: 'pattern-replaced', passed: true })
       )
     })
 
@@ -60,14 +60,14 @@ describe('Verifier', () => {
         sourceValue: '200000',
         patches: [
           { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
-          { search: 'X93=200000', desc: 'teamMemorySync', sourceValue: '200000' },
-        ],
+          { search: 'X93=200000', desc: 'teamMemorySync', sourceValue: '200000' }
+        ]
       })
 
       expect(result.success).toBe(false)
       expect(result.error?.code).toBe(ErrorCode.VERIFICATION_FAILED)
       expect(result.checks).toContainEqual(
-        expect.objectContaining({ name: 'pattern-replaced', passed: false }),
+        expect.objectContaining({ name: 'pattern-replaced', passed: false })
       )
     })
 
@@ -84,13 +84,13 @@ describe('Verifier', () => {
         sourceValue: '200000',
         patches: [
           { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
-          { search: 'X93=200000', desc: 'teamMemorySync', sourceValue: '200000' },
-        ],
+          { search: 'X93=200000', desc: 'teamMemorySync', sourceValue: '200000' }
+        ]
       })
 
       expect(result.success).toBe(false)
       expect(result.checks).toContainEqual(
-        expect.objectContaining({ name: 'pattern-replaced', passed: false }),
+        expect.objectContaining({ name: 'pattern-replaced', passed: false })
       )
     })
 
@@ -106,13 +106,13 @@ describe('Verifier', () => {
         targetGenerator: tokenGen(256000),
         sourceValue: '200000',
         patches: [
-          { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
-        ],
+          { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' }
+        ]
       })
 
       expect(result.success).toBe(false)
       expect(result.checks).toContainEqual(
-        expect.objectContaining({ name: 'executable', passed: false }),
+        expect.objectContaining({ name: 'executable', passed: false })
       )
     })
 
@@ -129,13 +129,13 @@ describe('Verifier', () => {
         sourceValue: '200000',
         patches: [
           { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
-          { search: 'X93=200000', desc: 'teamMemorySync', sourceValue: '200000' },
-        ],
+          { search: 'X93=200000', desc: 'teamMemorySync', sourceValue: '200000' }
+        ]
       })
 
       expect(result.success).toBe(true)
       expect(result.checks).toContainEqual(
-        expect.objectContaining({ name: 'pattern-replaced', passed: true }),
+        expect.objectContaining({ name: 'pattern-replaced', passed: true })
       )
     })
 
@@ -153,8 +153,8 @@ describe('Verifier', () => {
         sourceValue: '200000',
         patches: [
           { search: 'A=200000,', desc: 'six-byte-slot', sourceValue: '200000' },
-          { search: 'B=32000,', desc: 'five-byte-slot', sourceValue: '32000' },
-        ],
+          { search: 'B=32000,', desc: 'five-byte-slot', sourceValue: '32000' }
+        ]
       })
 
       expect(result.success).toBe(true)
@@ -178,13 +178,13 @@ describe('Verifier', () => {
         sourceValue: '200000',
         patches: [
           { search: 'Aj8=200000,Ij_=20000', desc: 'token', sourceValue: '200000' },
-          { search: slot, desc: 'cc-flow', sourceValue: slot, target: { value: literalValue, pad: 'right-space' } },
-        ],
+          { search: slot, desc: 'cc-flow', sourceValue: slot, target: { value: literalValue, pad: 'right-space' } }
+        ]
       })
 
       expect(result.success).toBe(true)
       expect(result.checks).toContainEqual(
-        expect.objectContaining({ name: 'pattern-replaced', passed: true }),
+        expect.objectContaining({ name: 'pattern-replaced', passed: true })
       )
     })
   })

@@ -3,8 +3,7 @@ import { tmpdir } from 'node:os'
 import { mkdtempSync } from 'node:fs'
 import { join } from 'node:path'
 import { ConfigService } from '../../src/services/config.js'
-import { PatternService } from '../../src/services/pattern.js'
-import type { OsPatterns, VersionsIndexItem } from '../../src/services/pattern.js'
+import type { PatternService, OsPatterns, VersionsIndexItem } from '../../src/services/pattern.js'
 
 describe('ConfigService', () => {
   describe('getPatternForVersion()', () => {
@@ -12,13 +11,13 @@ describe('ConfigService', () => {
       const mockPattern: OsPatterns = {
         darwin: {
           arm64: [
-            { search: 'Aj8=200000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
-          ],
-        },
+            { search: 'Aj8=200000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' }
+          ]
+        }
       }
 
       const patternService = {
-        fetchVersionPattern: vi.fn().mockResolvedValue(mockPattern),
+        fetchVersionPattern: vi.fn().mockResolvedValue(mockPattern)
       } as unknown as PatternService
 
       const config = new ConfigService({ patternService })
@@ -26,13 +25,13 @@ describe('ConfigService', () => {
 
       expect(patternService.fetchVersionPattern).toHaveBeenCalledWith('2.1.173')
       expect(result).toEqual([
-        { search: 'Aj8=200000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
+        { search: 'Aj8=200000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' }
       ])
     })
 
     it('PatternService 返回 undefined 时返回 undefined', async () => {
       const patternService = {
-        fetchVersionPattern: vi.fn().mockResolvedValue(undefined),
+        fetchVersionPattern: vi.fn().mockResolvedValue(undefined)
       } as unknown as PatternService
 
       const config = new ConfigService({ patternService })
@@ -45,16 +44,16 @@ describe('ConfigService', () => {
       const mockPattern: OsPatterns = {
         darwin: {
           universal: [
-            { search: 'UNI=200000', desc: 'UNIVERSAL', sourceValue: '200000' },
+            { search: 'UNI=200000', desc: 'UNIVERSAL', sourceValue: '200000' }
           ],
           x64: [
-            { search: 'X64=200000', desc: 'X64_ONLY', sourceValue: '200000' },
-          ],
-        },
+            { search: 'X64=200000', desc: 'X64_ONLY', sourceValue: '200000' }
+          ]
+        }
       }
 
       const patternService = {
-        fetchVersionPattern: vi.fn().mockResolvedValue(mockPattern),
+        fetchVersionPattern: vi.fn().mockResolvedValue(mockPattern)
       } as unknown as PatternService
 
       const config = new ConfigService({ patternService })
@@ -62,13 +61,13 @@ describe('ConfigService', () => {
       // x64 存在，直接返回
       const x64Result = await config.getPatternForVersion('2.1.173', 'darwin', 'x64')
       expect(x64Result).toEqual([
-        { search: 'X64=200000', desc: 'X64_ONLY', sourceValue: '200000' },
+        { search: 'X64=200000', desc: 'X64_ONLY', sourceValue: '200000' }
       ])
 
       // arm64 不存在，回退到 universal
       const arm64Result = await config.getPatternForVersion('2.1.173', 'darwin', 'arm64')
       expect(arm64Result).toEqual([
-        { search: 'UNI=200000', desc: 'UNIVERSAL', sourceValue: '200000' },
+        { search: 'UNI=200000', desc: 'UNIVERSAL', sourceValue: '200000' }
       ])
     })
   })
@@ -77,11 +76,11 @@ describe('ConfigService', () => {
     it('返回 PatternService 提供的版本号列表', async () => {
       const mockIndex: VersionsIndexItem[] = [
         { version: '2.1.161', platforms: ['darwin-arm64'] },
-        { version: '2.1.173', platforms: ['darwin-arm64', 'darwin-x64'] },
+        { version: '2.1.173', platforms: ['darwin-arm64', 'darwin-x64'] }
       ]
 
       const patternService = {
-        fetchVersionsIndex: vi.fn().mockResolvedValue(mockIndex),
+        fetchVersionsIndex: vi.fn().mockResolvedValue(mockIndex)
       } as unknown as PatternService
 
       const config = new ConfigService({ patternService })
@@ -93,7 +92,7 @@ describe('ConfigService', () => {
 
     it('索引为空时返回空数组', async () => {
       const patternService = {
-        fetchVersionsIndex: vi.fn().mockResolvedValue([]),
+        fetchVersionsIndex: vi.fn().mockResolvedValue([])
       } as unknown as PatternService
 
       const config = new ConfigService({ patternService })
@@ -119,7 +118,7 @@ describe('ConfigService', () => {
     it('migrates legacy targets → combos via formatTokenCount (targets retained)', () => {
       const config = newConfig()
       config.setUserConfig({
-        patchedVersions: { '2.1.186': { targets: [270000, 1000000], patchedAt: '2026-06-24' } },
+        patchedVersions: { '2.1.186': { targets: [270000, 1000000], patchedAt: '2026-06-24' } }
       })
       const migrated = config.getUserConfig()
       expect(migrated.patchedVersions['2.1.186']?.combos).toEqual(['27w', '1m'])
@@ -130,7 +129,7 @@ describe('ConfigService', () => {
     it('does not overwrite existing combos when targets also present', () => {
       const config = newConfig()
       config.setUserConfig({
-        patchedVersions: { '2.1.186': { targets: [270000], combos: ['custom'], patchedAt: 'x' } },
+        patchedVersions: { '2.1.186': { targets: [270000], combos: ['custom'], patchedAt: 'x' } }
       })
       // 已有 combos，不迁移覆盖
       expect(config.getUserConfig().patchedVersions['2.1.186']?.combos).toEqual(['custom'])

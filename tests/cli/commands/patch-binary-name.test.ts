@@ -14,7 +14,7 @@ describe('getPatchedBinaryName', () => {
     originalPlatform = Object.getOwnPropertyDescriptor(process, 'platform')
     Object.defineProperty(process, 'platform', {
       value: platform,
-      configurable: true,
+      configurable: true
     })
   }
 

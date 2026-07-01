@@ -131,7 +131,7 @@ describe('PatternUploader', () => {
       const uploader = new PatternUploader({
         client: { put: putMock },
         cachePath,
-        retryDelay: () => 0,
+        retryDelay: () => 0
       })
 
       // Act
@@ -154,7 +154,7 @@ describe('PatternUploader', () => {
         client: { put: putMock },
         cachePath,
         retryLimit: 2,
-        retryDelay: () => 0,
+        retryDelay: () => 0
       })
 
       // Act

@@ -4,7 +4,7 @@ import {
   writeFileSync,
   chmodSync,
   rmSync,
-  mkdirSync,
+  mkdirSync
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -55,10 +55,10 @@ describe('ChannelDiscoveryService', () => {
       '@anthropic-ai',
       'claude-code',
       'bin',
-      'claude',
+      'claude'
     )
     mkdirSync(join(fakeNpxDir, 'node_modules', '@anthropic-ai', 'claude-code', 'bin'), {
-      recursive: true,
+      recursive: true
     })
     writeFileSync(fakeClaude, '#!/bin/bash\necho "2.1.169 (Claude Code)"')
     chmodSync(fakeClaude, 0o755)
@@ -67,7 +67,7 @@ describe('ChannelDiscoveryService', () => {
     process.env.PATH = tempDir
 
     const service = new ChannelDiscoveryService({
-      npxCacheDirs: [join(tempDir, 'npx')],
+      npxCacheDirs: [join(tempDir, 'npx')]
     })
 
     // Act
@@ -119,7 +119,7 @@ describe('ChannelDiscoveryService', () => {
     process.env.PATH = fakeBrewDir
 
     const service = new ChannelDiscoveryService({
-      npxCacheDirs: [join(tempDir, 'npx')],
+      npxCacheDirs: [join(tempDir, 'npx')]
     })
     const channels = await service.detectChannels()
 

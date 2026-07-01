@@ -9,7 +9,7 @@ import type { InternalPluginDefinition } from '../../../src/types/plugins.js'
 
 const fakeInternal: InternalPluginDefinition = {
   manifest: { name: 'token-expansion', shardBaseUrl: 'https://x/', shortVer: { kind: 'token-target' } },
-  strategies: {},
+  strategies: {}
 }
 
 function newHome(): string {
@@ -44,7 +44,7 @@ describe('pluginsCommand', () => {
     const o = opts(home)
     // 预置 installed（add 尚未实现，用 PluginsManager 直接 add）
     new PluginsManager({ internalPlugins: [fakeInternal], homeDir: home }).add({
-      name: 'flow', shardBaseUrl: 'https://y/', shortVer: { kind: 'literal', value: 'flow' },
+      name: 'flow', shardBaseUrl: 'https://y/', shortVer: { kind: 'literal', value: 'flow' }
     })
     const r = await pluginsCommand(['remove', 'flow'], o)
     expect(r.success).toBe(true)
@@ -72,7 +72,7 @@ describe('pluginsCommand', () => {
   it('add fetches ccx-plugins.json and registers (with --yes)', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ plugins: [{ name: 'flow', shardBaseUrl: 'https://y/', shortVer: { kind: 'literal', value: 'flow' } }] }),
+      json: async () => ({ plugins: [{ name: 'flow', shardBaseUrl: 'https://y/', shortVer: { kind: 'literal', value: 'flow' } }] })
     })
     vi.stubGlobal('fetch', fetchMock)
     try {
@@ -90,8 +90,8 @@ describe('pluginsCommand', () => {
       ok: true,
       json: async () => ({ plugins: [
         { name: 'a', shardBaseUrl: 'https://x/', shortVer: { kind: 'literal', value: 'a' } },
-        { name: 'b', shardBaseUrl: 'https://y/', shortVer: { kind: 'literal', value: 'b' } },
-      ] }),
+        { name: 'b', shardBaseUrl: 'https://y/', shortVer: { kind: 'literal', value: 'b' } }
+      ] })
     })
     vi.stubGlobal('fetch', fetchMock)
     try {
@@ -110,8 +110,8 @@ describe('pluginsCommand', () => {
         { name: 'valid', shardBaseUrl: 'https://v/', shortVer: { kind: 'literal', value: 'v' } },
         { name: 'BAD-NAME', shardBaseUrl: 'https://v/', shortVer: { kind: 'literal', value: 'v' } }, // 非法 name（非 kebab-case）
         { name: 'nourl', shardBaseUrl: 'not-a-url', shortVer: { kind: 'literal', value: 'n' } }, // 非法 shardBaseUrl
-        { name: 'noshortver', shardBaseUrl: 'https://v/' }, // 缺 shortVer
-      ] }),
+        { name: 'noshortver', shardBaseUrl: 'https://v/' } // 缺 shortVer
+      ] })
     })
     vi.stubGlobal('fetch', fetchMock)
     try {

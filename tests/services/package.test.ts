@@ -17,7 +17,7 @@ describe('getNpmCommand', () => {
     originalPlatform = Object.getOwnPropertyDescriptor(process, 'platform')
     Object.defineProperty(process, 'platform', {
       value: platform,
-      configurable: true,
+      configurable: true
     })
   }
 
@@ -50,7 +50,7 @@ describe('getNpmExecOptions', () => {
     originalPlatform = Object.getOwnPropertyDescriptor(process, 'platform')
     Object.defineProperty(process, 'platform', {
       value: platform,
-      configurable: true,
+      configurable: true
     })
   }
 
@@ -82,8 +82,8 @@ describe('PackageService.resolveVersion', () => {
   })
 
   function createMockExecFile(
-    result: { error?: Error; stdout: string },
-    assert?: (file: string, args: string[], options: unknown) => void,
+    result: { error?: Error, stdout: string },
+    assert?: (file: string, args: string[], options: unknown) => void
   ) {
     return vi.fn((file: string, args: string[], options: unknown, callback: (error: Error | null, stdout: string) => void) => {
       if (assert) assert(file, args, options)
@@ -117,10 +117,10 @@ describe('PackageService.resolveVersion', () => {
           'view',
           '@anthropic-ai/claude-code@latest',
           'version',
-          '--json',
+          '--json'
         ])
         expect(options).toEqual(expect.any(Object))
-      },
+      }
     )
     const service = new PackageService(tempDir, execFileMock as any)
 

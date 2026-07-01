@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readFileSync, mkdtempSync } from 'node:fs'
 import { join } from 'node:path'
-import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { ShardWriter } from '../../src/services/shard-writer.js'
 import type { OsPatterns } from '../../src/services/pattern.js'
@@ -17,8 +16,8 @@ describe('ShardWriter', () => {
       const dir = tmpPatternsDir()
       const patterns: OsPatterns = {
         darwin: {
-          arm64: [{ search: 'AP_=200000,YP_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' }],
-        },
+          arm64: [{ search: 'AP_=200000,YP_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' }]
+        }
       }
 
       const writer = new ShardWriter({ patternsDir: dir })
@@ -42,7 +41,7 @@ describe('ShardWriter', () => {
       const items = JSON.parse(readFileSync(join(dir, 'versions.json'), 'utf8'))
       expect(items).toEqual([
         { version: '2.1.200', platforms: ['darwin-arm64'] },
-        { version: '2.1.201', platforms: ['darwin-arm64', 'darwin-x64'] },
+        { version: '2.1.201', platforms: ['darwin-arm64', 'darwin-x64'] }
       ])
     })
 
@@ -57,7 +56,7 @@ describe('ShardWriter', () => {
       expect(items).toHaveLength(1)
       expect(items[0]).toEqual({
         version: '2.1.200',
-        platforms: ['darwin-arm64', 'darwin-x64', 'win32-x64'],
+        platforms: ['darwin-arm64', 'darwin-x64', 'win32-x64']
       })
     })
   })

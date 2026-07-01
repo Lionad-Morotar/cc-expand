@@ -119,7 +119,7 @@ export class PatchApplier {
     }
 
     // 是否应用 token 扩展：查 internal 中声明 token-encode 策略的 plugin 是否 enabled
-    //（PRD story 5：disable token-expansion 后只跑 installed plugin，不扩 token）。
+    // （PRD story 5：disable token-expansion 后只跑 installed plugin，不扩 token）。
     // 不硬编码 plugin 名——按 manifest.target.type 策略类型识别（内核零 token 知识）。
     // 无 pluginsManager 时默认 true（向后兼容 / 测试）。
     const tokenEnabled = options.pluginsManager?.list().some(
@@ -137,7 +137,7 @@ export class PatchApplier {
       try {
         const buffer = readFileSync(packageService.getBinaryPath(version))
         const discovered = new PatternDiscovery().discover(buffer)
-        rawTokenPatches = discovered.map((d) => ({ ...d, desc: classifyDesc(d.search) }))
+        rawTokenPatches = discovered.map(d => ({ ...d, desc: classifyDesc(d.search) }))
       } catch {
         // discovery 失败（结构不变量不满足）仍按原错误返回，不暴露内部异常
         return {
@@ -163,8 +163,8 @@ export class PatchApplier {
     if (patches.length === 0) {
       // 调试信息：帮助区分是插件状态问题还是 pattern 缺失问题
       console.warn(
-        `[PatchApplier] no patches available for ${version}: ` +
-        `tokenEnabled=${tokenEnabled}, tokenPatches=${rawTokenPatches?.length ?? 0}, installedPatches=${installedPatches.length}`
+        `[PatchApplier] no patches available for ${version}: `
+        + `tokenEnabled=${tokenEnabled}, tokenPatches=${rawTokenPatches?.length ?? 0}, installedPatches=${installedPatches.length}`
       )
       return {
         ok: false,

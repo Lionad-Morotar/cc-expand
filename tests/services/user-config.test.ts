@@ -37,7 +37,7 @@ describe('UserConfigService', () => {
     // 预置旧配置（只有 locale + autoMaintain，模拟升级前用户的 config.json）
     const oldConfig = {
       locale: 'zh',
-      autoMaintain: false,
+      autoMaintain: false
     }
     writeFileSync(configPath, JSON.stringify(oldConfig))
 

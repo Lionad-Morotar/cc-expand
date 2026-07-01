@@ -178,10 +178,10 @@ async function main(): Promise<void> {
    */
   function localizeHelpSections(sections: Array<{ title?: string, body: string }>): Array<{ title?: string, body: string }> {
     const titleMap: Record<string, string> = {
-      Usage: t('help.section.usage'),
-      Options: t('help.section.options'),
-      Commands: t('help.section.commands'),
-      Examples: t('help.section.examples'),
+      'Usage': t('help.section.usage'),
+      'Options': t('help.section.options'),
+      'Commands': t('help.section.commands'),
+      'Examples': t('help.section.examples'),
       'For more info, run any command with the `--help` flag': t('help.section.moreInfo')
     }
     return sections.map((section) => {
@@ -355,7 +355,7 @@ async function main(): Promise<void> {
       await renderResult(renderer, result, 'plugins')
     })
 
-  cli.help((sections) => localizeHelpSections(sections))
+  cli.help(sections => localizeHelpSections(sections))
   cli.version(getVersion())
 
   // cac 内部写死的 help/version 选项描述需要单独覆盖为当前 locale

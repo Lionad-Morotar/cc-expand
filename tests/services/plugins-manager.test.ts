@@ -10,9 +10,9 @@ function fakeInternal(): InternalPluginDefinition {
     manifest: {
       name: 'token-expansion',
       shardBaseUrl: 'https://x/',
-      shortVer: { kind: 'token-target' },
+      shortVer: { kind: 'token-target' }
     },
-    strategies: {},
+    strategies: {}
   }
 }
 
@@ -20,7 +20,7 @@ function flowManifest(): PluginManifest {
   return {
     name: 'flow',
     shardBaseUrl: 'https://y/',
-    shortVer: { kind: 'literal', value: 'flow' },
+    shortVer: { kind: 'literal', value: 'flow' }
   }
 }
 
@@ -101,7 +101,7 @@ describe('PluginsManager', () => {
   it('computeShortVer() joins each enabled plugin shortVer with -', () => {
     const internal: InternalPluginDefinition = {
       manifest: { name: 'token-expansion', shardBaseUrl: 'x', shortVer: { kind: 'token-target' } },
-      strategies: { shortVer: (ctx) => `mock-${ctx.targetTokens}` },
+      strategies: { shortVer: ctx => `mock-${ctx.targetTokens}` }
     }
     const { pm } = newPm([internal])
     pm.add({ name: 'flow', shardBaseUrl: 'y', shortVer: { kind: 'literal', value: 'flow' } })
@@ -111,7 +111,7 @@ describe('PluginsManager', () => {
   it('computeShortVer() skips disabled plugins', () => {
     const internal: InternalPluginDefinition = {
       manifest: { name: 'token-expansion', shardBaseUrl: 'x', shortVer: { kind: 'token-target' } },
-      strategies: { shortVer: (ctx) => `mock-${ctx.targetTokens}` },
+      strategies: { shortVer: ctx => `mock-${ctx.targetTokens}` }
     }
     const { pm } = newPm([internal])
     pm.add({ name: 'flow', shardBaseUrl: 'y', shortVer: { kind: 'literal', value: 'flow' } })

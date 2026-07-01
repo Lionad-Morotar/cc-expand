@@ -67,7 +67,7 @@ export async function runPager(lines: string[], opts: PagerOptions = {}): Promis
         const name = key.name
         const ctrl = key.ctrl === true
         // @inquirer/core 的 KeypressEvent 类型未声明 shift，但 readline/keypress 实际产出该字段
-        //（Shift+G 区分依赖它，见下方跳末行分支），故局部断言而非删除
+        // （Shift+G 区分依赖它，见下方跳末行分支），故局部断言而非删除
         const shift = (key as { shift?: boolean }).shift === true
         // 行翻：上/下箭头、j/k
         // Why 直接值而非函数式更新：@inquirer/core 的 useState 不支持 (prev)=>next

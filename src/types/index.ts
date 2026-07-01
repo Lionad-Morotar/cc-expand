@@ -2,6 +2,7 @@
 // root 依赖子包、子包不能依赖 root（循环），故共享类型定义在子包侧；root re-export 保持
 // 现有 import 路径（from '../types/index.js'）不变，root 与子包用同一个类——instanceof 跨包有效。
 import { CcxError, ErrorCode, isCcxError } from '@cc-expand/plugin-context-expand'
+
 export { CcxError, ErrorCode, isCcxError }
 
 /**

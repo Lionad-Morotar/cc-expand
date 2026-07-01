@@ -17,7 +17,7 @@ describe('InstallMethodDetector', () => {
     const detector = new InstallMethodDetector({
       configService: makeConfigService('pnpm'),
       env: { npm_config_user_agent: 'npm/10.0.0' },
-      argv1: '/usr/local/lib/node_modules/cc-expand/dist/cli.js',
+      argv1: '/usr/local/lib/node_modules/cc-expand/dist/cli.js'
     })
     expect(await detector.detect()).toBe('pnpm')
   })
@@ -25,7 +25,7 @@ describe('InstallMethodDetector', () => {
   it('env npm_config_user_agent 含 npm 时识别为 npm', async () => {
     const detector = new InstallMethodDetector({
       configService: makeConfigService('unknown'),
-      env: { npm_config_user_agent: 'npm/10.2.0 node/20.0.0' },
+      env: { npm_config_user_agent: 'npm/10.2.0 node/20.0.0' }
     })
     expect(await detector.detect()).toBe('npm')
   })
@@ -33,7 +33,7 @@ describe('InstallMethodDetector', () => {
   it('env npm_config_user_agent 含 pnpm 时识别为 pnpm', async () => {
     const detector = new InstallMethodDetector({
       configService: makeConfigService('unknown'),
-      env: { npm_config_user_agent: 'pnpm/8.15.0' },
+      env: { npm_config_user_agent: 'pnpm/8.15.0' }
     })
     expect(await detector.detect()).toBe('pnpm')
   })
@@ -41,7 +41,7 @@ describe('InstallMethodDetector', () => {
   it('env npm_config_user_agent 含 yarn 时识别为 yarn', async () => {
     const detector = new InstallMethodDetector({
       configService: makeConfigService('unknown'),
-      env: { npm_config_user_agent: 'yarn/1.22.0' },
+      env: { npm_config_user_agent: 'yarn/1.22.0' }
     })
     expect(await detector.detect()).toBe('yarn')
   })
@@ -50,7 +50,7 @@ describe('InstallMethodDetector', () => {
     const detector = new InstallMethodDetector({
       configService: makeConfigService('unknown'),
       env: {},
-      argv1: '/Users/foo/.npm/_npx/abc123/node_modules/cc-expand/dist/cli.js',
+      argv1: '/Users/foo/.npm/_npx/abc123/node_modules/cc-expand/dist/cli.js'
     })
     expect(await detector.detect()).toBe('npx')
   })
@@ -59,7 +59,7 @@ describe('InstallMethodDetector', () => {
     const detector = new InstallMethodDetector({
       configService: makeConfigService('unknown'),
       env: {},
-      argv1: '/some/unknown/path/dist/cli.js',
+      argv1: '/some/unknown/path/dist/cli.js'
     })
     expect(await detector.detect()).toBe('unknown')
   })

@@ -3,8 +3,8 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { PatchApplier } from '../../src/services/patch-applier.js'
-import { ConfigService } from '../../src/services/config.js'
-import { PackageService } from '../../src/services/package.js'
+import type { ConfigService } from '../../src/services/config.js'
+import type { PackageService } from '../../src/services/package.js'
 import { PluginsManager } from '../../src/services/plugins-manager.js'
 import { INTERNAL_PLUGINS } from '../../src/internal-plugins.js'
 import type { PatchItem } from '../../src/types/index.js'
@@ -12,24 +12,24 @@ import type { PatchItem } from '../../src/types/index.js'
 describe('PatchApplier.prepare() plugin 聚合', () => {
   it('合并 token patches + installed plugin patches（literal target）', async () => {
     const tokenPatches: PatchItem[] = [
-      { search: 'Aj8=200000', desc: 'token', sourceValue: '200000' },
+      { search: 'Aj8=200000', desc: 'token', sourceValue: '200000' }
     ]
     const installedPatches: PatchItem[] = [
-      { search: 'AAA', sourceValue: 'AAA', target: { value: 'BBB' } },
+      { search: 'AAA', sourceValue: 'AAA', target: { value: 'BBB' } }
     ]
     const configService = {
       ensureDirs: vi.fn(),
-      getPatternForVersion: vi.fn().mockResolvedValue(tokenPatches),
+      getPatternForVersion: vi.fn().mockResolvedValue(tokenPatches)
     } as unknown as ConfigService
     const packageService = {
-      isInstalled: () => true,
+      isInstalled: () => true
     } as unknown as PackageService
 
     const applier = new PatchApplier()
     const prepared = await applier.prepare('2.1.186', {
       configService,
       packageService,
-      installedPatches,
+      installedPatches
     })
 
     expect(prepared.ok).toBe(true)
@@ -46,7 +46,7 @@ describe('PatchApplier.prepare() plugin 聚合', () => {
   it('无 installedPatches 时只 token（向后兼容）', async () => {
     const configService = {
       ensureDirs: vi.fn(),
-      getPatternForVersion: vi.fn().mockResolvedValue([{ search: 'X', sourceValue: '200000' }]),
+      getPatternForVersion: vi.fn().mockResolvedValue([{ search: 'X', sourceValue: '200000' }])
     } as unknown as ConfigService
     const packageService = { isInstalled: () => true } as unknown as PackageService
 
@@ -89,7 +89,7 @@ describe('PatchApplier.prepare() plugin 聚合', () => {
       expect(prepared.data.sourceValue).toBe('200000')
       // discovery 产出的 patch 应带有 desc（由 classifyDesc 生成）
       expect(prepared.data.patches[0].desc).toBeDefined()
-      expect(prepared.data.patches.every((p) => p.sourceValue === '200000')).toBe(true)
+      expect(prepared.data.patches.every(p => p.sourceValue === '200000')).toBe(true)
     }
     expect(configService.getPatternForVersion).toHaveBeenCalledWith('2.1.195')
 
