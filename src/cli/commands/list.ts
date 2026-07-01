@@ -9,7 +9,7 @@ import { join } from 'node:path'
 import { ConfigService } from '../../services/config.js'
 import { queryLatestVersion } from '../../services/latest-checker.js'
 import { isVersionGreater } from '../../utils/version.js'
-import { formatTokenCount } from '@cc-expand/plugin-context-expand'
+import { extractCombos } from '../../utils/patched-combos.js'
 import { t } from '../i18n.js'
 import type { CommandResult } from '../result.js'
 
@@ -107,8 +107,7 @@ export async function listCommand(
     }
     // plugin 体系：提示用户可手动移除某个 combo
     const example = versions.find(v => v.patched)
-    const exampleCombo = example?.combos?.[0]
-      ?? (example?.targets?.[0] !== undefined ? formatTokenCount(example.targets[0]) : undefined)
+    const exampleCombo = extractCombos(example)[0]
     if (example && exampleCombo) {
       next = next ?? []
       next.push(`ccx patch remove ${example.version} ${exampleCombo}`)

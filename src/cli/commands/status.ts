@@ -12,7 +12,7 @@ import { ChannelConfig, type ChannelConfigData } from '../../services/channel-co
 import { queryLatestVersion } from '../../services/latest-checker.js'
 import { readShortcutState } from '../../services/shell-profile.js'
 import { isVersionGreater } from '../../utils/version.js'
-import { formatTokenCount } from '@cc-expand/plugin-context-expand'
+import { extractCombos } from '../../utils/patched-combos.js'
 import { t } from '../i18n.js'
 import { makeErrorResult, type CommandResult } from '../result.js'
 import { CcxError, ErrorCode } from '../../types/index.js'
@@ -42,6 +42,7 @@ export interface StatusData {
   installedVersions: Array<{
     version: string
     targets?: number[]
+    combos?: string[]
     patchedAt: string
     current: boolean
   }>
@@ -105,6 +106,7 @@ export async function statusCommand(options?: StatusOptions): Promise<CommandRes
         const installedVersions = Object.entries(userConfig.patchedVersions).map(([v, info]) => ({
           version: v,
           targets: info.targets ?? [],
+          combos: extractCombos(info),
           patchedAt: info.patchedAt,
           current: false
         }))
@@ -132,9 +134,8 @@ export async function statusCommand(options?: StatusOptions): Promise<CommandRes
 
   const shortcutState = readShortcutState(options?.homeDir)
 
-  // plugin 体系：展示优先 combos（shortVer），fallback targets（兼容老 schema）
-  // combos 优先；fallback 把旧 targets 数字经 formatTokenCount 转为 shortVer（与 getUserConfig 迁移逻辑一致，C6）
-  const combos = patchedInfo?.combos ?? patchedInfo?.targets?.map(formatTokenCount) ?? []
+  // combos 权威（plugin 体系），targets 仅 legacy 回退；统一走 extractCombos 避免读侧分叉
+  const combos = extractCombos(patchedInfo)
   const summary = patchedInfo
     ? t('command.status.patched', { version, targets: combos.join(', ') })
     : t('command.status.unpatched', { version })
@@ -142,6 +143,7 @@ export async function statusCommand(options?: StatusOptions): Promise<CommandRes
   const installedVersions = Object.entries(userConfig.patchedVersions).map(([v, info]) => ({
     version: v,
     targets: info.targets ?? [],
+    combos: extractCombos(info),
     patchedAt: info.patchedAt,
     current: v === version
   }))

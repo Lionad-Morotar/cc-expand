@@ -61,6 +61,39 @@ describe('patch command argument validation', () => {
     }
   })
 
+  it('should suggest available combos when --yes given without --target', async () => {
+    // 预置：激活版本 2.1.190 已有 patch 记录（combos）
+    const configDir = join(tempDir, '.cc-expand')
+    mkdirSync(configDir, { recursive: true })
+    writeFileSync(join(configDir, 'versions.json'), JSON.stringify({
+      patchedVersions: { '2.1.190': { combos: ['27w', '70w'], patchedAt: '2026-07-01T00:00:00Z' } }
+    }))
+    writeFileSync(join(configDir, 'channel.json'), JSON.stringify({
+      channel: 'local',
+      path: join(tempDir, '.cc-expand', 'packages', '2.1.190'),
+      version: '2.1.190'
+    }))
+    const result = await patchCommand(['--yes'])
+    expect(result.success).toBe(false)
+    expect(result.error?.message).toContain('--yes requires --target')
+    // suggestion 增强列出可用 combo，指引用户下一步（而非固定文案）
+    expect(result.error?.suggestion ?? '').toContain('27w')
+  })
+
+  it('should hint to patch first when --yes given but active version has no record', async () => {
+    // channel 指向 2.1.190，但 versions.json 无该版本记录 → suggestion 应提示先 patch
+    const configDir = join(tempDir, '.cc-expand')
+    mkdirSync(configDir, { recursive: true })
+    writeFileSync(join(configDir, 'channel.json'), JSON.stringify({
+      channel: 'local',
+      path: join(tempDir, '.cc-expand', 'packages', '2.1.190'),
+      version: '2.1.190'
+    }))
+    const result = await patchCommand(['--yes'])
+    expect(result.success).toBe(false)
+    expect(result.error?.suggestion ?? '').toMatch(/no patch record|first/i)
+  })
+
   /** 预置本地 fake package，让 isInstalled 为真从而跳过真实下载 */
   function presetFakePackage(version: string): void {
     const binDir = join(tempDir, '.cc-expand', 'packages', version, 'bin')
@@ -71,8 +104,7 @@ describe('patch command argument validation', () => {
   /** stub ConfigService：getPatternForVersion 返回 null，避免请求 OSS pattern */
   const stubConfig = {
     ensureDirs: () => {},
-    getPatternForVersion: async () => null,
-    recordPatchedVersion: () => {},
+    getPatternForVersion: async () => null
   } as unknown as ConfigService
 
   it('should accept version as positional argument', async () => {

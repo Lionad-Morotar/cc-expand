@@ -137,27 +137,6 @@ export class ConfigService {
     writeFileSync(configPath, JSON.stringify(config, null, 2))
   }
 
-  /** 记录已 patch 的版本 */
-  recordPatchedVersion(version: string, targetTokens: number): void {
-    const config = this.getUserConfig()
-    if (!config.patchedVersions) {
-      config.patchedVersions = {}
-    }
-    const existing = config.patchedVersions[version]
-    if (existing) {
-      if (existing.targets && !existing.targets.includes(targetTokens)) {
-        existing.targets.push(targetTokens)
-      }
-      existing.patchedAt = new Date().toISOString()
-    } else {
-      config.patchedVersions[version] = {
-        targets: [targetTokens],
-        patchedAt: new Date().toISOString()
-      }
-    }
-    this.setUserConfig(config)
-  }
-
   /** 记录已 patch 的 shortVer 组合（plugin 体系新 schema；幂等） */
   recordPatchedCombo(version: string, combo: string): void {
     const config = this.getUserConfig()

@@ -19,6 +19,7 @@ import { t } from '../i18n.js'
 import { makeErrorResult, type CommandResult } from '../result.js'
 import { normalizeVersion } from '../../utils/version.js'
 import { parseTokenCount } from '../../utils/parse-token-count.js'
+import { extractCombos } from '../../utils/patched-combos.js'
 import { validateTargetInput } from '../../utils/validate-target.js'
 import { patchRemoveCommand } from './patch-remove.js'
 
@@ -43,6 +44,29 @@ export interface PatchOptions {
   patchCleanupService?: import('../../services/patch-cleanup.js').PatchCleanupService
   homeDir?: string
   packagesDir?: string
+}
+
+/**
+ * 为 "--yes requires --target" 错误构造 suggestion：列出当前激活版本的可用 combo。
+ * 读不到（无 channel / 无记录 / stub config）则退回固定用法提示，绝不抛错阻塞错误路径。
+ * Why：-y 非交互要求显式 --target（patch 改 binary 是破坏性操作），但固定文案无指引；
+ * 列出已 patch 的 combo 让用户一步复制，体验提升且零隐式行为风险。
+ */
+function buildYesHint(configService: ConfigService, homeDir: string): string {
+  const base = 'Usage: ccx patch --target 256000 --yes'
+  try {
+    const channel = new ChannelConfig(join(homeDir, '.cc-expand')).getChannel()
+    const version = channel?.version
+    if (!version) return base
+    const info = configService.getUserConfig().patchedVersions?.[version]
+    const combos = extractCombos(info)
+    if (combos.length === 0) {
+      return `Version ${version} has no patch record yet. Run 'ccx patch ${version} --target <tokens>' first, or specify --target here (e.g. ccx patch --target 256000 --yes)`
+    }
+    return `Available combos for ${version}: ${combos.join(', ')}. Example: ccx patch --target ${combos[0]} --yes`
+  } catch {
+    return base
+  }
 }
 
 export async function patchCommand(
@@ -94,13 +118,15 @@ export async function patchCommand(
     }
   }
 
-  // --yes 必须配合 --target 使用
+  // --yes 必须配合 --target：patch 改 binary 是破坏性操作，非交互必须显式 target。
+  // suggestion 增强列出当前激活版本可用 combo，指引用户下一步。
   if (skipConfirm && targetTokens === undefined) {
+    const homeDir = options?.homeDir ?? homedir()
     return makeErrorResult(
       'patch',
       ErrorCode.INVALID_TARGET,
       '--yes requires --target',
-      'Usage: ccx patch --target 256000 --yes'
+      buildYesHint(configService, homeDir)
     )
   }
 
