@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0-alpha.3] - 2026-07-02
+
+### Fixed
+- `ccx migration latest` 误选 PATH 上的老版本（如 homebrew 2.1.161）作迁移源，而用户激活的是 channel 内的新版本（如 2.1.197）：根因是 migration 读侧未跟随 plugin-system 重构——只读 `targets` 字段（重构后新版本只写 `combos`）+ 第 2 步用 PATH discovery 而非 channel。改为 `combos` 权威（targets legacy 回退）+ channel 优先（ADR 0001 对齐）
+- migration 批量迁移的边界健壮性：`next` 提示改用目标环境实际生成的 binary shortVer（避免源 combo 的 plugin 段与目标 binary 名不符导致 `ccx run` 找不到）；同 token 多 combo 按 token 去重避免 binary 互相覆盖；dry-run 全部 combo 不可反解时报错（不再误报 success）
+- `ccx status` 的 `installedVersions` 列表补显每个版本的 combos（plugin-era 记录原先只填 targets，combos-only 新版本显示空）
+
+### Changed
+- `ccx patch -y/--yes` 未指定 `--target` 时，错误提示列出当前激活版本可用 combo 与示例命令；`-h` 文案补"需配合 --target"约束（原先只写"跳过确认"，隐瞒约束）
+- [internal] 提取共享 `extractCombos`（`src/utils/patched-combos`）统一读侧 combos 派生，migration/status/list/patch 接入；删除生产零调用的死代码 `ConfigService.recordPatchedVersion`（写 side-only-targets 脏数据的陷阱）
+- [internal] eslint --fix 全局格式统一
+
 ## [0.4.0-alpha.2] - 2026-06-27
 
 ### Added
