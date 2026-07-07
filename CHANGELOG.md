@@ -7,51 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.4.0-alpha.3] - 2026-07-02
-
-### Fixed
-- `ccx migration latest` 误选 PATH 上的老版本（如 homebrew 2.1.161）作迁移源，而用户激活的是 channel 内的新版本（如 2.1.197）：根因是 migration 读侧未跟随 plugin-system 重构——只读 `targets` 字段（重构后新版本只写 `combos`）+ 第 2 步用 PATH discovery 而非 channel。改为 `combos` 权威（targets legacy 回退）+ channel 优先（ADR 0001 对齐）
-- migration 批量迁移的边界健壮性：`next` 提示改用目标环境实际生成的 binary shortVer（避免源 combo 的 plugin 段与目标 binary 名不符导致 `ccx run` 找不到）；同 token 多 combo 按 token 去重避免 binary 互相覆盖；dry-run 全部 combo 不可反解时报错（不再误报 success）
-- `ccx status` 的 `installedVersions` 列表补显每个版本的 combos（plugin-era 记录原先只填 targets，combos-only 新版本显示空）
-
-### Changed
-- `ccx patch -y/--yes` 未指定 `--target` 时，错误提示列出当前激活版本可用 combo 与示例命令；`-h` 文案补"需配合 --target"约束（原先只写"跳过确认"，隐瞒约束）
-- [internal] 提取共享 `extractCombos`（`src/utils/patched-combos`）统一读侧 combos 派生，migration/status/list/patch 接入；删除生产零调用的死代码 `ConfigService.recordPatchedVersion`（写 side-only-targets 脏数据的陷阱）
-- [internal] eslint --fix 全局格式统一
-
-## [0.4.0-alpha.2] - 2026-06-27
+## [0.4.0] - 2026-07-07
 
 ### Added
-- `ccx run --print-binary`：输出已 patch 的 binary 路径并退出，供 shell 快捷方式定位。
-- `cc` shell 函数支持纯数字 target（如 `cc 700000`），由 `ccx run` 按 shortVer 规则解析到正确的 `claude-70w` 等 binary。
-- `PatchApplier` 本地 PatternDiscovery fallback：OSS pattern 缺失时从已安装 binary 自动发现 pattern，新版本 Claude Code 无需等待远程 shard。
-
-### Fixed
-- 禁用 `token-expansion` 且无 installed plugin 时，`ccx patch` 返回清晰错误提示，不再误导为 "binary 结构不匹配"。
-- 生成的 `cc` shell 函数版本校验改用 `command grep`，避免用户将 `grep` alias 为 `rg` 时 `-E` 语法报错。
-- `ccx patch` 成功后同步写入 `channel.json`，修复 shell 版本校验与最新 patch 版本不一致导致启动失败的问题。
-
-## [0.4.0-alpha.1] - 2026-06-25
-
-### Fixed
-- `npm install -g cc-expand@0.4.0-alpha.0` 报 `EUNSUPPORTEDPROTOCOL: workspace:*`：`@cc-expand/plugin-context-expand` 误列在 dependencies（子包已 tsup inline bundle 进 dist，runtime 不需），npm publish 把 pnpm 的 `workspace:*` 协议原样发布导致 npm 无法解析。改移到 devDependencies（`npm install -g` 不装 devDeps，绕开）
-
-## [0.4.0-alpha.0] - 2026-06-25
-
-### Added
-- plugin 体系：token 扩展降级为内置 plugin（`token-expansion`），支持从 GitHub repo 安装第三方 plugin（`ccx plugins add/remove/list/enable/disable`）。`ccx patch` 聚合所有 enabled plugin 对同一 binary 一次扫描，产物 binary 命名编码 plugin 集合（如 `claude-27w-flow`）；第三方 plugin 可声明任意等长字节替换（literal target），实现条件移除 CC 跨会话降权包装等能力
+- Plugin 体系：将 token 扩展降级为内置 plugin（`token-expansion`），支持从 GitHub repo 安装第三方 plugin（`ccx plugins add/remove/list/enable/disable`）。`ccx patch` 聚合所有 enabled plugin 对同一 binary 一次扫描，产物 binary 命名编码 plugin 集合（如 `claude-27w-flow`）；第三方 plugin 可声明任意等长字节替换（literal target），实现条件移除 CC 跨会话降权包装等能力
 - `ccx run` 支持 combo 参数（`ccx run 27w-flow`、`ccx run 270k-flow`），token 段自动规范化
-- plugin 作者指南（`docs/plugin-authoring.md`，manifest / shard 托管 / shortVer / literal target 说明）
+- `ccx run --print-binary`：输出已 patch 的 binary 路径并退出，供 shell 快捷方式定位
+- 生成的 `cc` shell 函数支持纯数字 target（如 `cc 700000`），由 `ccx run` 按 shortVer 规则解析到正确的 `claude-70w` 等 binary
+- `PatchApplier` 本地 PatternDiscovery fallback：OSS pattern 缺失时从已安装 binary 自动发现 pattern，新版本 Claude Code 无需等待远程 shard
+- plugin 作者指南（`docs/plugin-authoring.md`，含 manifest / shard 托管 / shortVer / literal target 说明）
+- 新增 ADR 0003《plugin 统一抽象》、ADR 0004《CcxError 单一来源》
 
 ### Changed
 - 项目定位从「扩展 context window」转为「扩展 Claude Code 能力」
+- `ccx patch -y/--yes` 未指定 `--target` 时，错误提示列出当前激活版本可用 combo 与示例命令；`-h` 文案补"需配合 --target"约束
 - [internal] patch-engine/verifier 解耦 token 知识（targetGenerator 必传）、CcxError 单一来源、token 工具搬入 `@cc-expand/plugin-context-expand` 子包、versions.json schema 迁移（targets→combos）
-- [internal] 新增 ADR 0003（plugin 统一抽象）、ADR 0004（CcxError 单一来源）架构决策记录
+- [internal] 提取共享 `extractCombos`（`src/utils/patched-combos`）统一读侧 combos 派生，migration/status/list/patch 接入；删除生产零调用的死代码 `ConfigService.recordPatchedVersion`
+- [internal] eslint --fix 全局格式统一
 
 ### Fixed
+- 修复 `npm install -g cc-expand` 因 `@cc-expand/plugin-context-expand` 误列 dependencies 而发布 `workspace:*` 协议导致 `EUNSUPPORTEDPROTOCOL` 的问题；改移到 devDependencies
 - `parseTokenCount` 缺 m（百万）后缀与多段 shortVer 解析（`ccx run 1m` / `25w6k` 失败，违反 `parse(format(n))` 双向对称）
 - verifier 对第三方 plugin literal-target patch 的误判（patch 成功但 verify 失败、binary 被误删）
-- disable `token-expansion` 后 token 仍被扩展的逻辑错误
+- 禁用 `token-expansion` 后 token 仍被扩展的逻辑错误
+- 禁用 `token-expansion` 且无 installed plugin 时，`ccx patch` 返回清晰错误提示，不再误导为 "binary 结构不匹配"
+- 生成的 `cc` shell 函数版本校验改用 `command grep`，避免用户将 `grep` alias 为 `rg` 时 `-E` 语法报错
+- `ccx patch` 成功后同步写入 `channel.json`，修复 shell 版本校验与最新 patch 版本不一致导致启动失败的问题
+- `ccx migration latest` 误选 PATH 上的老版本作迁移源：改为 `combos` 权威（targets legacy 回退）+ channel 优先（ADR 0001 对齐）
+- migration 批量迁移边界健壮性：`next` 提示改用目标环境实际生成的 binary shortVer；同 token 多 combo 按 token 去重避免 binary 互相覆盖；dry-run 全部 combo 不可反解时报错
+- `ccx status` 的 `installedVersions` 列表补显每个版本的 combos
 - `ccx plugins` 无子命令报 missing required args（改为默认显示 help）
 - pager `key.shift` 触发 tsc 构建阻塞
 

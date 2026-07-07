@@ -1,6 +1,6 @@
 {
   "name": "cc-expand",
-  "version": "0.4.0-alpha.3",
+  "version": "0.4.0",
   "description": "Expand Claude Code capabilities via plugin-based binary patching",
   "bin": {
     "cc-expand": "dist/cli.js",
@@ -25,6 +25,7 @@
     "build:website": "pnpm --filter @cc-expand/website generate",
     "watch:patterns": "tsx scripts/watch-patterns.ts",
     "pattern:gen": "tsx scripts/pattern-gen.ts",
+    "pattern:upload": "tsx scripts/oss-upload.ts",
     "pattern:verify-oss": "tsx scripts/oss-verify.ts",
     "pattern:latest-check": "tsx scripts/latest-check.ts",
     "pattern:verify": "tsx scripts/pattern-verify.ts",

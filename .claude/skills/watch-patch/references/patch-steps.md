@@ -4,15 +4,16 @@
 
 ## 前置
 
-确保 `pnpm watch:patterns` 后台进程运行（监听 patterns/ 目录，自动上传变更到 OSS）。
+无需持续监听进程。`pattern:upload` 提供事件驱动的一次性上传；`watch:patterns` 持续监听在会话后台不可靠（被 SIGTERM 杀掉，exit 143），仅作可选补充。
 
-## 主流程：一条命令
+## 主流程
 
 ```bash
-pnpm pattern:gen <version>
+pnpm pattern:gen <version>     # 生成 patterns/{version}.json + 更新 versions.json
+pnpm pattern:upload <version>  # 一次性上传 shard + versions.json 到 OSS
 ```
 
-脚本自动完成：
+`pattern:gen` 脚本自动完成：
 
 1. 下载各平台 tarball（`@anthropic-ai/claude-code-{platform}@<version>`）并解压
 2. PatternDiscovery：对每个平台二进制发现 6 个上下文窗口锚点（贪婪多字段，每条 count==1）
@@ -20,13 +21,13 @@ pnpm pattern:gen <version>
 4. patch 模拟（替换 200000→256000，验证 0 残留）
 5. 写 patterns/{version}.json + 更新 patterns/versions.json
 
-产出后 watch:patterns 自动上传 OSS。
+`pattern:upload` 复用 PatternUploader（内容 hash 去重 + 持久化缓存 + 指数退避重试），上传 patterns/{version}.json 与 patterns/versions.json。
 
 ## 验证
 
 ```bash
 pnpm pattern:verify-oss <version>   # 确认 shard 与 versions.json 已上传且内容一致(MD5)
-npx vitest run                       # 全量测试
+npx vitest run tests/cli             # 针对性单测（加超时）
 ```
 
 可选回归：`pnpm pattern:verify [version...]`，对 zRefs 已解压版本断言 PatternDiscovery 产出与现网 shard patch 等价（200000 字节同位置）。

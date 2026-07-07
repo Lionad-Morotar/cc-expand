@@ -1,11 +1,9 @@
-<p align="center">
-  <img src="https://mgear-image.oss-cn-shanghai.aliyuncs.com/image/other/20260610223551529.webp" width="800" alt="cc-expand logo">
-</p>
+![cc-expand cover](./assets/cover-banner.png)
 
 <h1 align="center">cc-expand</h1>
 
 <p align="center">
-  <span>任意调整你的 CC 上下文窗口</span>
+  通过 plugin 化的 binary patch 扩展 Claude Code 能力
 </p>
 
 <p align="center">
@@ -14,121 +12,105 @@
 
 ---
 
-模型性能下降的主要原因有二：自动压缩、长上下文；cc-expand 允许调整上下文窗口大小帮你绕过这两个问题：
+cc-expand 通过 patch Claude Code 二进制中的硬编码常量来改变其行为。
 
-1. **使上下文窗口突破 200K 的限制，推迟自动压缩的时机**：当使用某些模型（只支持 256K 上下文）时，Claude Code 原生 200K 的限制会成为瓶颈。`cc-expand` 通过修改 Claude Code 二进制中的硬编码常量，将上下文窗口大小提升到目标值。
-2. **把 1M 模型限制在 500k，以便保持在最佳性能区间**：模型在 256k、512k 之后，性能下降尤为明显。
+## 扩大上下文窗口
 
-以下是详细解释。
+最常见的用途是扩大上下文窗口上限，从而推迟自动压缩时机：
 
-首先是长上下文时性能下降问题，图片引用自 mimo-v2.5 pro blogs。
-
-![](https://mgear-image.oss-cn-shanghai.aliyuncs.com/image/other/20260614013032076.png)
-
-CC 的环境变量允许设置 `COMPACT_WINDOW`，但不能高于硬编码默认值。所以提高 target 可以推迟压缩时机。例如，我日常使用的 Kimi-K2.6 支持 256k，所以我会把 target 设为 270000 以便将压缩时机从约 17k 提升至 23k
+1. **突破 200K 上下文窗口限制**：当模型支持 256K 时，Claude Code 原生 200K 上限会成为瓶颈。
+2. **把 1M 模型限制在更小区间**：模型在 256k、512k 之后性能下降明显，可以按需压低上限以保持在最佳性能区间。
 
 | 使用前 | 使用后 |
 |--------|--------|
 | 200K 限制，约 110K 可用上下文 | 270K 限制，约 180K 可用上下文 |
 | ![](https://mgear-image.oss-cn-shanghai.aliyuncs.com/image/other/20260610211249243.png) | ![](https://mgear-image.oss-cn-shanghai.aliyuncs.com/image/other/20260610211422491.png) |
 
+另外，长上下文场景下模型性能会下降。图片引用自 mimo-v2.5 pro blog。
+
+![](https://mgear-image.oss-cn-shanghai.aliyuncs.com/image/other/20260614013032076.png)
+
 ## 安装
 
-让 AI agent 执行这句：
+让 AI agent 执行：
 
 ```plaintext
 帮我扩展 Claude Code 的上下文窗口到 270k，使用 cc-expand（npx -y cc-expand@latest）
 ```
 
-或可以**手动安装**：
+或手动安装：
 
 ```bash
-# use npm
 npm install -g cc-expand
-# or npx
+# 或
 npx cc-expand <command>
 ```
 
 ## 特性
 
-* 支持 Mac、Windows 双平台
-* 功能兼容，允许设置任意上下文大小，无需牺牲自动压缩特性，所以无论是扩大还是缩小上下文窗口都支持
+- 跨平台：macOS、Windows、Linux
+- 可上下调整上下文窗口，不牺牲自动压缩机制
+- 支持第三方 plugin，扩展更多 binary 修改能力
+- 通过 Pattern 文件动态更新，以便兼容 Claude Code 的多版本
 
 ## 用法
 
 | 命令 | 说明 |
 |------|------|
-| `cc-expand install [version]` | 从 npm 下载 Claude Code 到 `~/.cc-expand/packages/` |
-| `cc-expand patch [options]` | 从本地包复制 binary，patch 后保存到 `~/.cc-expand/bin/` |
-| `cc-expand run [tokens]` | 启动已 patch 的 Claude Code binary |
-| `cc-expand setup` | 安装 shell 快捷方式（`cc`、`c` alias，以便快速打开已经 patch 的 claude code） |
-| `cc-expand restore` | 从备份恢复原始 binary |
-| `cc-expand verify` | 验证 binary 是否已被 patch |
-| `cc-expand status` | 显示版本和 patch 状态 |
-| `cc-expand supports` | 列出支持的 Claude Code 版本 |
-| `cc-expand --version` | 列出 cc-expand 的版本 |
+| `ccx install [version]` | 从 npm 下载 Claude Code 到 `~/.cc-expand/packages/` |
+| `ccx patch <version>` | patch binary 并保存到 `~/.cc-expand/bin/` |
+| `ccx patch remove <version> [combo]` | 移除已 patch 的 binary |
+| `ccx run [combo]` | 启动已 patch 的 Claude Code binary |
+| `ccx setup` | 安装 `cc`/`c` shell 快捷方式 |
+| `ccx restore` | 从备份恢复原始 binary |
+| `ccx verify` | 验证 binary 是否已被 patch |
+| `ccx status` | 显示版本和 patch 状态 |
+| `ccx supports` | 列出支持的 Claude Code 版本 |
+| `ccx --version` | 显示 cc-expand 版本 |
 
-* install version option: `latest` or `v2.1.170`
-* token 数量支持纯数字、千分位逗号、`k` 表示千、`w` 表示万：
-  `256000`、`256,000`、`270k`、`27w` 均表示 270000 tokens
-* patch options:
+- install 版本：`latest` 或 `2.1.170`
+- token 数量支持纯数字、`k`（千）、`w`（万）：`256000`、`270k`、`27w` 均表示 270000 tokens
+- patch 选项：
   ```
   -t, --target <count>    目标上下文窗口大小（默认：256000）
-  -v, --version <semver>  要 patch 的 Claude Code 版本（如 2.1.170）
   -y, --yes               跳过确认并覆盖 shell 快捷方式
   ```
-* `patch` 成功后，cc-expand 会自动维护 `cc`/`c` 快捷方式，使其默认目标与本次 patch 值一致。
-* `run` 也支持同样的简写，例如 `cc-expand run 270k`。
+- `patch` 成功后会自动维护 `cc`/`c` 快捷方式。
+- `run` 支持 combo，例如 `ccx run 270k`、`ccx run 27w-flow`。
 
-## 支持的 CC 版本
+## 支持的 Claude Code 版本
 
-| 版本 | darwin-arm64 | darwin-x64 | win32-x64 | linux-arm64 | linux-x64 |
-|------|:------------:|:----------:|:---------:|:-----------:|:---------:|
-| 2.1.161 | ✅ | — | — | — | — |
-| 2.1.162 | ✅ | — | — | — | — |
-| 2.1.163 | ✅ | — | — | — | — |
-| 2.1.169 | ✅ | ✅ | ✅ | — | — |
-| 2.1.170 | ✅ | ✅ | ✅ | — | — |
-| 2.1.172 | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 2.1.173 | ✅ | ✅ | ✅ | ✅ | ✅ |
-
-> ⚠️ cc-expand 自身版本号对应 `claude --version`。运行 `cc-expand supports` 查看动态更新的支持 cc-expand 的 CC 版本列表。
-
-## 插件 (v0.4+)
-
-ccx 从 token 扩展升级为能力扩展平台（ADR 0003）：plugin 是 patch 的一等抽象，token 扩展降级为内置 plugin。
+支持版本由阿里云 OSS 上的 pattern 分片动态决定。运行：
 
 ```bash
-ccx plugins add owner/repo   # 安装
-ccx plugins list               # 查看
-ccx plugins enable/disable <name>
-ccx plugins remove <name>
+ccx supports
 ```
 
-binary 命名编码 plugin 集合（如 `claude-27w-flow`）。
+即可查看当前平台实时支持列表。pattern 会缓存在 `~/.cc-expand/cache/patterns/`，通过 ETag 条件请求减少流量。
 
-详见 [Plugin 作者指南](docs/plugin-authoring.md) 与 [ADR 0003](docs/adr/0003-plugin-unified-patch-abstraction.md)。
+新版 Claude Code 发布后，`watch-patch` 技能会自动发现其混淆常量并上传新 pattern。通常情况下，你**无需更新 cc-expand npm 包**即可获得新版本支持。
 
-**版本更新机制**
+如果当前 CC 版本尚未支持，可以临时使用旧版（如 `npx @anthropic-ai/claude-code@2.1.197`），或基于项目源码运行 `watch-patch` 技能/agent 生成本地 pattern。
 
-Pattern 数据托管在阿里云 OSS 上，运行 cc-expand 时按需拉取，并缓存在本地 `~/.cc-expand/cache/patterns/`，通过 ETag 条件请求减少流量消耗。
+## 其他功能？
 
-每半小时我的 claw 会自动执行项目内 `watch-patch` 技能，发现新版 Claude Code、提取混淆变量名，并将 pattern 分片上传到 OSS。你**无需更新 npm 包**即可获得新版本支持 —— pattern 上传 OSS 后立即生效。
+cc-expand 把每一次 binary 改动抽象为 plugin。
 
-但我的 claw 在许多情况会宕机。如果遇到使用的版本比 cc-expand 版本号更新的情况，请暂时使用旧版 CC（如 `npx @anthropic-ai/claude-code@2.1.148`）。
+context window expansion 扩展只是内置 plugin 之一，你还可以安装第三方 plugin 来修改 Claude Code 的其他行为。
 
-进阶用户也可以选择让你的 Agent：
-
-```plaintext
-我需要更新版 CC 的上下文窗口大小，但 cc-expand 尚不支持的我使用的版本。
-你需要拉取本项目源码，阅读 `<project-root>/.claude/skills/watch-patch` 了解算法过程并 patch。
-最终将我的 CC 设置为 270k 上下文大小。
+```bash
+ccx plugins add owner/repo        # 安装 plugin
+ccx plugins list                  # 查看已安装 plugin
+ccx plugins enable/disable <name> # 启用/禁用
+ccx plugins remove <name>         # 移除
 ```
+
+启用多个 plugin 后，`ccx patch` 会一次性应用所有改动，binary 名称会编码 plugin 集合，例如 `claude-27w-flow`。
+
+想自己写 plugin？请看 [Plugin 作者指南](docs/plugin-authoring.md)。
 
 ## 支持我
 
 请 Star 以支持我开发更多有趣的应用。
-
-## 许可证
 
 MIT © Lionad Morotar
