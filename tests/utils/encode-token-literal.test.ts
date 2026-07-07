@@ -17,8 +17,9 @@ describe('encodeTokenLiteral', () => {
     expect(encodeTokenLiteral(1500000, 6)).toBe('1.5e6 ')
   })
 
-  it('throws INVALID_TARGET when no candidate fits the slot', () => {
+  it('throws CcxError(INVALID_TARGET) — instanceof 跨包有效（单一来源）', () => {
     // 1234567: "1234567"(7), "1.234567e6"(10) 都 > 6 → 无法等长编码
+    // encodeTokenLiteral 来自子包，CcxError 来自 root types（re-export 子包）——同一类，instanceof 恢复
     let thrown: unknown
     try {
       encodeTokenLiteral(1234567, 6)

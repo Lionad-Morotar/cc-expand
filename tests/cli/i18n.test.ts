@@ -8,7 +8,7 @@ import {
   normalizeLocale,
   setLocale,
   getLocale,
-  t,
+  t
 } from '../../src/cli/i18n.js'
 
 describe('i18n locale guards', () => {

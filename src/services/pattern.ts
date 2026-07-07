@@ -124,7 +124,7 @@ export class PatternService {
     } catch (error) {
       console.warn(
         `[PatternService] 获取版本 ${version} 失败，降级到本地缓存:`,
-        error instanceof Error ? error.message : String(error),
+        error instanceof Error ? error.message : String(error)
       )
       return this.getCachedPattern(version)
     }

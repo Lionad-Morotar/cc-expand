@@ -22,19 +22,19 @@ describe('verify command', () => {
   it('returns structured result when binary is not patched', async () => {
     const mockDiscovery = {
       findClaudeBinary: vi.fn().mockResolvedValue(binaryPath),
-      getBinaryVersion: vi.fn().mockResolvedValue('2.1.170'),
+      getBinaryVersion: vi.fn().mockResolvedValue('2.1.170')
     }
     const mockConfig = {
       getPatternForVersion: vi.fn().mockResolvedValue([
         { search: 'PACKAGE_T200000', desc: 'PACKAGE_T', sourceValue: '200000' },
-        { search: 'MAX_TOOL_RESULTS200000', desc: 'MAX_TOOL_RESULTS', sourceValue: '200000' },
+        { search: 'MAX_TOOL_RESULTS200000', desc: 'MAX_TOOL_RESULTS', sourceValue: '200000' }
       ]),
-      getUserConfig: vi.fn().mockReturnValue({ patchedVersions: {} }),
+      getUserConfig: vi.fn().mockReturnValue({ patchedVersions: {} })
     }
 
     const result = await verifyCommand({
       discoveryService: mockDiscovery as any,
-      configService: mockConfig as any,
+      configService: mockConfig as any
     })
 
     expect(result.success).toBe(true)
@@ -52,20 +52,20 @@ describe('verify command', () => {
 
     const mockDiscovery = {
       findClaudeBinary: vi.fn().mockResolvedValue(binaryPath),
-      getBinaryVersion: vi.fn().mockResolvedValue('2.1.170'),
+      getBinaryVersion: vi.fn().mockResolvedValue('2.1.170')
     }
     const mockConfig = {
       getPatternForVersion: vi.fn().mockReturnValue([
-        { search: 'PACKAGE_T200000', desc: 'PACKAGE_T', sourceValue: '200000' },
+        { search: 'PACKAGE_T200000', desc: 'PACKAGE_T', sourceValue: '200000' }
       ]),
       getUserConfig: vi.fn().mockReturnValue({
-        patchedVersions: { '2.1.161': { targets: [270000], patchedAt: '2026-06-10T00:00:00Z' } },
-      }),
+        patchedVersions: { '2.1.161': { targets: [270000], patchedAt: '2026-06-10T00:00:00Z' } }
+      })
     }
 
     const result = await verifyCommand({
       discoveryService: mockDiscovery as any,
-      configService: mockConfig as any,
+      configService: mockConfig as any
     })
 
     expect(result.success).toBe(true)
@@ -78,20 +78,20 @@ describe('verify command', () => {
   it('suggests migration when unpatched but history exists', async () => {
     const mockDiscovery = {
       findClaudeBinary: vi.fn().mockResolvedValue(binaryPath),
-      getBinaryVersion: vi.fn().mockResolvedValue('2.1.178'),
+      getBinaryVersion: vi.fn().mockResolvedValue('2.1.178')
     }
     const mockConfig = {
       getPatternForVersion: vi.fn().mockResolvedValue([
-        { search: 'PACKAGE_T200000', desc: 'PACKAGE_T', sourceValue: '200000' },
+        { search: 'PACKAGE_T200000', desc: 'PACKAGE_T', sourceValue: '200000' }
       ]),
       getUserConfig: vi.fn().mockReturnValue({
-        patchedVersions: { '2.1.177': { targets: [1000000], patchedAt: '2026-06-15T00:00:00Z' } },
-      }),
+        patchedVersions: { '2.1.177': { targets: [1000000], patchedAt: '2026-06-15T00:00:00Z' } }
+      })
     }
 
     const result = await verifyCommand({
       discoveryService: mockDiscovery as any,
-      configService: mockConfig as any,
+      configService: mockConfig as any
     })
 
     expect(result.data?.patched).toBe(false)

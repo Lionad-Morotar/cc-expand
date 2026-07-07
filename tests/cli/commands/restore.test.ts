@@ -30,19 +30,19 @@ describe('restore command', () => {
     const backupDir = join(tempDir, '.cc-expand', 'backups')
 
     const mockDiscovery = {
-      findClaudeBinary: vi.fn().mockResolvedValue(binaryPath),
+      findClaudeBinary: vi.fn().mockResolvedValue(binaryPath)
     }
     const mockBackup = {
-      restore: vi.fn().mockResolvedValue(undefined),
+      restore: vi.fn().mockResolvedValue(undefined)
     }
     const mockConfig = {
-      getBackupDir: vi.fn().mockReturnValue(backupDir),
+      getBackupDir: vi.fn().mockReturnValue(backupDir)
     }
 
     const result = await restoreCommand({
       discoveryService: mockDiscovery as any,
       backupService: mockBackup as any,
-      configService: mockConfig as any,
+      configService: mockConfig as any
     })
 
     expect(result.success).toBe(true)
@@ -78,7 +78,7 @@ alias c='cc 270000'
       configService: mockConfig as any,
       userConfigService: mockUserConfig as any,
       maintain: mockMaintain,
-      homeDir: tempDir,
+      homeDir: tempDir
     })
 
     expect(result.success).toBe(true)
@@ -115,7 +115,7 @@ alias c='cc 270000'
       configService: mockConfig as any,
       userConfigService: mockUserConfig as any,
       maintain: mockMaintain,
-      homeDir: tempDir,
+      homeDir: tempDir
     })
 
     expect(result.success).toBe(true)
@@ -144,7 +144,7 @@ alias c='cc 270000'
       configService: mockConfig as any,
       userConfigService: mockUserConfig as any,
       maintain: mockMaintain,
-      homeDir: tempDir,
+      homeDir: tempDir
     })
 
     expect(result.data?.shortcutsUpdated).toBe(false)

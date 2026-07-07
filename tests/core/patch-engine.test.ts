@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import { PatchEngine } from '../../src/core/patch-engine.js'
 import { CcxError, ErrorCode } from '../../src/types/index.js'
+import { encodeTokenLiteral } from '../../src/utils/encode-token-literal.js'
+
+/** 构造 token-encode generator（与生产 patch-applier 等价）：slot → 等长字面量 */
+const tokenGen = (tokens: number) => (slot: number) => encodeTokenLiteral(tokens, slot)
 
 describe('PatchEngine', () => {
   describe('patch()', () => {
@@ -10,11 +14,11 @@ describe('PatchEngine', () => {
 
       const engine = new PatchEngine()
       const patches = [
-        { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
+        { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' }
       ]
 
       // Act
-      const result = engine.patch(buffer, patches, 256000)
+      const result = engine.patch(buffer, patches, tokenGen(256000))
 
       // Assert: result indicates success
       expect(result.success).toBe(true)
@@ -33,11 +37,11 @@ describe('PatchEngine', () => {
       const buffer = Buffer.from('some_random_data_without_the_constant')
       const engine = new PatchEngine()
       const patches = [
-        { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
+        { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' }
       ]
 
       // Act
-      const result = engine.patch(buffer, patches, 256000)
+      const result = engine.patch(buffer, patches, tokenGen(256000))
 
       // Assert
       expect(result.success).toBe(false)
@@ -48,16 +52,16 @@ describe('PatchEngine', () => {
     it('should replace multiple occurrences', () => {
       // Arrange: buffer with multiple occurrences of the pattern
       const buffer = Buffer.from(
-        'Aj8=200000,Ij_=20000_junk_Aj8=200000,Ij_=20000_junk_Aj8=200000,Ij_=20000',
+        'Aj8=200000,Ij_=20000_junk_Aj8=200000,Ij_=20000_junk_Aj8=200000,Ij_=20000'
       )
 
       const engine = new PatchEngine()
       const patches = [
-        { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
+        { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' }
       ]
 
       // Act
-      const result = engine.patch(buffer, patches, 300000)
+      const result = engine.patch(buffer, patches, tokenGen(300000))
 
       // Assert
       expect(result.success).toBe(true)
@@ -71,18 +75,18 @@ describe('PatchEngine', () => {
     it('should patch multiple different patterns', () => {
       // Arrange: buffer with multiple different patterns
       const buffer = Buffer.from(
-        'Aj8=200000,Ij_=20000_X93=200000_rt5=200000',
+        'Aj8=200000,Ij_=20000_X93=200000_rt5=200000'
       )
 
       const engine = new PatchEngine()
       const patches = [
         { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
         { search: 'X93=200000', desc: 'teamMemorySync', sourceValue: '200000' },
-        { search: 'rt5=200000', desc: 'skill tool budget', sourceValue: '200000' },
+        { search: 'rt5=200000', desc: 'skill tool budget', sourceValue: '200000' }
       ]
 
       // Act
-      const result = engine.patch(buffer, patches, 256000)
+      const result = engine.patch(buffer, patches, tokenGen(256000))
 
       // Assert
       expect(result.success).toBe(true)
@@ -102,10 +106,10 @@ describe('PatchEngine', () => {
       const originalLength = buffer.length
       const engine = new PatchEngine()
       const patches = [
-        { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
+        { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' }
       ]
 
-      const result = engine.patch(buffer, patches, 1000000)
+      const result = engine.patch(buffer, patches, tokenGen(1000000))
 
       expect(result.success).toBe(true)
       expect(result.replaceCount).toBe(1)
@@ -120,10 +124,10 @@ describe('PatchEngine', () => {
       const originalLength = buffer.length
       const engine = new PatchEngine()
       const patches = [
-        { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
+        { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' }
       ]
       // 1234567: 十进制7位 / 1.234567e6=10位 / 0x12d687=8位，均超 6 字节槽位
-      const result = engine.patch(buffer, patches, 1234567)
+      const result = engine.patch(buffer, patches, tokenGen(1234567))
 
       expect(result.success).toBe(false)
       expect(result.error).toBeInstanceOf(CcxError)
@@ -131,6 +135,71 @@ describe('PatchEngine', () => {
       // 原子性：失败时 buffer 不被修改
       expect(buffer.length).toBe(originalLength)
       expect(buffer.toString('utf-8')).toContain('Aj8=200000')
+    })
+
+    it('patches using literal target (equal-length value, no token-encode)', () => {
+      // installed plugin 风格：固定字节替换，不依赖 targetTokens
+      const buffer = Buffer.from('header_PLACEHOLDER_trailer')
+      const engine = new PatchEngine()
+      const patches = [
+        { search: 'PLACEHOLDER', sourceValue: 'PLACEHOLDER', target: { value: 'PATCHED!!!!' } }
+      ]
+      const result = engine.patch(buffer, patches, tokenGen(0))
+      expect(result.success).toBe(true)
+      expect(result.replaceCount).toBe(1)
+      const mutated = buffer.toString('utf-8')
+      expect(mutated).toContain('PATCHED!!!!')
+      expect(mutated).not.toContain('PLACEHOLDER')
+    })
+
+    it('patches literal target with pad:"right-space" (cc-flow 风格：短表达式 + pad)', () => {
+      // 模拟 cc-flow：大槽位（sourceValue 20B）+ 短 target value + right-space pad 到等长
+      const slot = 'A'.repeat(20)
+      const buffer = Buffer.from('x' + slot + 'y')
+      const originalLength = buffer.length
+      const engine = new PatchEngine()
+      const patches = [{
+        search: slot,
+        sourceValue: slot,
+        target: { value: 'env?x:y', pad: 'right-space' as const }
+      }]
+      const result = engine.patch(buffer, patches, tokenGen(0))
+      expect(result.success).toBe(true)
+      const mutated = buffer.toString('utf-8')
+      expect(mutated).toContain('env?x:y')
+      // 'env?x:y' (7B) + 13 空格 = 20B 等长
+      expect(mutated).toMatch(/env\?x:y {13}/)
+      expect(buffer.length).toBe(originalLength)
+    })
+
+    it('rejects literal target longer than slot (INVALID_TARGET, atomic)', () => {
+      const buffer = Buffer.from('header_SHORT_trailer')
+      const originalLength = buffer.length
+      const engine = new PatchEngine()
+      const patches = [{
+        search: 'SHORT',
+        sourceValue: 'SHORT',
+        target: { value: 'TOO_LONG_VALUE' }
+      }]
+      const result = engine.patch(buffer, patches, tokenGen(0))
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe(ErrorCode.INVALID_TARGET)
+      // 原子性：buffer 不变
+      expect(buffer.length).toBe(originalLength)
+      expect(buffer.toString('utf-8')).toContain('SHORT')
+    })
+
+    it('uses injected targetGenerator when provided (overrides default encode)', () => {
+      // ADR 0003 内核零 token 知识：generator 注入路径，绕过 encodeTokenLiteral
+      const buffer = Buffer.from('header_Aj8=200000,Ij_=20000_trailer')
+      const engine = new PatchEngine()
+      const patches = [{ search: 'Aj8=200000,Ij_=20000', sourceValue: '200000', desc: 'token' }]
+      // 注入 generator：返回等长自定义值（验证注入，不调 encodeTokenLiteral）
+      const result = engine.patch(buffer, patches, slot => 'XX'.padEnd(slot, ' '))
+      expect(result.success).toBe(true)
+      const mutated = buffer.toString('utf-8')
+      expect(mutated).toContain('XX')
+      expect(mutated).not.toContain('200000')
     })
   })
 })

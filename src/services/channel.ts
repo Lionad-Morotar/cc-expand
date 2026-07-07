@@ -30,7 +30,7 @@ export interface ChannelDiscoveryOptions {
 }
 
 const DEFAULT_NPX_DIRS = [
-  join(process.env.HOME || '~', '.npm', '_npx'),
+  join(process.env.HOME || '~', '.npm', '_npx')
 ]
 
 export class ChannelDiscoveryService {
@@ -58,7 +58,7 @@ export class ChannelDiscoveryService {
         path: pathBinary,
         version,
         isInPath: true,
-        priority: this.getPriority(name, true),
+        priority: this.getPriority(name, true)
       })
       seenPaths.add(pathBinary)
     }
@@ -75,7 +75,7 @@ export class ChannelDiscoveryService {
           path: npxBinary,
           version,
           isInPath: pathBinary === npxBinary,
-          priority: this.getPriority('npx', pathBinary === npxBinary),
+          priority: this.getPriority('npx', pathBinary === npxBinary)
         })
         seenPaths.add(npxBinary)
       }
@@ -109,7 +109,7 @@ export class ChannelDiscoveryService {
       '@anthropic-ai',
       'claude-code',
       'bin',
-      'claude',
+      'claude'
     )
 
     for (const entry of readdirSync(npxDir)) {
@@ -136,7 +136,7 @@ export class ChannelDiscoveryService {
           }
           const match = stdout.trim().match(/(\d+\.\d+\.\d+)/)
           resolve(match?.[1] ?? 'unknown')
-        },
+        }
       )
     })
   }
@@ -151,11 +151,11 @@ export class ChannelDiscoveryService {
   /** 获取显示名称 */
   private getDisplayName(name: string): string {
     const names: Record<string, string> = {
-      brew: 'Homebrew',
-      npx: 'NPX (npm exec)',
+      'brew': 'Homebrew',
+      'npx': 'NPX (npm exec)',
       'npm-global': 'npm global',
       'pnpm-global': 'pnpm global',
-      direct: 'Direct (PATH)',
+      'direct': 'Direct (PATH)'
     }
     return names[name] ?? name
   }
@@ -163,11 +163,11 @@ export class ChannelDiscoveryService {
   /** 计算优先级 */
   private getPriority(name: string, isInPath: boolean): number {
     const basePriorities: Record<string, number> = {
-      brew: 1,
-      npx: 2,
+      'brew': 1,
+      'npx': 2,
       'npm-global': 3,
       'pnpm-global': 4,
-      direct: 5,
+      'direct': 5
     }
     return (basePriorities[name] ?? 99) + (isInPath ? 0 : 10)
   }

@@ -11,6 +11,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import semver from 'semver'
 import { getUserConfigPath } from './user-config.js'
+import { getReleaseChannel } from '../utils/release-channel.js'
 import { queryLatestVersion } from './latest-checker.js'
 
 export interface UpdateCheckServiceOptions {
@@ -33,6 +34,8 @@ export interface UpdateInfo {
   hasUpdate: boolean
   currentVersion: string
   latestVersion: string
+  /** 解析出的 release 通道（npm dist-tag）：prerelease 版本查对应 tag，stable 为 latest */
+  channel: string
 }
 
 interface UpdateCheckState {
@@ -46,21 +49,25 @@ function getDefaultCachePath(): string {
   return join(dirname(getUserConfigPath()), 'update-check.json')
 }
 
-/** 默认版本解析器：走 npm view 查询用户配置 registry 上的 cc-expand latest（与 npm install 同源） */
-function resolveSelfLatest(): Promise<string | undefined> {
-  return queryLatestVersion(4000, undefined, 'cc-expand')
+/** 默认版本解析器：走 npm view 查询用户配置 registry 上 cc-expand 指定通道（与 npm install 同源） */
+function resolveSelfLatest(channel: string = 'latest'): Promise<string | undefined> {
+  return queryLatestVersion(4000, undefined, 'cc-expand', channel)
 }
 
 export class UpdateCheckService {
   private readonly cachePath: string
   private readonly versionResolver: () => Promise<string | undefined>
   private readonly currentVersion: string
+  private readonly channel: string
   private readonly intervalMs: number
 
   constructor(options: UpdateCheckServiceOptions) {
     this.cachePath = options.cachePath ?? getDefaultCachePath()
-    this.versionResolver = options.versionResolver ?? resolveSelfLatest
     this.currentVersion = options.currentVersion
+    // prerelease 版本（alpha/beta/rc）查对应 dist-tag，stable 查 latest——使 alpha 用户
+    // self-update 能发现新 alpha，而非永远查到 stable latest 误判「已是最新」
+    this.channel = getReleaseChannel(options.currentVersion)
+    this.versionResolver = options.versionResolver ?? (() => resolveSelfLatest(this.channel))
     this.intervalMs = options.intervalMs ?? DEFAULT_INTERVAL_MS
   }
 
@@ -83,6 +90,7 @@ export class UpdateCheckService {
           hasUpdate: semver.gt(latest, this.currentVersion),
           currentVersion: this.currentVersion,
           latestVersion: latest,
+          channel: this.channel
         }
       }
     }
@@ -95,13 +103,14 @@ export class UpdateCheckService {
       // 3. 写回 state 供下次节流（skipCache 也写回，刷新缓存）
       this.writeState({
         lastCheckedAt: new Date().toISOString(),
-        lastKnownLatest: latest,
+        lastKnownLatest: latest
       })
 
       return {
         hasUpdate: semver.gt(latest, this.currentVersion),
         currentVersion: this.currentVersion,
         latestVersion: latest,
+        channel: this.channel
       }
     } catch {
       return null
@@ -117,7 +126,7 @@ export class UpdateCheckService {
       if (!parsed.lastCheckedAt || !parsed.lastKnownLatest) return null
       return {
         lastCheckedAt: parsed.lastCheckedAt,
-        lastKnownLatest: parsed.lastKnownLatest,
+        lastKnownLatest: parsed.lastKnownLatest
       }
     } catch {
       return null

@@ -18,7 +18,7 @@ export function detectConfigFile(homeDir: string): string {
       homeDir,
       'Documents',
       'PowerShell',
-      'Microsoft.PowerShell_profile.ps1',
+      'Microsoft.PowerShell_profile.ps1'
     )
   }
 
@@ -50,7 +50,7 @@ export function detectShortcutState(profileContent: string): ShortcutState {
 
   // 解析 bash/zsh cc() 函数中的 default_binary
   const bashBinaryMatch = profileContent.match(
-    /default_binary\s*=\s*["']?(.+?)["']?\s*$/m,
+    /default_binary\s*=\s*["']?(.+?)["']?\s*$/m
   )
   if (bashBinaryMatch) {
     state.ccTarget = bashBinaryMatch[1]
@@ -64,7 +64,7 @@ export function detectShortcutState(profileContent: string): ShortcutState {
 
   // 解析 PowerShell cc 函数中的 binary 路径
   const psBinaryMatch = profileContent.match(
-    /\$binary\s*=\s*Join-Path\s+\$env:USERPROFILE\s+["'](.+?)["']/,
+    /\$binary\s*=\s*Join-Path\s+\$env:USERPROFILE\s+["'](.+?)["']/
   )
   if (psBinaryMatch) {
     state.ccTarget = psBinaryMatch[1]

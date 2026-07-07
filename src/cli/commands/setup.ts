@@ -10,7 +10,7 @@ import { ChannelConfig } from '../../services/channel-config.js'
 import { PackageService } from '../../services/package.js'
 import {
   detectConfigFile,
-  generateShellFunction,
+  generateShellFunction
 } from '../../services/shell-codegen.js'
 import { t } from '../i18n.js'
 import { makeErrorResult, type CommandResult } from '../result.js'
@@ -50,20 +50,20 @@ function backupExistingDefinitions(content: string): string {
   // 备份 alias c=（单行）
   result = result.replace(
     /^\s*alias\s+c\s*=/gm,
-    'alias c_backup=',
+    'alias c_backup='
   )
 
   // 备份 alias cc=（单行）
   result = result.replace(
     /^\s*alias\s+cc\s*=/gm,
-    'alias cc_backup=',
+    'alias cc_backup='
   )
 
   // 备份 cc() 函数定义（支持单行和多行）
   // 匹配 "cc()" 后面可选空白，然后 "{" 开始的内容
   result = result.replace(
     /\bcc\s*\(\s*\)\s*(?:\n\s*)?\{/g,
-    'cc_backup() {',
+    'cc_backup() {'
   )
 
   return result
@@ -71,7 +71,7 @@ function backupExistingDefinitions(content: string): string {
 
 export async function setupCommand(
   args: string[] = [],
-  options?: SetupOptions,
+  options?: SetupOptions
 ): Promise<CommandResult<SetupData>> {
   // 解析参数
   let skipConfirm = false
@@ -103,7 +103,7 @@ export async function setupCommand(
       'setup',
       ErrorCode.PERMISSION_DENIED,
       'cc-expand shell integration is already installed',
-      `Remove the existing block from ${configFile} or use --force to overwrite`,
+      `Remove the existing block from ${configFile} or use --force to overwrite`
     )
   }
 
@@ -122,21 +122,21 @@ export async function setupCommand(
 
   // 交互式确认
   if (!skipConfirm) {
-    const doConfirm =
-      options?.confirm ??
-      (async (msg: string) => {
-        const { confirm } = await import('@inquirer/prompts')
-        return confirm({ message: msg })
-      })
+    const doConfirm
+      = options?.confirm
+        ?? (async (msg: string) => {
+          const { confirm } = await import('@inquirer/prompts')
+          return confirm({ message: msg })
+        })
     const confirmed = await doConfirm(
-      `Install cc-expand shell integration to ${configFile}?`,
+      `Install cc-expand shell integration to ${configFile}?`
     )
     if (!confirmed) {
       return {
         success: true,
         command: 'setup',
         summary: 'Setup cancelled',
-        data: { configFile, defaultTarget: options?.defaultTarget ?? 270000 },
+        data: { configFile, defaultTarget: options?.defaultTarget ?? 270000 }
       }
     }
   }
@@ -156,7 +156,7 @@ export async function setupCommand(
     channelConfig.saveChannel({
       channel: 'local',
       path: join(configDir, 'packages', version),
-      version,
+      version
     })
 
     const packagesDir = join(configDir, 'packages')
@@ -174,7 +174,7 @@ export async function setupCommand(
           'setup',
           ErrorCode.BINARY_NOT_FOUND,
           `Failed to install Claude Code ${version}`,
-          'Check your network connection and npm registry access',
+          'Check your network connection and npm registry access'
         )
       }
     }
@@ -188,8 +188,8 @@ export async function setupCommand(
       configFile,
       version,
       defaultTarget,
-      installedVersion,
+      installedVersion
     },
-    next: ['source ' + configFile],
+    next: ['source ' + configFile]
   }
 }

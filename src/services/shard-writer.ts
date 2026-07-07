@@ -38,7 +38,7 @@ export class ShardWriter {
     this.ensureDir()
     const indexPath = join(this.patternsDir, 'versions.json')
     const items = this.readIndex(indexPath)
-    const existing = items.findIndex((i) => i.version === version)
+    const existing = items.findIndex(i => i.version === version)
     if (existing >= 0) {
       items[existing].platforms = platforms
     } else {

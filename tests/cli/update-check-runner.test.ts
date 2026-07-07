@@ -7,7 +7,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import {
   shouldRunUpdateCheck,
-  awaitUpdateCheckHint,
+  awaitUpdateCheckHint
 } from '../../src/cli/update-check-runner.js'
 import type { UserConfigService } from '../../src/services/user-config.js'
 
@@ -43,7 +43,7 @@ describe('awaitUpdateCheckHint', () => {
     const promise = Promise.resolve({
       hasUpdate: true,
       currentVersion: '0.3.0',
-      latestVersion: '0.3.1',
+      latestVersion: '0.3.1'
     })
     await awaitUpdateCheckHint(promise, hintWriter)
     expect(hintWriter).toHaveBeenCalledOnce()
@@ -57,7 +57,7 @@ describe('awaitUpdateCheckHint', () => {
     const promise = Promise.resolve({
       hasUpdate: false,
       currentVersion: '0.3.0',
-      latestVersion: '0.3.0',
+      latestVersion: '0.3.0'
     })
     await awaitUpdateCheckHint(promise, hintWriter)
     expect(hintWriter).not.toHaveBeenCalled()

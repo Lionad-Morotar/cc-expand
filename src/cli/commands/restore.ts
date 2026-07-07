@@ -73,7 +73,7 @@ export async function restoreCommand(options?: RestoreOptions): Promise<CommandR
       // autoMaintain 已表达"自动维护"，skipConfirm 直接覆盖
       maintainSummary = await doMaintain({
         skipConfirm: true,
-        homeDir: options?.homeDir,
+        homeDir: options?.homeDir
       })
       shortcutsUpdated = true
     } else {
@@ -98,9 +98,9 @@ export async function restoreCommand(options?: RestoreOptions): Promise<CommandR
       binaryPath,
       shortcutsStillPointToPatched: !shortcutsUpdated && shortcutState.pointsToPatched,
       shortcutsUpdated,
-      maintainSummary,
+      maintainSummary
     },
     warnings: warnings.length > 0 ? warnings : undefined,
-    next: nextSteps.length > 0 ? nextSteps : undefined,
+    next: nextSteps.length > 0 ? nextSteps : undefined
   }
 }

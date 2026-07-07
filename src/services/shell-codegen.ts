@@ -5,6 +5,7 @@
 
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
+import { formatTokenCount } from '@cc-expand/plugin-context-expand'
 
 /**
  * 检测当前 shell 的配置文件路径
@@ -17,7 +18,7 @@ export function detectConfigFile(homeDir: string): string {
       homeDir,
       'Documents',
       'PowerShell',
-      'Microsoft.PowerShell_profile.ps1',
+      'Microsoft.PowerShell_profile.ps1'
     )
   }
 
@@ -33,7 +34,8 @@ export function detectConfigFile(homeDir: string): string {
  * 生成 bash/zsh cc 函数和 c alias
  */
 export function generateBashFunction(targetTokens: number): string {
-  const target = String(targetTokens)
+  // shell shortcut default 用 shortVer（如 27w），binary 名 claude-<shortVer>
+  const target = formatTokenCount(targetTokens)
   const lines = [
     '',
     '# --- cc-expand generated start ---',
@@ -41,23 +43,29 @@ export function generateBashFunction(targetTokens: number): string {
     '  local default_flags="--dangerously-skip-permissions"',
     '  local binary',
     '',
-    '  # 数字参数：指定 context window 大小',
-    '  if [[ "$1" =~ ^[0-9]+$ ]]; then',
+    '  # 参数：shortVer（如 27w、1m、27w-flow）或纯数字 tokens（如 270000、700000）',
+    '  # ccx run 会按 plugin 命名规则解析为 shortVer 并定位 binary',
+    '  if [[ -n "$1" ]]; then',
     '    local ctx="$1"',
     '    shift',
-    `    binary="$HOME/.cc-expand/bin/claude-\${ctx}"`,
+    `    binary=$(cc-expand run "\$ctx" --print-binary 2>/dev/null)`,
     '',
-    '    if [[ ! -x "$binary" ]]; then',
+    '    if [[ -z "$binary" || ! -x "$binary" ]]; then',
     `      echo "→ Installing Claude Code \${ctx}..." >&2`,
     `      cc-expand patch --target "\$ctx" --yes || {`,
     `        echo "Error: Failed to patch Claude Code \${ctx}" >&2`,
     '        return 1',
     '      }',
+    `      binary=$(cc-expand run "\$ctx" --print-binary 2>/dev/null)`,
+    '      if [[ -z "$binary" || ! -x "$binary" ]]; then',
+    '        echo "Error: Patched binary not found after install" >&2',
+    '        return 1',
+    '      fi',
     '    fi',
     '  else',
     `    # 默认启动 ${target}`,
-    `    binary="$HOME/.cc-expand/bin/claude-${target}"`,
-    '    if [[ ! -x "$binary" ]]; then',
+    `    binary=$(cc-expand run ${target} --print-binary 2>/dev/null)`,
+    '    if [[ -z "$binary" || ! -x "$binary" ]]; then',
     `      echo "Error: Default binary not found. Run: cc-expand patch --target ${target} --yes" >&2`,
     '      return 1',
     '    fi',
@@ -65,9 +73,10 @@ export function generateBashFunction(targetTokens: number): string {
     '',
     '  # 版本校验：避免静默跑过时的 patched binary（版本孤儿）。',
     '  # binary 版本必须 == channel.json 的 active version；--version 失败（坏 binary）也算不符。',
-    `  local active_version=$(grep -oE '"version"[[:space:]]*:[[:space:]]*"[0-9.]+"' "$HOME/.cc-expand/channel.json" 2>/dev/null | grep -oE '[0-9]+\\.[0-9]+\\.[0-9]+' | head -1)`,
+    '  # 使用 command grep 绕过用户可能把 grep alias 成 rg 的环境（rg 不支持 -E 模式语法）。',
+    `  local active_version=$(command grep -oE '"version"[[:space:]]*:[[:space:]]*"[0-9.]+"' "$HOME/.cc-expand/channel.json" 2>/dev/null | command grep -oE '[0-9]+\\.[0-9]+\\.[0-9]+' | head -1)`,
     '  if [[ -n "$active_version" ]]; then',
-    `    local bin_version=$("\$binary" --version 2>/dev/null | grep -oE '[0-9]+\\.[0-9]+\\.[0-9]+' | head -1)`,
+    `    local bin_version=$("\$binary" --version 2>/dev/null | command grep -oE '[0-9]+\\.[0-9]+\\.[0-9]+' | head -1)`,
     '    if [[ -z "$bin_version" || "$bin_version" != "$active_version" ]]; then',
     `      echo "⚠️  patched claude 版本不匹配：binary 是 \${bin_version:-损坏}，当前激活 \${active_version}。重新 patch: cc-expand patch --yes" >&2`,
     '      return 1',
@@ -78,7 +87,7 @@ export function generateBashFunction(targetTokens: number): string {
     '}',
     `alias c='cc ${target}'`,
     '# --- cc-expand generated end ---',
-    '',
+    ''
   ]
   return lines.join('\n')
 }
@@ -87,7 +96,7 @@ export function generateBashFunction(targetTokens: number): string {
  * 生成 PowerShell 函数（Windows 专用）
  */
 export function generatePowerShellFunction(targetTokens: number): string {
-  const target = String(targetTokens)
+  const target = formatTokenCount(targetTokens)
   const lines = [
     '',
     '# --- cc-expand generated start ---',
@@ -115,7 +124,7 @@ export function generatePowerShellFunction(targetTokens: number): string {
     '',
     'Set-Alias -Name cc-expand-cc -Value cc',
     '# --- cc-expand generated end ---',
-    '',
+    ''
   ]
   return lines.join('\n')
 }
@@ -142,9 +151,9 @@ export function generateRestoredBashFunction(): string {
     '  # restore 后：cc/c 直接调用原版 Claude Code',
     '  claude --dangerously-skip-permissions "$@"',
     '}',
-    "alias c='cc'",
+    'alias c=\'cc\'',
     '# --- cc-expand generated end ---',
-    '',
+    ''
   ]
   return lines.join('\n')
 }
@@ -167,7 +176,7 @@ export function generateRestoredPowerShellFunction(): string {
     '',
     'Set-Alias -Name cc-expand-cc -Value cc',
     '# --- cc-expand generated end ---',
-    '',
+    ''
   ]
   return lines.join('\n')
 }

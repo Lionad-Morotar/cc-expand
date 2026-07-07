@@ -29,7 +29,7 @@ describe('install command', () => {
     mkdirSync(configDir, { recursive: true })
     writeFileSync(
       join(configDir, 'versions.json'),
-      JSON.stringify({ patchedVersions: { [version]: { targets: [270000], patchedAt: '2026-06-10T00:00:00Z' } } }, null, 2),
+      JSON.stringify({ patchedVersions: { [version]: { targets: [270000], patchedAt: '2026-06-10T00:00:00Z' } } }, null, 2)
     )
   }
 
@@ -38,7 +38,7 @@ describe('install command', () => {
 
     const result = await installCommand(['2.1.170'], {
       homeDir: tempDir,
-      packageService: service,
+      packageService: service
     })
 
     expect(result.success).toBe(true)
@@ -52,7 +52,7 @@ describe('install command', () => {
 
     const result = await installCommand(['v2.1.170'], {
       homeDir: tempDir,
-      packageService: service,
+      packageService: service
     })
 
     expect(result.success).toBe(true)
@@ -67,7 +67,7 @@ describe('install command', () => {
     try {
       const result = await installCommand(['latest'], {
         homeDir: tempDir,
-        packageService: service,
+        packageService: service
       })
 
       expect(result.success).toBe(true)
@@ -83,7 +83,7 @@ describe('install command', () => {
 
     const result = await installCommand(['2.1.178'], {
       homeDir: tempDir,
-      packageService: service,
+      packageService: service
     })
 
     expect(result.success).toBe(true)
@@ -96,7 +96,7 @@ describe('install command', () => {
 
     const result = await installCommand(['2.1.178'], {
       homeDir: tempDir,
-      packageService: service,
+      packageService: service
     })
 
     expect(result.success).toBe(true)

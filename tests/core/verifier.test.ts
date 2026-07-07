@@ -4,6 +4,10 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Verifier } from '../../src/core/verifier.js'
 import { CcxError, ErrorCode } from '../../src/types/index.js'
+import { encodeTokenLiteral } from '../../src/utils/encode-token-literal.js'
+
+/** 构造 token-encode generator（与生产 patch-applier 等价） */
+const tokenGen = (tokens: number) => (slot: number) => encodeTokenLiteral(tokens, slot)
 
 describe('Verifier', () => {
   let tempDir: string
@@ -28,18 +32,18 @@ describe('Verifier', () => {
       // Act
       const result = await verifier.verify({
         binaryPath,
-        targetTokens: 256000,
+        targetGenerator: tokenGen(256000),
         sourceValue: '200000',
         patches: [
           { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
-          { search: 'X93=200000', desc: 'teamMemorySync', sourceValue: '200000' },
-        ],
+          { search: 'X93=200000', desc: 'teamMemorySync', sourceValue: '200000' }
+        ]
       })
 
       // Assert
       expect(result.success).toBe(true)
       expect(result.checks).toContainEqual(
-        expect.objectContaining({ name: 'pattern-replaced', passed: true }),
+        expect.objectContaining({ name: 'pattern-replaced', passed: true })
       )
     })
 
@@ -52,18 +56,18 @@ describe('Verifier', () => {
 
       const result = await verifier.verify({
         binaryPath,
-        targetTokens: 256000,
+        targetGenerator: tokenGen(256000),
         sourceValue: '200000',
         patches: [
           { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
-          { search: 'X93=200000', desc: 'teamMemorySync', sourceValue: '200000' },
-        ],
+          { search: 'X93=200000', desc: 'teamMemorySync', sourceValue: '200000' }
+        ]
       })
 
       expect(result.success).toBe(false)
       expect(result.error?.code).toBe(ErrorCode.VERIFICATION_FAILED)
       expect(result.checks).toContainEqual(
-        expect.objectContaining({ name: 'pattern-replaced', passed: false }),
+        expect.objectContaining({ name: 'pattern-replaced', passed: false })
       )
     })
 
@@ -76,17 +80,17 @@ describe('Verifier', () => {
 
       const result = await verifier.verify({
         binaryPath,
-        targetTokens: 256000,
+        targetGenerator: tokenGen(256000),
         sourceValue: '200000',
         patches: [
           { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
-          { search: 'X93=200000', desc: 'teamMemorySync', sourceValue: '200000' },
-        ],
+          { search: 'X93=200000', desc: 'teamMemorySync', sourceValue: '200000' }
+        ]
       })
 
       expect(result.success).toBe(false)
       expect(result.checks).toContainEqual(
-        expect.objectContaining({ name: 'pattern-replaced', passed: false }),
+        expect.objectContaining({ name: 'pattern-replaced', passed: false })
       )
     })
 
@@ -99,16 +103,16 @@ describe('Verifier', () => {
 
       const result = await verifier.verify({
         binaryPath,
-        targetTokens: 256000,
+        targetGenerator: tokenGen(256000),
         sourceValue: '200000',
         patches: [
-          { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
-        ],
+          { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' }
+        ]
       })
 
       expect(result.success).toBe(false)
       expect(result.checks).toContainEqual(
-        expect.objectContaining({ name: 'executable', passed: false }),
+        expect.objectContaining({ name: 'executable', passed: false })
       )
     })
 
@@ -121,17 +125,17 @@ describe('Verifier', () => {
       const verifier = new Verifier()
       const result = await verifier.verify({
         binaryPath,
-        targetTokens: 1000000,
+        targetGenerator: tokenGen(1000000),
         sourceValue: '200000',
         patches: [
           { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
-          { search: 'X93=200000', desc: 'teamMemorySync', sourceValue: '200000' },
-        ],
+          { search: 'X93=200000', desc: 'teamMemorySync', sourceValue: '200000' }
+        ]
       })
 
       expect(result.success).toBe(true)
       expect(result.checks).toContainEqual(
-        expect.objectContaining({ name: 'pattern-replaced', passed: true }),
+        expect.objectContaining({ name: 'pattern-replaced', passed: true })
       )
     })
 
@@ -145,15 +149,43 @@ describe('Verifier', () => {
       const verifier = new Verifier()
       const result = await verifier.verify({
         binaryPath,
-        targetTokens: 1000000,
+        targetGenerator: tokenGen(1000000),
         sourceValue: '200000',
         patches: [
           { search: 'A=200000,', desc: 'six-byte-slot', sourceValue: '200000' },
-          { search: 'B=32000,', desc: 'five-byte-slot', sourceValue: '32000' },
-        ],
+          { search: 'B=32000,', desc: 'five-byte-slot', sourceValue: '32000' }
+        ]
       })
 
       expect(result.success).toBe(true)
+    })
+
+    it('should verify literal-target patches (installed plugin) without false failure (flow CR#8)', async () => {
+      // installed plugin 的 literal patch：sourceValue 是 30B 槽位，target.value 短 + pad:right-space 凑等长。
+      // 旧 verifier 对所有 patch 统一 encodeTokenLiteral 生成期望值，literal patch 会被误判 → binary 误删。
+      const slot = 'A'.repeat(30)
+      const literalValue = 'process.env.X?"":y' // 17B
+      const padded = literalValue.padEnd(30, ' ')
+      const binaryPath = join(tempDir, 'claude')
+      // token 槽 200000→256000；literal 槽 slot→padded
+      writeFileSync(binaryPath, 'Aj8=256000,Ij_=20000___' + padded)
+      chmodSync(binaryPath, 0o755)
+
+      const verifier = new Verifier()
+      const result = await verifier.verify({
+        binaryPath,
+        targetGenerator: tokenGen(256000),
+        sourceValue: '200000',
+        patches: [
+          { search: 'Aj8=200000,Ij_=20000', desc: 'token', sourceValue: '200000' },
+          { search: slot, desc: 'cc-flow', sourceValue: slot, target: { value: literalValue, pad: 'right-space' } }
+        ]
+      })
+
+      expect(result.success).toBe(true)
+      expect(result.checks).toContainEqual(
+        expect.objectContaining({ name: 'pattern-replaced', passed: true })
+      )
     })
   })
 })

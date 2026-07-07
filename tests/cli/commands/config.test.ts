@@ -27,7 +27,7 @@ describe('config command', () => {
 
   it('returns default locale as a structured result', async () => {
     const result = await configCommand(['get', 'locale'], {
-      userConfigService: new UserConfigService(),
+      userConfigService: new UserConfigService()
     })
 
     expect(result.success).toBe(true)
@@ -38,11 +38,11 @@ describe('config command', () => {
 
   it('persists a new locale via set', async () => {
     await configCommand(['set', 'locale', 'zh'], {
-      userConfigService: new UserConfigService(),
+      userConfigService: new UserConfigService()
     })
 
     const result = await configCommand(['get', 'locale'], {
-      userConfigService: new UserConfigService(),
+      userConfigService: new UserConfigService()
     })
 
     expect(result.success).toBe(true)
@@ -51,7 +51,7 @@ describe('config command', () => {
 
   it('lang subcommand is a shortcut for locale', async () => {
     const result = await configCommand(['lang', 'zh'], {
-      userConfigService: new UserConfigService(),
+      userConfigService: new UserConfigService()
     })
 
     expect(result.success).toBe(true)
@@ -60,7 +60,7 @@ describe('config command', () => {
 
   it('autoMaintain defaults to true', async () => {
     const result = await configCommand(['get', 'autoMaintain'], {
-      userConfigService: new UserConfigService(),
+      userConfigService: new UserConfigService()
     })
 
     expect(result.success).toBe(true)
@@ -69,7 +69,7 @@ describe('config command', () => {
 
   it('rejects unknown keys with INVALID_TARGET', async () => {
     const result = await configCommand(['get', 'unknownKey'], {
-      userConfigService: new UserConfigService(),
+      userConfigService: new UserConfigService()
     })
 
     expect(result.success).toBe(false)
@@ -78,7 +78,7 @@ describe('config command', () => {
 
   it('rejects invalid locale value via set to prevent downstream t() crash', async () => {
     const result = await configCommand(['set', 'locale', 'fr'], {
-      userConfigService: new UserConfigService(),
+      userConfigService: new UserConfigService()
     })
 
     expect(result.success).toBe(false)
@@ -88,7 +88,7 @@ describe('config command', () => {
   it('accepts case-insensitive true variants for autoMaintain', async () => {
     for (const truthy of ['TRUE', 'Yes', '1', 'on']) {
       const result = await configCommand(['set', 'autoMaintain', truthy], {
-        userConfigService: new UserConfigService(),
+        userConfigService: new UserConfigService()
       })
 
       expect(result.success).toBe(true)
@@ -99,7 +99,7 @@ describe('config command', () => {
   it('accepts false variants for autoMaintain', async () => {
     for (const falsy of ['FALSE', 'no', '0', 'off']) {
       const result = await configCommand(['set', 'autoMaintain', falsy], {
-        userConfigService: new UserConfigService(),
+        userConfigService: new UserConfigService()
       })
 
       expect(result.success).toBe(true)
@@ -109,7 +109,7 @@ describe('config command', () => {
 
   it('rejects unrecognized boolean value for autoMaintain', async () => {
     const result = await configCommand(['set', 'autoMaintain', 'maybe'], {
-      userConfigService: new UserConfigService(),
+      userConfigService: new UserConfigService()
     })
 
     expect(result.success).toBe(false)
@@ -122,7 +122,7 @@ describe('config command', () => {
 
   it('defaults installMethod to unknown', async () => {
     const result = await configCommand(['get', 'installMethod'], {
-      userConfigService: new UserConfigService(),
+      userConfigService: new UserConfigService()
     })
 
     expect(result.success).toBe(true)
@@ -134,7 +134,7 @@ describe('config command', () => {
     // 该断言守护「引导命令必须可执行」契约，防止 config 白名单与引导文本再次分裂
     for (const method of ['npm', 'pnpm', 'yarn']) {
       const result = await configCommand(['set', 'installMethod', method], {
-        userConfigService: new UserConfigService(),
+        userConfigService: new UserConfigService()
       })
 
       expect(result.success).toBe(true)
@@ -144,7 +144,7 @@ describe('config command', () => {
 
   it('rejects invalid installMethod value with INVALID_TARGET', async () => {
     const result = await configCommand(['set', 'installMethod', 'brew'], {
-      userConfigService: new UserConfigService(),
+      userConfigService: new UserConfigService()
     })
 
     expect(result.success).toBe(false)
@@ -153,7 +153,7 @@ describe('config command', () => {
 
   it('persists autoUpdateCheck via set', async () => {
     const result = await configCommand(['set', 'autoUpdateCheck', 'false'], {
-      userConfigService: new UserConfigService(),
+      userConfigService: new UserConfigService()
     })
 
     expect(result.success).toBe(true)
@@ -162,7 +162,7 @@ describe('config command', () => {
 
   it('persists updateCheckInterval via set', async () => {
     const result = await configCommand(['set', 'updateCheckInterval', '3600000'], {
-      userConfigService: new UserConfigService(),
+      userConfigService: new UserConfigService()
     })
 
     expect(result.success).toBe(true)
@@ -171,7 +171,7 @@ describe('config command', () => {
 
   it('rejects non-numeric updateCheckInterval with INVALID_TARGET', async () => {
     const result = await configCommand(['set', 'updateCheckInterval', 'soon'], {
-      userConfigService: new UserConfigService(),
+      userConfigService: new UserConfigService()
     })
 
     expect(result.success).toBe(false)
@@ -180,7 +180,7 @@ describe('config command', () => {
 
   it('rejects non-positive updateCheckInterval with INVALID_TARGET', async () => {
     const result = await configCommand(['set', 'updateCheckInterval', '0'], {
-      userConfigService: new UserConfigService(),
+      userConfigService: new UserConfigService()
     })
 
     expect(result.success).toBe(false)

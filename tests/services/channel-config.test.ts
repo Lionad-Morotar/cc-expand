@@ -26,7 +26,7 @@ describe('ChannelConfig', () => {
     config.saveChannel({
       channel: 'brew',
       path: '/opt/homebrew/bin/claude',
-      version: '2.1.170',
+      version: '2.1.170'
     })
 
     expect(config.hasChannel()).toBe(true)
@@ -34,7 +34,7 @@ describe('ChannelConfig', () => {
     expect(saved).toEqual({
       channel: 'brew',
       path: '/opt/homebrew/bin/claude',
-      version: '2.1.170',
+      version: '2.1.170'
     })
   })
 
@@ -43,7 +43,7 @@ describe('ChannelConfig', () => {
     config.saveChannel({
       channel: 'npx',
       path: '/home/user/.npm/_npx/abc123/node_modules/@anthropic-ai/claude-code/bin/claude',
-      version: '2.1.169',
+      version: '2.1.169'
     })
 
     expect(config.hasChannel()).toBe(true)

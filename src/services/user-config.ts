@@ -24,7 +24,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   autoMaintain: true,
   installMethod: 'unknown',
   autoUpdateCheck: true,
-  updateCheckInterval: 86_400_000,
+  updateCheckInterval: 86_400_000
 }
 
 export function getUserConfigPath(): string {
@@ -70,7 +70,7 @@ export class UserConfigService {
       autoMaintain: parsed.autoMaintain ?? DEFAULT_PREFERENCES.autoMaintain,
       installMethod: parsed.installMethod ?? DEFAULT_PREFERENCES.installMethod,
       autoUpdateCheck: parsed.autoUpdateCheck ?? DEFAULT_PREFERENCES.autoUpdateCheck,
-      updateCheckInterval: parsed.updateCheckInterval ?? DEFAULT_PREFERENCES.updateCheckInterval,
+      updateCheckInterval: parsed.updateCheckInterval ?? DEFAULT_PREFERENCES.updateCheckInterval
     }
   }
 

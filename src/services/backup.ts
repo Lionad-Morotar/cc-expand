@@ -36,7 +36,7 @@ export class BackupService {
       throw new CcxError(
         ErrorCode.BACKUP_NOT_FOUND,
         `Backup not found for ${basename(binaryPath)}`,
-        'Run "cc-expand patch" first to create a backup',
+        'Run "cc-expand patch" first to create a backup'
       )
     }
 

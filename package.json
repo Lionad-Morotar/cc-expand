@@ -1,7 +1,7 @@
 {
   "name": "cc-expand",
-  "version": "0.3.9",
-  "description": "Expand Claude Code's context window beyond 200k tokens",
+  "version": "0.4.0-alpha.3",
+  "description": "Expand Claude Code capabilities via plugin-based binary patching",
   "bin": {
     "cc-expand": "dist/cli.js",
     "ccx": "dist/cli.js"
@@ -39,6 +39,7 @@
   "author": "Lionad Morotar",
   "license": "MIT",
   "devDependencies": {
+    "@cc-expand/plugin-context-expand": "workspace:*",
     "@napi-rs/canvas": "^1.0.0",
     "@types/ali-oss": "^6.23.3",
     "@types/node": "^22.0.0",

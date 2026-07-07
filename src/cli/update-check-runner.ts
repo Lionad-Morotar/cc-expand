@@ -24,7 +24,7 @@ const EXCLUDED_COMMANDS = new Set<string>(['run', 'self-update'])
  */
 export function shouldRunUpdateCheck(
   commandName: string | undefined,
-  userConfig: Pick<UserConfigService, 'get'>,
+  userConfig: Pick<UserConfigService, 'get'>
 ): boolean {
   if (!commandName) return false
   if (EXCLUDED_COMMANDS.has(commandName)) return false
@@ -50,15 +50,15 @@ export function startUpdateCheck(currentVersion: string): Promise<UpdateInfo | n
 export async function awaitUpdateCheckHint(
   checkPromise: Promise<UpdateInfo | null>,
   hintWriter: (line: string) => void,
-  timeoutMs: number = DEFAULT_HINT_TIMEOUT_MS,
+  timeoutMs: number = DEFAULT_HINT_TIMEOUT_MS
 ): Promise<void> {
   const info = await Promise.race([
     checkPromise,
-    new Promise<null>((resolve) => setTimeout(() => resolve(null), timeoutMs)),
+    new Promise<null>(resolve => setTimeout(() => resolve(null), timeoutMs))
   ])
   if (info?.hasUpdate) {
     hintWriter(
-      t('update.hint.available', { current: info.currentVersion, latest: info.latestVersion }),
+      t('update.hint.available', { current: info.currentVersion, latest: info.latestVersion })
     )
   }
 }

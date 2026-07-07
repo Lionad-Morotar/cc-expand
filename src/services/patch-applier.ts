@@ -19,15 +19,20 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { execSync } from 'node:child_process'
 import { PatchEngine } from '../core/patch-engine.js'
+import { PatternDiscovery } from '../core/pattern-discovery.js'
+import { encodeTokenLiteral } from '../utils/encode-token-literal.js'
+import type { PluginsManager } from './plugins-manager.js'
 import { Verifier } from '../core/verifier.js'
 import { PackageService } from './package.js'
-import { ConfigService } from './config.js'
+import { classifyDesc } from './desc-classifier.js'
+import type { ConfigService } from './config.js'
 import { CcxError, ErrorCode, type PatchItem } from '../types/index.js'
 
-/** 获取 patched binary 文件名（Windows 需 .exe 扩展名） */
-export function getPatchedBinaryName(targetTokens: number): string {
+/** 获取 patched binary 文件名（Windows 需 .exe 扩展名）。
+ *  参数是 shortVer 组合串（如 "27w-flow"），由 PluginsManager.computeShortVer 生成。 */
+export function getPatchedBinaryName(shortVer: string): string {
   const ext = process.platform === 'win32' ? '.exe' : ''
-  return `claude-${targetTokens}${ext}`
+  return `claude-${shortVer}${ext}`
 }
 
 /** prepare 成功后返回的 pattern 数据 */
@@ -43,7 +48,7 @@ export interface AppliedPatch {
   sourceValue: string
   replaceCount: number
   binaryPath: string
-  details: Array<{ desc: string; offset: number; sourceValue?: string; targetValue?: string }>
+  details: Array<{ desc?: string, offset: number, sourceValue?: string, targetValue?: string }>
   /** codesign 失败时的告警（binary 可能无法执行） */
   codesignWarning?: string
 }
@@ -55,13 +60,13 @@ export interface ApplierError {
   suggestion?: string
 }
 
-export type PrepareOutcome =
-  | { ok: true; data: PreparedPattern }
-  | { ok: false; error: ApplierError }
+export type PrepareOutcome
+  = | { ok: true, data: PreparedPattern }
+    | { ok: false, error: ApplierError }
 
-export type ApplyPatchOutcome =
-  | { ok: true; data: AppliedPatch }
-  | { ok: false; error: ApplierError }
+export type ApplyPatchOutcome
+  = | { ok: true, data: AppliedPatch }
+    | { ok: false, error: ApplierError }
 
 export interface PatchApplierOptions {
   /** 必传：提供 pattern/record 能力 */
@@ -72,6 +77,11 @@ export interface PatchApplierOptions {
   packagesDir?: string
   /** 注入 PackageService（测试用），默认基于 packagesDir 新建 */
   packageService?: PackageService
+  /** 注入 PluginsManager（plugin 命名用）；省略则 fallback 用 String(targetTokens) 作 shortVer */
+  pluginsManager?: PluginsManager
+  /** 注入 installed plugin patches（literal target，来自 enabled installed plugins 的 shard）。
+   *  prepare 把它与 token patches 合并，execute 一次扫描全替换。生产由 patch command 拉 shard 填入。 */
+  installedPatches?: PatchItem[]
 }
 
 export class PatchApplier {
@@ -81,7 +91,7 @@ export class PatchApplier {
    */
   async prepare(
     version: string,
-    options: PatchApplierOptions,
+    options: PatchApplierOptions
   ): Promise<PrepareOutcome> {
     const configService = options.configService
     configService.ensureDirs()
@@ -102,30 +112,82 @@ export class PatchApplier {
           error: {
             code: ErrorCode.BINARY_NOT_FOUND,
             message: `Failed to install Claude Code ${version}`,
-            suggestion: 'Check your network connection and npm registry access',
-          },
+            suggestion: 'Check your network connection and npm registry access'
+          }
         }
       }
     }
 
-    const patches = await configService.getPatternForVersion(version)
-    if (!patches) {
+    // 是否应用 token 扩展：查 internal 中声明 token-encode 策略的 plugin 是否 enabled
+    // （PRD story 5：disable token-expansion 后只跑 installed plugin，不扩 token）。
+    // 不硬编码 plugin 名——按 manifest.target.type 策略类型识别（内核零 token 知识）。
+    // 无 pluginsManager 时默认 true（向后兼容 / 测试）。
+    const tokenEnabled = options.pluginsManager?.list().some(
+      p => p.source === 'internal' && p.manifest.target?.type === 'token-encode' && p.enabled
+    ) ?? true
+
+    let rawTokenPatches = tokenEnabled
+      ? await configService.getPatternForVersion(version)
+      : undefined
+
+    // 远程/本地缓存均无 pattern 时，从已安装 binary 做本地 discovery 兜底。
+    // 这样 OSS pattern 未及时更新时，新版本 Claude Code 仍能先被 patch。
+    // undefined 或空数组均视为缺失，都会触发 discovery（避免 OSS 返回空 shard 导致无 patches）。
+    if (tokenEnabled && !rawTokenPatches?.length) {
+      try {
+        const buffer = readFileSync(packageService.getBinaryPath(version))
+        const discovered = new PatternDiscovery().discover(buffer)
+        rawTokenPatches = discovered.map(d => ({ ...d, desc: classifyDesc(d.search) }))
+      } catch {
+        // discovery 失败（结构不变量不满足）仍按原错误返回，不暴露内部异常
+        return {
+          ok: false,
+          error: {
+            code: ErrorCode.PATTERN_NOT_FOUND,
+            message: `No pattern found for version ${version}`,
+            suggestion: `Run 'ccx supports' to see supported versions`
+          }
+        }
+      }
+    }
+
+    const tokenPatches: PatchItem[] = rawTokenPatches ?? []
+
+    // 聚合 installed plugin patches（literal target，合并一次扫描，按 plugin 归类）
+    const installedPatches = options.installedPatches ?? []
+    const patches = [...tokenPatches, ...installedPatches]
+
+    // 无可用 patches 时提前失败，避免 PatchEngine 返回“No patches applied”这种
+    // 更像 binary 结构不匹配的误导信息。常见原因：token-expansion 被禁用且无 installed plugin，
+    // 或 token 启用但 pattern 完全缺失且本地 discovery 也未命中。
+    if (patches.length === 0) {
+      // 调试信息：帮助区分是插件状态问题还是 pattern 缺失问题
+      console.warn(
+        `[PatchApplier] no patches available for ${version}: `
+        + `tokenEnabled=${tokenEnabled}, tokenPatches=${rawTokenPatches?.length ?? 0}, installedPatches=${installedPatches.length}`
+      )
       return {
         ok: false,
         error: {
           code: ErrorCode.PATTERN_NOT_FOUND,
-          message: `No pattern found for version ${version}`,
-          suggestion: `Run 'ccx supports' to see supported versions`,
-        },
+          message: tokenEnabled
+            ? `No pattern found for version ${version}`
+            : 'Token expansion is disabled and no installed plugins provide patches',
+          suggestion: tokenEnabled
+            ? `Run 'ccx supports' to see supported versions`
+            : `Enable token-expansion with 'ccx plugins enable token-expansion' or install a patch plugin`
+        }
       }
     }
 
     return {
       ok: true,
       data: {
-        patches: patches as PatchItem[],
-        sourceValue: patches[0]?.sourceValue ?? '200000',
-      },
+        patches,
+        // token 未启用（disable token-expansion）时从 installed patches 推导 sourceValue，
+        // 避免 fallback 到 token 默认值 200000 误导位数提示/verifier
+        sourceValue: tokenPatches[0]?.sourceValue ?? installedPatches[0]?.sourceValue ?? '200000'
+      }
     }
   }
 
@@ -137,7 +199,7 @@ export class PatchApplier {
     version: string,
     targetTokens: number,
     prepared: PreparedPattern,
-    options: PatchApplierOptions,
+    options: PatchApplierOptions
   ): Promise<ApplyPatchOutcome> {
     const configService = options.configService
     const homeDir = options.homeDir ?? homedir()
@@ -152,22 +214,27 @@ export class PatchApplier {
         error: {
           code: ErrorCode.BINARY_NOT_FOUND,
           message: `Claude Code ${version} is not installed`,
-          suggestion: `Run 'ccx install ${version}' or 'ccx migration ${version}' first`,
-        },
+          suggestion: `Run 'ccx install ${version}' or 'ccx migration ${version}' first`
+        }
       }
     }
 
     // 复制原始 binary（不修改原始包）并执行常量替换
     const patchBinDir = join(homeDir, '.cc-expand', 'bin')
     mkdirSync(patchBinDir, { recursive: true })
-    const patchedBinaryPath = join(patchBinDir, getPatchedBinaryName(targetTokens))
+    // binary 名用 shortVer 组合（如 claude-27w-flow）。
+    // 用 || 而非 ??：computeShortVer 在无 enabled plugin 时返回 ''（C4 兜底），需回退数字避免畸形名 claude-
+    const shortVer = options.pluginsManager?.computeShortVer({ targetTokens }) || String(targetTokens)
+    const patchedBinaryPath = join(patchBinDir, getPatchedBinaryName(shortVer))
 
     copyFileSync(sourceBinaryPath, patchedBinaryPath)
     chmodSync(patchedBinaryPath, 0o755)
 
     const buffer = readFileSync(patchedBinaryPath)
     const engine = new PatchEngine()
-    const patchResult = engine.patch(buffer, patches, targetTokens)
+    // token-encode 策略：按 slot 生成等长字面量，注入 patch-engine 与 verifier（内核零 token 知识）
+    const tokenGen = (slot: number) => encodeTokenLiteral(targetTokens, slot)
+    const patchResult = engine.patch(buffer, patches, tokenGen)
 
     if (!patchResult.success) {
       rmSync(patchedBinaryPath, { force: true })
@@ -175,7 +242,7 @@ export class PatchApplier {
         ok: false,
         error: patchResult.error
           ? { code: patchResult.error.code, message: patchResult.error.message, suggestion: patchResult.error.suggestion }
-          : { code: ErrorCode.PATCH_FAILED, message: 'Patch failed' },
+          : { code: ErrorCode.PATCH_FAILED, message: 'Patch failed' }
       }
     }
     writeFileSync(patchedBinaryPath, buffer)
@@ -194,9 +261,9 @@ export class PatchApplier {
     const verifier = new Verifier()
     const verifyResult = await verifier.verify({
       binaryPath: patchedBinaryPath,
-      targetTokens,
+      targetGenerator: tokenGen,
       sourceValue,
-      patches,
+      patches
     })
     if (!verifyResult.success) {
       rmSync(patchedBinaryPath, { force: true })
@@ -204,12 +271,12 @@ export class PatchApplier {
         ok: false,
         error: verifyResult.error
           ? { code: verifyResult.error.code, message: verifyResult.error.message, suggestion: verifyResult.error.suggestion }
-          : { code: ErrorCode.VERIFICATION_FAILED, message: 'Verification failed' },
+          : { code: ErrorCode.VERIFICATION_FAILED, message: 'Verification failed' }
       }
     }
 
-    // 记录到 versions.json
-    configService.recordPatchedVersion(version, targetTokens)
+    // 记录到 versions.json（plugin 体系：combos = shortVer 组合，如 "27w-flow"）
+    configService.recordPatchedCombo(version, shortVer)
 
     return {
       ok: true,
@@ -220,8 +287,8 @@ export class PatchApplier {
         replaceCount: patchResult.replaceCount ?? 0,
         binaryPath: patchedBinaryPath,
         details: patchResult.details,
-        codesignWarning,
-      },
+        codesignWarning
+      }
     }
   }
 }

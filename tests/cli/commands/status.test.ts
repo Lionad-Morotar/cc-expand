@@ -24,23 +24,23 @@ describe('status command', () => {
   it('returns structured result when binary is patched', async () => {
     const mockDiscovery = {
       findClaudeBinary: vi.fn().mockResolvedValue('/path/to/claude'),
-      getBinaryVersion: vi.fn().mockResolvedValue('2.1.170'),
+      getBinaryVersion: vi.fn().mockResolvedValue('2.1.170')
     }
     const mockConfig = {
       getUserConfig: vi.fn().mockReturnValue({
         patchedVersions: {
           '2.1.170': {
             targets: [256000],
-            patchedAt: '2026-06-10T14:32:00.000Z',
-          },
-        },
-      }),
+            patchedAt: '2026-06-10T14:32:00.000Z'
+          }
+        }
+      })
     }
 
     const result = await statusCommand({
       discoveryService: mockDiscovery as any,
       configService: mockConfig as any,
-      latestResolver: async () => '2.1.170', // latest == current，不触发 migration 建议
+      latestResolver: async () => '2.1.170' // latest == current，不触发 migration 建议
     })
 
     expect(result.success).toBe(true)
@@ -55,17 +55,17 @@ describe('status command', () => {
   it('returns structured result when binary is unpatched', async () => {
     const mockDiscovery = {
       findClaudeBinary: vi.fn().mockResolvedValue('/path/to/claude'),
-      getBinaryVersion: vi.fn().mockResolvedValue('2.1.170'),
+      getBinaryVersion: vi.fn().mockResolvedValue('2.1.170')
     }
     const mockConfig = {
       getUserConfig: vi.fn().mockReturnValue({
-        patchedVersions: {},
-      }),
+        patchedVersions: {}
+      })
     }
 
     const result = await statusCommand({
       discoveryService: mockDiscovery as any,
-      configService: mockConfig as any,
+      configService: mockConfig as any
     })
 
     expect(result.success).toBe(true)
@@ -77,19 +77,19 @@ describe('status command', () => {
   it('returns friendly info when Claude Code is not installed', async () => {
     const mockDiscovery = {
       findClaudeBinary: vi.fn().mockRejectedValue(
-        new CcxError(ErrorCode.BINARY_NOT_FOUND, 'not found'),
+        new CcxError(ErrorCode.BINARY_NOT_FOUND, 'not found')
       ),
-      getBinaryVersion: vi.fn(),
+      getBinaryVersion: vi.fn()
     }
     const mockConfig = {
       getUserConfig: vi.fn().mockReturnValue({
-        patchedVersions: {},
-      }),
+        patchedVersions: {}
+      })
     }
 
     const result = await statusCommand({
       discoveryService: mockDiscovery as any,
-      configService: mockConfig as any,
+      configService: mockConfig as any
     })
 
     expect(result.success).toBe(true)
@@ -100,20 +100,20 @@ describe('status command', () => {
   it('suggests migration in next when a newer version is available and current is patched', async () => {
     const mockDiscovery = {
       findClaudeBinary: vi.fn().mockResolvedValue('/path/to/claude'),
-      getBinaryVersion: vi.fn().mockResolvedValue('2.1.177'),
+      getBinaryVersion: vi.fn().mockResolvedValue('2.1.177')
     }
     const mockConfig = {
       getUserConfig: vi.fn().mockReturnValue({
         patchedVersions: {
-          '2.1.177': { targets: [1000000, 500000], patchedAt: '2026-06-15T00:00:00Z' },
-        },
-      }),
+          '2.1.177': { targets: [1000000, 500000], patchedAt: '2026-06-15T00:00:00Z' }
+        }
+      })
     }
 
     const result = await statusCommand({
       discoveryService: mockDiscovery as any,
       configService: mockConfig as any,
-      latestResolver: async () => '2.1.178',
+      latestResolver: async () => '2.1.178'
     })
 
     expect(result.data?.patched).toBe(true)
@@ -123,20 +123,20 @@ describe('status command', () => {
   it('does not suggest migration when latest resolution fails or times out', async () => {
     const mockDiscovery = {
       findClaudeBinary: vi.fn().mockResolvedValue('/path/to/claude'),
-      getBinaryVersion: vi.fn().mockResolvedValue('2.1.177'),
+      getBinaryVersion: vi.fn().mockResolvedValue('2.1.177')
     }
     const mockConfig = {
       getUserConfig: vi.fn().mockReturnValue({
         patchedVersions: {
-          '2.1.177': { targets: [1000000], patchedAt: '2026-06-15T00:00:00Z' },
-        },
-      }),
+          '2.1.177': { targets: [1000000], patchedAt: '2026-06-15T00:00:00Z' }
+        }
+      })
     }
 
     const result = await statusCommand({
       discoveryService: mockDiscovery as any,
       configService: mockConfig as any,
-      latestResolver: async () => { throw new Error('network') },
+      latestResolver: async () => { throw new Error('network') }
     })
 
     expect(result.data?.patched).toBe(true)
@@ -146,22 +146,22 @@ describe('status command', () => {
   it('does not suggest migration when latest is already patched (already migrated)', async () => {
     const mockDiscovery = {
       findClaudeBinary: vi.fn().mockResolvedValue('/path/to/claude'),
-      getBinaryVersion: vi.fn().mockResolvedValue('2.1.177'),
+      getBinaryVersion: vi.fn().mockResolvedValue('2.1.177')
     }
     // current=2.1.177（系统版本），latest=2.1.178 已被 migration patch → 不应重复建议
     const mockConfig = {
       getUserConfig: vi.fn().mockReturnValue({
         patchedVersions: {
           '2.1.177': { targets: [1000000], patchedAt: '2026-06-15T00:00:00Z' },
-          '2.1.178': { targets: [1000000], patchedAt: '2026-06-16T00:00:00Z' },
-        },
-      }),
+          '2.1.178': { targets: [1000000], patchedAt: '2026-06-16T00:00:00Z' }
+        }
+      })
     }
 
     const result = await statusCommand({
       discoveryService: mockDiscovery as any,
       configService: mockConfig as any,
-      latestResolver: async () => '2.1.178',
+      latestResolver: async () => '2.1.178'
     })
 
     expect(result.data?.patched).toBe(true)
@@ -174,15 +174,15 @@ describe('status command', () => {
     // PATH 上仍是旧版本 2.1.177（模拟 migration 未改 PATH 原生二进制）
     const mockDiscovery = {
       findClaudeBinary: vi.fn().mockResolvedValue('/usr/local/bin/claude'),
-      getBinaryVersion: vi.fn().mockResolvedValue('2.1.177'),
+      getBinaryVersion: vi.fn().mockResolvedValue('2.1.177')
     }
     const mockConfig = {
       getUserConfig: vi.fn().mockReturnValue({
         patchedVersions: {
           '2.1.177': { targets: [1000000], patchedAt: '2026-06-15T00:00:00Z' },
-          '2.1.178': { targets: [1000000, 500000], patchedAt: '2026-06-16T00:00:00Z' },
-        },
-      }),
+          '2.1.178': { targets: [1000000, 500000], patchedAt: '2026-06-16T00:00:00Z' }
+        }
+      })
     }
 
     // channel.json 已被 migration 切到 2.1.178
@@ -191,13 +191,13 @@ describe('status command', () => {
     new ChannelConfig(configDir).saveChannel({
       channel: 'local',
       path: join(configDir, 'packages', '2.1.178'),
-      version: '2.1.178',
+      version: '2.1.178'
     })
 
     const result = await statusCommand({
       discoveryService: mockDiscovery as any,
       configService: mockConfig as any,
-      latestResolver: async () => '2.1.178',
+      latestResolver: async () => '2.1.178'
     })
 
     // 关键：version 来自 channel（2.1.178），而非 PATH 的 2.1.177
@@ -212,14 +212,14 @@ describe('status command', () => {
   it('reports active version as unpatched when channel version has no patch record', async () => {
     const mockDiscovery = {
       findClaudeBinary: vi.fn().mockResolvedValue('/usr/local/bin/claude'),
-      getBinaryVersion: vi.fn().mockResolvedValue('2.1.177'),
+      getBinaryVersion: vi.fn().mockResolvedValue('2.1.177')
     }
     const mockConfig = {
       getUserConfig: vi.fn().mockReturnValue({
         patchedVersions: {
-          '2.1.177': { targets: [1000000], patchedAt: '2026-06-15T00:00:00Z' },
-        },
-      }),
+          '2.1.177': { targets: [1000000], patchedAt: '2026-06-15T00:00:00Z' }
+        }
+      })
     }
     // channel 指向 2.1.178，但 2.1.178 尚未 patch（如 setup 选定版本后未 patch）
     const configDir = join(tempDir, '.cc-expand')
@@ -227,12 +227,12 @@ describe('status command', () => {
     new ChannelConfig(configDir).saveChannel({
       channel: 'local',
       path: join(configDir, 'packages', '2.1.178'),
-      version: '2.1.178',
+      version: '2.1.178'
     })
 
     const result = await statusCommand({
       discoveryService: mockDiscovery as any,
-      configService: mockConfig as any,
+      configService: mockConfig as any
     })
 
     expect(result.data?.version).toBe('2.1.178')
@@ -244,20 +244,20 @@ describe('status command', () => {
     // 不写 channel.json —— 模拟未 setup 的老用户，行为须保持不变
     const mockDiscovery = {
       findClaudeBinary: vi.fn().mockResolvedValue('/usr/local/bin/claude'),
-      getBinaryVersion: vi.fn().mockResolvedValue('2.1.170'),
+      getBinaryVersion: vi.fn().mockResolvedValue('2.1.170')
     }
     const mockConfig = {
       getUserConfig: vi.fn().mockReturnValue({
         patchedVersions: {
-          '2.1.170': { targets: [256000], patchedAt: '2026-06-10T00:00:00Z' },
-        },
-      }),
+          '2.1.170': { targets: [256000], patchedAt: '2026-06-10T00:00:00Z' }
+        }
+      })
     }
 
     const result = await statusCommand({
       discoveryService: mockDiscovery as any,
       configService: mockConfig as any,
-      latestResolver: async () => '2.1.170',
+      latestResolver: async () => '2.1.170'
     })
 
     expect(result.data?.version).toBe('2.1.170')
@@ -268,14 +268,14 @@ describe('status command', () => {
   it('falls back to system version when channel.json is corrupted (must not crash)', async () => {
     const mockDiscovery = {
       findClaudeBinary: vi.fn().mockResolvedValue('/usr/local/bin/claude'),
-      getBinaryVersion: vi.fn().mockResolvedValue('2.1.170'),
+      getBinaryVersion: vi.fn().mockResolvedValue('2.1.170')
     }
     const mockConfig = {
       getUserConfig: vi.fn().mockReturnValue({
         patchedVersions: {
-          '2.1.170': { targets: [256000], patchedAt: '2026-06-10T00:00:00Z' },
-        },
-      }),
+          '2.1.170': { targets: [256000], patchedAt: '2026-06-10T00:00:00Z' }
+        }
+      })
     }
     // channel.json 损坏（非法 JSON，如手编或写入被中断）——status 不得崩溃，应回退 PATH 探测
     const configDir = join(tempDir, '.cc-expand')
@@ -285,11 +285,36 @@ describe('status command', () => {
     const result = await statusCommand({
       discoveryService: mockDiscovery as any,
       configService: mockConfig as any,
-      latestResolver: async () => '2.1.170',
+      latestResolver: async () => '2.1.170'
     })
 
     expect(result.success).toBe(true)
     expect(result.data?.activeSource).toBe('system')
     expect(result.data?.version).toBe('2.1.170')
+  })
+
+  it('exposes combos in installedVersions for plugin-era records (no targets field)', async () => {
+    // 真实磁盘形态：plugin 重构后 patch 的版本只有 combos、无 targets
+    const mockDiscovery = {
+      findClaudeBinary: vi.fn().mockResolvedValue('/path/to/claude'),
+      getBinaryVersion: vi.fn().mockResolvedValue('2.1.197')
+    }
+    const mockConfig = {
+      getUserConfig: vi.fn().mockReturnValue({
+        patchedVersions: {
+          '2.1.197': { combos: ['27w', '70w'], patchedAt: '2026-07-01T00:00:00Z' }
+        }
+      })
+    }
+    const result = await statusCommand({
+      discoveryService: mockDiscovery as any,
+      configService: mockConfig as any,
+      latestResolver: async () => '2.1.197'
+    })
+    expect(result.success).toBe(true)
+    expect(result.data?.combos).toEqual(['27w', '70w'])
+    // installedVersions 数组里也必须含 combos（修复前只填 targets，combos-only 版本显示空）
+    const entry = result.data?.installedVersions?.find(v => v.version === '2.1.197')
+    expect(entry?.combos).toEqual(['27w', '70w'])
   })
 })

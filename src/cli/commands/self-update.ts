@@ -13,6 +13,7 @@ import { ErrorCode } from '../../types/index.js'
 import { InstallMethodDetector } from '../../services/install-method.js'
 import { UpdateCheckService } from '../../services/update-check.js'
 import { isVersionGreater } from '../../utils/version.js'
+import { getReleaseChannel } from '../../utils/release-channel.js'
 import { makeErrorResult, type CommandResult } from '../result.js'
 import { t } from '../i18n.js'
 
@@ -33,14 +34,18 @@ export interface SelfUpdateOptions {
   versionVerifier?: () => string
 }
 
-/** 各安装方式对应的更新命令 */
-const UPDATE_COMMANDS: Record<
-  Exclude<InstallMethod, 'npx' | 'unknown'>,
-  readonly [string, readonly string[]]
-> = {
-  npm: ['npm', ['install', '-g', 'cc-expand@latest']],
-  pnpm: ['pnpm', ['add', '-g', 'cc-expand@latest']],
-  yarn: ['yarn', ['global', 'add', 'cc-expand']],
+/** 各安装方式 + channel 的更新命令。channel = npm dist-tag（latest/alpha/beta/...），
+ *  使 prerelease 用户装 @<channel> 而非 @latest，避免被降级到 stable（丢失 alpha 特性）。 */
+function getUpdateCommand(
+  method: Exclude<InstallMethod, 'npx' | 'unknown'>,
+  channel: string
+): readonly [string, readonly string[]] {
+  const spec = `cc-expand@${channel}`
+  switch (method) {
+    case 'npm': return ['npm', ['install', '-g', spec]]
+    case 'pnpm': return ['pnpm', ['add', '-g', spec]]
+    case 'yarn': return ['yarn', ['global', 'add', channel === 'latest' ? 'cc-expand' : spec]]
+  }
 }
 
 /** 从 package.json 读取当前 cc-expand 版本 */
@@ -62,7 +67,7 @@ export async function selfUpdateCommand(options?: SelfUpdateOptions): Promise<Co
     return {
       success: true,
       command: 'self-update',
-      summary: t('command.selfUpdate.npxHint'),
+      summary: t('command.selfUpdate.npxHint')
     }
   }
 
@@ -72,12 +77,13 @@ export async function selfUpdateCommand(options?: SelfUpdateOptions): Promise<Co
       'self-update',
       ErrorCode.SELF_UPDATE_FAILED,
       t('error.selfUpdate.unknownMethod'),
-      t('suggestion.selfUpdate.unknownMethod'),
+      t('suggestion.selfUpdate.unknownMethod')
     )
   }
 
   // 强制查最新版（skipCache：手动执行不读缓存，拉真实 registry）
   const currentVersion = options?.currentVersion ?? readCurrentVersion()
+  const channel = getReleaseChannel(currentVersion)
   const updateCheck = options?.updateCheckService ?? new UpdateCheckService({ currentVersion })
   const info = await updateCheck.check({ skipCache: true })
 
@@ -86,12 +92,23 @@ export async function selfUpdateCommand(options?: SelfUpdateOptions): Promise<Co
     return {
       success: true,
       command: 'self-update',
-      summary: t('command.selfUpdate.alreadyLatest', { version: currentVersion }),
+      summary: t('command.selfUpdate.alreadyLatest', { version: currentVersion })
     }
   }
 
-  // 有更新或查询失败（info=null）→ 执行 spawn
-  const [cmd, args] = UPDATE_COMMANDS[method]
+  // 查询失败（info=null）+ prerelease 通道：无法确定该通道最新版，提示手动更新而非 spawn——
+  // 否则 getUpdateCommand 会装 @latest 把 alpha 用户降级到 stable，丢失 alpha 特性。
+  // stable 通道查询失败仍 spawn（查询失败不阻止明确的用户意图）。
+  if (!info && channel !== 'latest') {
+    return makeErrorResult(
+      'self-update',
+      ErrorCode.SELF_UPDATE_FAILED,
+      t('error.selfUpdate.prereleaseChannelUnknown', { channel }),
+      t('suggestion.selfUpdate.prereleaseChannelUnknown', { channel })
+    )
+  }
+
+  const [cmd, args] = getUpdateCommand(method, channel)
   const spawner = options?.spawner ?? createDefaultSpawner()
 
   try {
@@ -100,7 +117,7 @@ export async function selfUpdateCommand(options?: SelfUpdateOptions): Promise<Co
       return makeErrorResult(
         'self-update',
         ErrorCode.SELF_UPDATE_FAILED,
-        t('error.selfUpdate.exitCode', { code: result.code ?? 'killed' }),
+        t('error.selfUpdate.exitCode', { code: result.code ?? 'killed' })
       )
     }
 
@@ -118,10 +135,10 @@ export async function selfUpdateCommand(options?: SelfUpdateOptions): Promise<Co
           warnings: [
             t('warning.selfUpdate.stalled', {
               actual: actualVersion,
-              latest: info.latestVersion,
+              latest: info.latestVersion
             }),
-            t('warning.selfUpdate.registryHint'),
-          ],
+            t('warning.selfUpdate.registryHint')
+          ]
         }
       }
       return {
@@ -129,8 +146,8 @@ export async function selfUpdateCommand(options?: SelfUpdateOptions): Promise<Co
         command: 'self-update',
         summary: t('command.selfUpdate.updated', {
           from: info.currentVersion,
-          to: info.latestVersion,
-        }),
+          to: info.latestVersion
+        })
       }
     }
 
@@ -138,7 +155,7 @@ export async function selfUpdateCommand(options?: SelfUpdateOptions): Promise<Co
     return {
       success: true,
       command: 'self-update',
-      summary: t('command.selfUpdate.success'),
+      summary: t('command.selfUpdate.success')
     }
   } catch (error) {
     return handleSpawnError(error)
@@ -150,7 +167,7 @@ function createDefaultSpawner(): Spawner {
   return (cmd: string, args: readonly string[]) =>
     new Promise((resolve, reject) => {
       const child = spawn(cmd, args, { stdio: 'inherit' })
-      child.on('close', (code) => resolve({ code }))
+      child.on('close', code => resolve({ code }))
       child.on('error', reject)
     })
 }
@@ -163,7 +180,7 @@ function handleSpawnError(error: unknown): CommandResult {
       'self-update',
       ErrorCode.SELF_UPDATE_FAILED,
       t('error.selfUpdate.eacces'),
-      t('suggestion.selfUpdate.eacces'),
+      t('suggestion.selfUpdate.eacces')
     )
   }
   if (err.code === 'ENOENT') {
@@ -171,12 +188,12 @@ function handleSpawnError(error: unknown): CommandResult {
       'self-update',
       ErrorCode.SELF_UPDATE_FAILED,
       t('error.selfUpdate.enoent', { message: err.message }),
-      t('suggestion.selfUpdate.enoent'),
+      t('suggestion.selfUpdate.enoent')
     )
   }
   return makeErrorResult(
     'self-update',
     ErrorCode.SELF_UPDATE_FAILED,
-    t('error.selfUpdate.generic', { message: err.message ?? String(error) }),
+    t('error.selfUpdate.generic', { message: err.message ?? String(error) })
   )
 }

@@ -17,7 +17,7 @@ describe('renderer', () => {
       success: true,
       command: 'config',
       summary: 'Locale is en',
-      data: { key: 'locale', value: 'en' },
+      data: { key: 'locale', value: 'en' }
     }
 
     const output = renderer.render(result, 'config')
@@ -31,7 +31,7 @@ describe('renderer', () => {
       success: true,
       command: 'config',
       summary: 'Locale is en',
-      data: { key: 'locale', value: 'en' },
+      data: { key: 'locale', value: 'en' }
     }
 
     const output = renderer.render(result, 'config')
@@ -47,7 +47,7 @@ describe('renderer', () => {
     const result = {
       success: true,
       command: 'config',
-      summary: 'Locale is en',
+      summary: 'Locale is en'
     }
 
     expect(renderer.render(result, 'config')).toBeUndefined()
@@ -59,7 +59,7 @@ describe('renderer', () => {
       success: false,
       command: 'config',
       summary: 'Bad input',
-      error: { code: 'INVALID_TARGET', message: 'Bad input' },
+      error: { code: 'INVALID_TARGET', message: 'Bad input' }
     }
 
     const output = renderer.render(result, 'config')
@@ -72,7 +72,7 @@ describe('renderer', () => {
     const result = {
       success: true,
       command: 'config',
-      summary: 'Locale is en',
+      summary: 'Locale is en'
     }
 
     const output = renderer.render(result, 'config')
@@ -86,7 +86,7 @@ describe('renderer', () => {
       command: 'restore',
       summary: 'ok',
       warnings: ['shortcut still points to patched'],
-      next: ['edit profile'],
+      next: ['edit profile']
     }
 
     const output = renderer.render(result, 'restore')
@@ -101,7 +101,7 @@ describe('renderer', () => {
       command: 'restore',
       summary: 'ok',
       warnings: ['shortcut still points to patched'],
-      next: ['edit profile'],
+      next: ['edit profile']
     }
 
     const output = renderer.render(result, 'restore')
@@ -115,7 +115,7 @@ describe('renderer', () => {
       success: true,
       command: 'verify',
       summary: 'Claude Code 2.1.170 is unpatched',
-      severity: 'warning' as const,
+      severity: 'warning' as const
     }
 
     const output = renderer.render(result, 'verify')

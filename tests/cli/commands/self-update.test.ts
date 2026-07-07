@@ -21,7 +21,8 @@ describe('self-update command', () => {
         hasUpdate,
         currentVersion: '0.3.0',
         latestVersion: latest,
-      }),
+        channel: 'latest'
+      })
     }
   }
 
@@ -31,7 +32,7 @@ describe('self-update command', () => {
       installMethodDetector: makeDetector('npm'),
       updateCheckService: makeUpdateCheck(true),
       spawner,
-      currentVersion: '0.3.0',
+      currentVersion: '0.3.0'
     })
     expect(spawner).toHaveBeenCalledWith('npm', ['install', '-g', 'cc-expand@latest'])
     expect(result.success).toBe(true)
@@ -43,7 +44,7 @@ describe('self-update command', () => {
       installMethodDetector: makeDetector('pnpm'),
       updateCheckService: makeUpdateCheck(true),
       spawner,
-      currentVersion: '0.3.0',
+      currentVersion: '0.3.0'
     })
     expect(spawner).toHaveBeenCalledWith('pnpm', ['add', '-g', 'cc-expand@latest'])
   })
@@ -54,7 +55,7 @@ describe('self-update command', () => {
       installMethodDetector: makeDetector('yarn'),
       updateCheckService: makeUpdateCheck(true),
       spawner,
-      currentVersion: '0.3.0',
+      currentVersion: '0.3.0'
     })
     expect(spawner).toHaveBeenCalledWith('yarn', ['global', 'add', 'cc-expand'])
   })
@@ -64,7 +65,7 @@ describe('self-update command', () => {
     const result = await selfUpdateCommand({
       installMethodDetector: makeDetector('npx'),
       spawner,
-      currentVersion: '0.3.0',
+      currentVersion: '0.3.0'
     })
     expect(spawner).not.toHaveBeenCalled()
     expect(result.success).toBe(true)
@@ -76,7 +77,7 @@ describe('self-update command', () => {
     const result = await selfUpdateCommand({
       installMethodDetector: makeDetector('unknown'),
       spawner,
-      currentVersion: '0.3.0',
+      currentVersion: '0.3.0'
     })
     expect(spawner).not.toHaveBeenCalled()
     expect(result.success).toBe(false)
@@ -89,7 +90,7 @@ describe('self-update command', () => {
       installMethodDetector: makeDetector('npm'),
       updateCheckService: makeUpdateCheck(false, '0.3.0'),
       spawner,
-      currentVersion: '0.3.0',
+      currentVersion: '0.3.0'
     })
     expect(spawner).not.toHaveBeenCalled()
     expect(result.success).toBe(true)
@@ -102,7 +103,7 @@ describe('self-update command', () => {
       installMethodDetector: makeDetector('npm'),
       updateCheckService: makeUpdateCheck(true, '0.3.1'),
       spawner,
-      currentVersion: '0.3.0',
+      currentVersion: '0.3.0'
     })
     expect(result.success).toBe(true)
     expect(result.summary).toContain('0.3.0')
@@ -115,7 +116,7 @@ describe('self-update command', () => {
       installMethodDetector: makeDetector('npm'),
       updateCheckService: { check: vi.fn().mockResolvedValue(null) },
       spawner,
-      currentVersion: '0.3.0',
+      currentVersion: '0.3.0'
     })
     expect(spawner).toHaveBeenCalled()
     expect(result.success).toBe(true)
@@ -127,7 +128,7 @@ describe('self-update command', () => {
       installMethodDetector: makeDetector('npm'),
       updateCheckService: makeUpdateCheck(true),
       spawner,
-      currentVersion: '0.3.0',
+      currentVersion: '0.3.0'
     })
     expect(result.success).toBe(false)
     expect(result.error?.code).toBe('SELF_UPDATE_FAILED')
@@ -140,7 +141,7 @@ describe('self-update command', () => {
       installMethodDetector: makeDetector('npm'),
       updateCheckService: makeUpdateCheck(true),
       spawner,
-      currentVersion: '0.3.0',
+      currentVersion: '0.3.0'
     })
     expect(result.success).toBe(false)
     expect(result.error?.code).toBe('SELF_UPDATE_FAILED')
@@ -154,11 +155,11 @@ describe('self-update command', () => {
       updateCheckService: makeUpdateCheck(true, '0.3.5'),
       spawner,
       currentVersion: '0.3.2',
-      versionVerifier: () => '0.3.2', // 安装后仍是旧版（镜像未同步）
+      versionVerifier: () => '0.3.2' // 安装后仍是旧版（镜像未同步）
     })
     expect(result.success).toBe(true)
     expect(result.severity).toBe('warning')
-    expect(result.warnings?.some((w) => w.includes('0.3.2') && w.includes('0.3.5'))).toBe(true)
+    expect(result.warnings?.some(w => w.includes('0.3.2') && w.includes('0.3.5'))).toBe(true)
   })
 
   it('spawn 成功且实际版本已升到 latest → 正常成功，无 warning', async () => {
@@ -168,11 +169,43 @@ describe('self-update command', () => {
       updateCheckService: makeUpdateCheck(true, '0.3.5'),
       spawner,
       currentVersion: '0.3.2',
-      versionVerifier: () => '0.3.5',
+      versionVerifier: () => '0.3.5'
     })
     expect(result.success).toBe(true)
     expect(result.severity).toBeUndefined()
     expect(result.warnings).toBeUndefined()
     expect(result.summary).toContain('0.3.5')
+  })
+
+  it('prerelease currentVersion（alpha）→ spawn cc-expand@alpha，不降级 stable', async () => {
+    const spawner = vi.fn().mockResolvedValue({ code: 0 })
+    await selfUpdateCommand({
+      installMethodDetector: makeDetector('npm'),
+      updateCheckService: {
+        check: vi.fn().mockResolvedValue({
+          hasUpdate: true,
+          currentVersion: '0.4.0-alpha.1',
+          latestVersion: '0.4.0-alpha.2',
+          channel: 'alpha'
+        })
+      },
+      spawner,
+      currentVersion: '0.4.0-alpha.1'
+    })
+    expect(spawner).toHaveBeenCalledWith('npm', ['install', '-g', 'cc-expand@alpha'])
+  })
+
+  it('prerelease 通道查询失败 → 提示手动更新，不 spawn（防降级 stable）', async () => {
+    const spawner = vi.fn()
+    const result = await selfUpdateCommand({
+      installMethodDetector: makeDetector('npm'),
+      updateCheckService: { check: vi.fn().mockResolvedValue(null) },
+      spawner,
+      currentVersion: '0.4.0-alpha.1'
+    })
+    expect(spawner).not.toHaveBeenCalled()
+    expect(result.success).toBe(false)
+    expect(result.error?.code).toBe('SELF_UPDATE_FAILED')
+    expect(result.error?.message).toMatch(/alpha|channel/i)
   })
 })

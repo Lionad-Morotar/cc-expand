@@ -94,6 +94,21 @@ npx cc-expand <command>
 
 > ⚠️ cc-expand 自身版本号对应 `claude --version`。运行 `cc-expand supports` 查看动态更新的支持 cc-expand 的 CC 版本列表。
 
+## 插件 (v0.4+)
+
+ccx 从 token 扩展升级为能力扩展平台（ADR 0003）：plugin 是 patch 的一等抽象，token 扩展降级为内置 plugin。
+
+```bash
+ccx plugins add owner/repo   # 安装
+ccx plugins list               # 查看
+ccx plugins enable/disable <name>
+ccx plugins remove <name>
+```
+
+binary 命名编码 plugin 集合（如 `claude-27w-flow`）。
+
+详见 [Plugin 作者指南](docs/plugin-authoring.md) 与 [ADR 0003](docs/adr/0003-plugin-unified-patch-abstraction.md)。
+
 **版本更新机制**
 
 Pattern 数据托管在阿里云 OSS 上，运行 cc-expand 时按需拉取，并缓存在本地 `~/.cc-expand/cache/patterns/`，通过 ETag 条件请求减少流量消耗。

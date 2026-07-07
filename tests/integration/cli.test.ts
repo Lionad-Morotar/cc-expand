@@ -9,7 +9,7 @@ const CLI_PATH = join(__dirname, '..', '..', 'dist', 'cli.js')
 describe('CLI Integration', () => {
   it('should show help for --help flag', () => {
     const output = execFileSync('node', [CLI_PATH, '--help'], {
-      encoding: 'utf-8',
+      encoding: 'utf-8'
     })
 
     expect(output).toContain('ccx')
@@ -23,7 +23,7 @@ describe('CLI Integration', () => {
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'))
 
     const output = execFileSync('node', [CLI_PATH, '--version'], {
-      encoding: 'utf-8',
+      encoding: 'utf-8'
     })
 
     expect(output.trim()).toContain(pkg.version)
@@ -33,7 +33,7 @@ describe('CLI Integration', () => {
     let threw = false
     try {
       execFileSync('node', [CLI_PATH], {
-        encoding: 'utf-8',
+        encoding: 'utf-8'
       })
     } catch (error: any) {
       threw = true
@@ -49,7 +49,7 @@ describe('CLI Integration', () => {
     try {
       execFileSync('node', [CLI_PATH, 'patch', '--yes'], {
         encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'pipe'],
+        stdio: ['pipe', 'pipe', 'pipe']
       })
     } catch (error: any) {
       threw = true
@@ -65,7 +65,7 @@ describe('CLI Integration', () => {
     try {
       execFileSync('node', [CLI_PATH, 'unknown'], {
         encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'pipe'],
+        stdio: ['pipe', 'pipe', 'pipe']
       })
     } catch (error: any) {
       threw = true
@@ -76,9 +76,113 @@ describe('CLI Integration', () => {
     expect(threw).toBe(true)
   })
 
-  it('should show install command in help', () => {
+  it('patch help explains the remove action and shows examples', () => {
+    const output = execFileSync('node', [CLI_PATH, '--locale', 'en', 'patch', '--help'], {
+      encoding: 'utf-8'
+    })
+
+    expect(output).toContain('ccx patch remove <version> [combo]')
+    expect(output).toContain('Examples:')
+    expect(output).toContain('$ ccx patch 2.1.186 --target 270000')
+    expect(output).toContain('$ ccx patch remove 2.1.186 27w')
+  })
+
+  it('config help lists subcommands and shows examples', () => {
+    const output = execFileSync('node', [CLI_PATH, '--locale', 'en', 'config', '--help'], {
+      encoding: 'utf-8'
+    })
+
+    expect(output).toContain('ccx config <get|set|lang> [key] [value]')
+    expect(output).toContain('Examples:')
+    expect(output).toContain('$ ccx config get locale')
+    expect(output).toContain('$ ccx config set locale zh')
+  })
+
+  it('run help uses combo terminology and shows examples', () => {
+    const output = execFileSync('node', [CLI_PATH, '--locale', 'en', 'run', '--help'], {
+      encoding: 'utf-8'
+    })
+
+    expect(output).toContain('ccx run [combo]')
+    expect(output).toContain('Examples:')
+    expect(output).toContain('$ ccx run')
+    expect(output).toContain('$ ccx run 27w-flow')
+  })
+
+  it('migration help mentions latest and shows examples', () => {
+    const output = execFileSync('node', [CLI_PATH, '--locale', 'en', 'migration', '--help'], {
+      encoding: 'utf-8'
+    })
+
+    expect(output).toContain('ccx migration [version|latest]')
+    expect(output).toContain('Examples:')
+    expect(output).toContain('$ ccx migration latest')
+  })
+
+  it('shows English help by default when no locale preference exists', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'cc-expand-locale-help-'))
+    const env = { ...process.env, HOME: tempDir, XDG_CONFIG_HOME: join(tempDir, '.config') }
+
     const output = execFileSync('node', [CLI_PATH, '--help'], {
       encoding: 'utf-8',
+      env
+    })
+
+    expect(output).toContain('Usage:')
+    expect(output).toContain('Commands:')
+    expect(output).toContain('Options:')
+    expect(output).toContain('Manage user preferences')
+
+    rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  it('shows Chinese help with --locale zh flag', () => {
+    const output = execFileSync('node', [CLI_PATH, '--locale', 'zh', 'config', '--help'], {
+      encoding: 'utf-8'
+    })
+
+    expect(output).toContain('用法:')
+    expect(output).toContain('选项:')
+    expect(output).toContain('示例:')
+
+    const globalOutput = execFileSync('node', [CLI_PATH, '--locale', 'zh', '--help'], {
+      encoding: 'utf-8'
+    })
+    expect(globalOutput).toContain('管理用户偏好设置')
+    expect(globalOutput).toContain('命令:')
+  })
+
+  it('shows Chinese help after persisting locale=zh', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'cc-expand-locale-help-'))
+    const env = { ...process.env, HOME: tempDir, XDG_CONFIG_HOME: join(tempDir, '.config') }
+
+    execFileSync('node', [CLI_PATH, 'config', 'set', 'locale', 'zh'], {
+      encoding: 'utf-8',
+      env
+    })
+
+    const output = execFileSync('node', [CLI_PATH, 'config', '--help'], {
+      encoding: 'utf-8',
+      env
+    })
+
+    expect(output).toContain('用法:')
+    expect(output).toContain('选项:')
+    expect(output).toContain('示例:')
+
+    const globalOutput = execFileSync('node', [CLI_PATH, '--help'], {
+      encoding: 'utf-8',
+      env
+    })
+    expect(globalOutput).toContain('管理用户偏好设置')
+    expect(globalOutput).toContain('命令:')
+
+    rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  it('should show install command in help', () => {
+    const output = execFileSync('node', [CLI_PATH, '--help'], {
+      encoding: 'utf-8'
     })
 
     expect(output).toContain('install')
@@ -86,7 +190,7 @@ describe('CLI Integration', () => {
 
   it('should show self-update command in help', () => {
     const output = execFileSync('node', [CLI_PATH, '--help'], {
-      encoding: 'utf-8',
+      encoding: 'utf-8'
     })
 
     expect(output).toContain('self-update')
@@ -108,12 +212,12 @@ describe('CLI Integration', () => {
     const env = { ...process.env, HOME: tempDir, PATH: `${fakeBinDir}:${process.env.PATH}` }
     execFileSync('node', [CLI_PATH, 'setup', '--yes'], {
       encoding: 'utf-8',
-      env,
+      env
     })
 
     const content = readFileSync(zshrc, 'utf-8')
     expect(content).toContain('cc()')
-    expect(content).toContain("alias c='cc 270000'")
+    expect(content).toContain('alias c=\'cc 27w\'')
 
     rmSync(tempDir, { recursive: true, force: true })
   })
@@ -133,13 +237,13 @@ describe('CLI Integration', () => {
     const env = { ...process.env, HOME: tempDir, PATH: `${fakeBinDir}:${process.env.PATH}` }
     execFileSync('node', [CLI_PATH, 'setup', '--yes'], {
       encoding: 'utf-8',
-      env,
+      env
     })
 
     const content = readFileSync(zshrc, 'utf-8')
     expect(content).toContain('cc_backup()')
     expect(content).toContain('alias c_backup=')
-    expect(content).toContain("alias c='cc 270000'")
+    expect(content).toContain('alias c=\'cc 27w\'')
 
     rmSync(tempDir, { recursive: true, force: true })
   })
@@ -162,7 +266,7 @@ describe('CLI Integration', () => {
       execFileSync('node', [CLI_PATH, 'setup', '--yes'], {
         encoding: 'utf-8',
         env,
-        stdio: ['pipe', 'pipe', 'pipe'],
+        stdio: ['pipe', 'pipe', 'pipe']
       })
     } catch (error: any) {
       threw = true
@@ -176,7 +280,7 @@ describe('CLI Integration', () => {
 
   it('should list supported versions', () => {
     const output = execFileSync('node', [CLI_PATH, 'supports'], {
-      encoding: 'utf-8',
+      encoding: 'utf-8'
     })
 
     expect(output).toContain('[OK]')
@@ -190,7 +294,7 @@ describe('CLI Integration', () => {
 
     const output = execFileSync('node', [CLI_PATH, 'config', 'get', 'locale', '--json'], {
       encoding: 'utf-8',
-      env,
+      env
     })
 
     const parsed = JSON.parse(output)
@@ -208,7 +312,7 @@ describe('CLI Integration', () => {
 
     const output = execFileSync('node', [CLI_PATH, 'list', '--json'], {
       encoding: 'utf-8',
-      env,
+      env
     })
 
     const parsed = JSON.parse(output)
@@ -226,13 +330,13 @@ describe('CLI Integration', () => {
     // 持久化 locale=zh（ccx config set locale zh）
     execFileSync('node', [CLI_PATH, 'config', 'set', 'locale', 'zh'], {
       encoding: 'utf-8',
-      env,
+      env
     })
 
     // 后续命令不带 -l 时应使用持久化的 zh（patched/unpatched/noBinary 任一路径都输出中文）
     const output = execFileSync('node', [CLI_PATH, 'status'], {
       encoding: 'utf-8',
-      env,
+      env
     })
 
     // 含中文字符即证明 locale=zh 已从持久化偏好加载（默认 en 不会有中文）
@@ -248,7 +352,7 @@ describe('CLI Integration', () => {
     // -l fr 非法，应回退到 en 而非让 t() 崩溃
     const output = execFileSync('node', [CLI_PATH, '-l', 'fr', 'status'], {
       encoding: 'utf-8',
-      env,
+      env
     })
 
     expect(output).toContain('Claude Code')
@@ -258,7 +362,7 @@ describe('CLI Integration', () => {
 
   it('should show migration command in help', () => {
     const output = execFileSync('node', [CLI_PATH, '--help'], {
-      encoding: 'utf-8',
+      encoding: 'utf-8'
     })
 
     expect(output).toContain('migration')
@@ -272,7 +376,7 @@ describe('CLI Integration', () => {
       execFileSync('node', [CLI_PATH, 'migration', '2.1.178'], {
         encoding: 'utf-8',
         env,
-        stdio: ['pipe', 'pipe', 'pipe'],
+        stdio: ['pipe', 'pipe', 'pipe']
       })
     } catch (error: any) {
       threw = true
@@ -289,7 +393,7 @@ describe('CLI Integration', () => {
   it.skip('should show status with found binary (requires working claude binary)', () => {
     const output = execFileSync('node', [CLI_PATH, 'status'], {
       encoding: 'utf-8',
-      timeout: 10000,
+      timeout: 10000
     })
 
     expect(output).toContain('[OK]')

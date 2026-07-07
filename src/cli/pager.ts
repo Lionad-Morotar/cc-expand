@@ -35,8 +35,8 @@ export async function runPager(lines: string[], opts: PagerOptions = {}): Promis
   // （tmux 分屏、VSCode 内嵌终端 8 行高）会产生滚动残影/抖动，且溢出行
   // 留在回滚缓冲里。这里按实际可视行数 clamp，-2 给 footer 与 summary 预留。
   // 非 TTY 输出（shouldUsePager 已在上游挡住，这里做防御性兜底）回落到默认值。
-  const termRows =
-    ((output as { rows?: number }).rows ?? process.stdout.rows ?? 0) as number
+  const termRows
+    = ((output as { rows?: number }).rows ?? process.stdout.rows ?? 0) as number
   const heightClamped = termRows > 0 ? Math.max(3, Math.min(opts.pageSize ?? DEFAULT_PAGE_SIZE, termRows - 2)) : (opts.pageSize ?? DEFAULT_PAGE_SIZE)
   const pageSize = heightClamped
 
@@ -47,7 +47,7 @@ export async function runPager(lines: string[], opts: PagerOptions = {}): Promis
 
   // Why createPrompt：它接管 readline/raw mode 并提供 hook 容器；clearPromptOnDone:true
   // 让 inquirer 在 done() 后自行清屏，我们再补写 summary + hint。
-  const browse = createPrompt<BrowseResult, { lines: string[]; pageSize: number }>(
+  const browse = createPrompt<BrowseResult, { lines: string[], pageSize: number }>(
     (config, done) => {
       const [active, setActive] = useState(0)
       const total = config.lines.length
@@ -60,13 +60,15 @@ export async function runPager(lines: string[], opts: PagerOptions = {}): Promis
         renderItem: ({ item, isActive }) => {
           const pointer = isActive ? '❯' : ' '
           return `${pointer} ${item}`
-        },
+        }
       })
 
       useKeypress((key) => {
         const name = key.name
         const ctrl = key.ctrl === true
-        const shift = key.shift === true
+        // @inquirer/core 的 KeypressEvent 类型未声明 shift，但 readline/keypress 实际产出该字段
+        // （Shift+G 区分依赖它，见下方跳末行分支），故局部断言而非删除
+        const shift = (key as { shift?: boolean }).shift === true
         // 行翻：上/下箭头、j/k
         // Why 直接值而非函数式更新：@inquirer/core 的 useState 不支持 (prev)=>next
         // （与 React 不同），传函数会被当作字面值存入 state，导致 active 变成函数对象、
@@ -117,14 +119,14 @@ export async function runPager(lines: string[], opts: PagerOptions = {}): Promis
       // footer 走 i18n：pager 是 supports/list 的交互入口，en 用户不应看到中文提示
       const footer = t('ui.pagerFooter', { line: active + 1, total })
       return `${page}\n${footer}`
-    },
+    }
   )
 
   try {
     await browse({ lines, pageSize }, {
       input,
       output,
-      clearPromptOnDone: true,
+      clearPromptOnDone: true
     })
   } catch (err) {
     // Ctrl-C 抛 ExitPromptError：清理已由 inquirer 在 close 时完成；
@@ -137,8 +139,8 @@ export async function runPager(lines: string[], opts: PagerOptions = {}): Promis
 
 function isExitPromptError(err: unknown): boolean {
   return (
-    typeof err === 'object' &&
-    err !== null &&
-    (err as { name?: string }).name === 'ExitPromptError'
+    typeof err === 'object'
+    && err !== null
+    && (err as { name?: string }).name === 'ExitPromptError'
   )
 }

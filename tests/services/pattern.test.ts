@@ -22,7 +22,7 @@ describe('PatternService', () => {
     it('网络失败且本地有缓存时返回缓存', async () => {
       // Arrange: 预先写入缓存
       const cachedIndex = [
-        { version: '2.1.161', platforms: ['darwin-arm64'] },
+        { version: '2.1.161', platforms: ['darwin-arm64'] }
       ]
       writeFileSync(join(cacheDir, 'versions.json'), JSON.stringify(cachedIndex))
       writeFileSync(join(cacheDir, 'versions.etag'), '"old-etag"')
@@ -31,7 +31,7 @@ describe('PatternService', () => {
 
       const service = new PatternService({
         cacheDir,
-        baseUrl: 'https://test.example.com/patterns/',
+        baseUrl: 'https://test.example.com/patterns/'
       })
 
       // Act
@@ -46,7 +46,7 @@ describe('PatternService', () => {
 
       const service = new PatternService({
         cacheDir,
-        baseUrl: 'https://test.example.com/patterns/',
+        baseUrl: 'https://test.example.com/patterns/'
       })
 
       const result = await service.fetchVersionsIndex()
@@ -59,9 +59,9 @@ describe('PatternService', () => {
       const cachedPattern = {
         darwin: {
           arm64: [
-            { search: 'FALLBACK=200000', desc: 'FALLBACK_PATTERN', sourceValue: '200000' },
-          ],
-        },
+            { search: 'FALLBACK=200000', desc: 'FALLBACK_PATTERN', sourceValue: '200000' }
+          ]
+        }
       }
       writeFileSync(join(cacheDir, '2.1.173.json'), JSON.stringify(cachedPattern))
       writeFileSync(join(cacheDir, '2.1.173.etag'), '"fallback-etag"')
@@ -72,7 +72,7 @@ describe('PatternService', () => {
 
       const service = new PatternService({
         cacheDir,
-        baseUrl: 'https://test.example.com/patterns/',
+        baseUrl: 'https://test.example.com/patterns/'
       })
 
       const result = await service.fetchVersionPattern('2.1.173')
@@ -87,27 +87,27 @@ describe('PatternService', () => {
       const mockPattern: Record<string, unknown> = {
         darwin: {
           arm64: [
-            { search: 'Aj8=200000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
-          ],
-        },
+            { search: 'Aj8=200000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' }
+          ]
+        }
       }
 
       globalThis.fetch = vi.fn().mockResolvedValue({
         status: 200,
         headers: new Map([['etag', '"abc123"']]),
-        json: async () => mockPattern,
+        json: async () => mockPattern
       } as unknown as Response)
 
       const service = new PatternService({
         cacheDir,
-        baseUrl: 'https://test.example.com/patterns', // 无尾斜杠
+        baseUrl: 'https://test.example.com/patterns' // 无尾斜杠
       })
 
       await service.fetchVersionPattern('2.1.173')
 
       expect(globalThis.fetch).toHaveBeenCalledWith(
         'https://test.example.com/patterns/2.1.173.json',
-        expect.anything(),
+        expect.anything()
       )
     })
 
@@ -115,12 +115,12 @@ describe('PatternService', () => {
       globalThis.fetch = vi.fn().mockResolvedValue({
         status: 200,
         headers: new Map([['etag', '"abc123"']]),
-        json: async () => ({ darwin: { arm64: [] } }),
+        json: async () => ({ darwin: { arm64: [] } })
       } as unknown as Response)
 
       const service = new PatternService({
         cacheDir,
-        baseUrl: 'https://test.example.com/patterns/',
+        baseUrl: 'https://test.example.com/patterns/'
       })
 
       const result = await service.fetchVersionPattern('../../../evil')
@@ -133,20 +133,20 @@ describe('PatternService', () => {
       const mockPattern: Record<string, unknown> = {
         darwin: {
           arm64: [
-            { search: 'Aj8=200000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
-          ],
-        },
+            { search: 'Aj8=200000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' }
+          ]
+        }
       }
 
       globalThis.fetch = vi.fn().mockResolvedValue({
         status: 200,
         headers: new Map([['etag', '"abc123"']]),
-        json: async () => mockPattern,
+        json: async () => mockPattern
       } as unknown as Response)
 
       const service = new PatternService({
         cacheDir,
-        baseUrl: 'https://test.example.com/patterns/',
+        baseUrl: 'https://test.example.com/patterns/'
       })
 
       // Act
@@ -171,21 +171,21 @@ describe('PatternService', () => {
       const cachedPattern = {
         darwin: {
           arm64: [
-            { search: 'OLD=200000', desc: 'OLD_PATTERN', sourceValue: '200000' },
-          ],
-        },
+            { search: 'OLD=200000', desc: 'OLD_PATTERN', sourceValue: '200000' }
+          ]
+        }
       }
       writeFileSync(join(cacheDir, '2.1.173.json'), JSON.stringify(cachedPattern))
       writeFileSync(join(cacheDir, '2.1.173.etag'), '"old-etag"')
 
       globalThis.fetch = vi.fn().mockResolvedValue({
         status: 304,
-        headers: new Map(),
+        headers: new Map()
       } as unknown as Response)
 
       const service = new PatternService({
         cacheDir,
-        baseUrl: 'https://test.example.com/patterns/',
+        baseUrl: 'https://test.example.com/patterns/'
       })
 
       // Act
@@ -198,8 +198,8 @@ describe('PatternService', () => {
       expect(globalThis.fetch).toHaveBeenCalledWith(
         'https://test.example.com/patterns/2.1.173.json',
         expect.objectContaining({
-          headers: { 'If-None-Match': '"old-etag"' },
-        }),
+          headers: { 'If-None-Match': '"old-etag"' }
+        })
       )
     })
 
@@ -208,9 +208,9 @@ describe('PatternService', () => {
       const cachedPattern = {
         darwin: {
           arm64: [
-            { search: 'FALLBACK=200000', desc: 'FALLBACK_PATTERN', sourceValue: '200000' },
-          ],
-        },
+            { search: 'FALLBACK=200000', desc: 'FALLBACK_PATTERN', sourceValue: '200000' }
+          ]
+        }
       }
       writeFileSync(join(cacheDir, '2.1.173.json'), JSON.stringify(cachedPattern))
       writeFileSync(join(cacheDir, '2.1.173.etag'), '"fallback-etag"')
@@ -219,7 +219,7 @@ describe('PatternService', () => {
 
       const service = new PatternService({
         cacheDir,
-        baseUrl: 'https://test.example.com/patterns/',
+        baseUrl: 'https://test.example.com/patterns/'
       })
 
       // Act
@@ -234,7 +234,7 @@ describe('PatternService', () => {
 
       const service = new PatternService({
         cacheDir,
-        baseUrl: 'https://test.example.com/patterns/',
+        baseUrl: 'https://test.example.com/patterns/'
       })
 
       // Act
@@ -253,7 +253,7 @@ describe('PatternService', () => {
 
       const service = new PatternService({
         cacheDir,
-        baseUrl: 'https://test.example.com/patterns/',
+        baseUrl: 'https://test.example.com/patterns/'
       })
 
       // Act
@@ -267,15 +267,15 @@ describe('PatternService', () => {
       const mockPattern: Record<string, unknown> = {
         darwin: {
           arm64: [
-            { search: 'Aj8=200000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
-          ],
-        },
+            { search: 'Aj8=200000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' }
+          ]
+        }
       }
 
       globalThis.fetch = vi.fn().mockResolvedValue({
         status: 200,
         headers: new Map([['etag', '"abc123"']]),
-        json: async () => mockPattern,
+        json: async () => mockPattern
       } as unknown as Response)
 
       // 创建只读子目录使 writeFileSync 失败
@@ -285,7 +285,7 @@ describe('PatternService', () => {
 
       const service = new PatternService({
         cacheDir: readonlyDir,
-        baseUrl: 'https://test.example.com/patterns/',
+        baseUrl: 'https://test.example.com/patterns/'
       })
 
       // Act
@@ -303,9 +303,9 @@ describe('PatternService', () => {
       const oldCache = {
         darwin: {
           arm64: [
-            { search: 'OLD=200000', desc: 'OLD', sourceValue: '200000' },
-          ],
-        },
+            { search: 'OLD=200000', desc: 'OLD', sourceValue: '200000' }
+          ]
+        }
       }
       writeFileSync(join(cacheDir, '2.1.173.json'), JSON.stringify(oldCache))
       writeFileSync(join(cacheDir, '2.1.173.etag'), '"old-etag"')
@@ -313,12 +313,12 @@ describe('PatternService', () => {
       globalThis.fetch = vi.fn().mockResolvedValue({
         status: 404,
         headers: new Map(),
-        json: async () => ({ error: 'Not found' }),
+        json: async () => ({ error: 'Not found' })
       } as unknown as Response)
 
       const service = new PatternService({
         cacheDir,
-        baseUrl: 'https://test.example.com/patterns/',
+        baseUrl: 'https://test.example.com/patterns/'
       })
 
       const result = await service.fetchVersionPattern('2.1.173')
@@ -329,9 +329,9 @@ describe('PatternService', () => {
       const cachedPattern = {
         darwin: {
           arm64: [
-            { search: 'FALLBACK=200000', desc: 'FALLBACK', sourceValue: '200000' },
-          ],
-        },
+            { search: 'FALLBACK=200000', desc: 'FALLBACK', sourceValue: '200000' }
+          ]
+        }
       }
       writeFileSync(join(cacheDir, '2.1.173.json'), JSON.stringify(cachedPattern))
       writeFileSync(join(cacheDir, '2.1.173.etag'), '"fallback-etag"')
@@ -339,12 +339,12 @@ describe('PatternService', () => {
       globalThis.fetch = vi.fn().mockResolvedValue({
         status: 500,
         headers: new Map(),
-        json: async () => ({ error: 'Internal server error' }),
+        json: async () => ({ error: 'Internal server error' })
       } as unknown as Response)
 
       const service = new PatternService({
         cacheDir,
-        baseUrl: 'https://test.example.com/patterns/',
+        baseUrl: 'https://test.example.com/patterns/'
       })
 
       const result = await service.fetchVersionPattern('2.1.173')
@@ -355,20 +355,20 @@ describe('PatternService', () => {
       const mockPattern: Record<string, unknown> = {
         darwin: {
           arm64: [
-            { search: 'Aj8=200000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' },
-          ],
-        },
+            { search: 'Aj8=200000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000' }
+          ]
+        }
       }
 
       globalThis.fetch = vi.fn().mockResolvedValue({
         status: 200,
         headers: new Map(), // 无 etag 头
-        json: async () => mockPattern,
+        json: async () => mockPattern
       } as unknown as Response)
 
       const service = new PatternService({
         cacheDir,
-        baseUrl: 'https://test.example.com/patterns/',
+        baseUrl: 'https://test.example.com/patterns/'
       })
 
       await service.fetchVersionPattern('2.1.173')
@@ -382,15 +382,15 @@ describe('PatternService', () => {
       globalThis.fetch = vi.fn().mockResolvedValue({
         status: 200,
         headers: new Map(),
-        json: async () => mockPattern,
+        json: async () => mockPattern
       } as unknown as Response)
 
       await service.fetchVersionPattern('2.1.173')
       expect(globalThis.fetch).toHaveBeenCalledWith(
         'https://test.example.com/patterns/2.1.173.json',
         expect.objectContaining({
-          headers: {}, // 无 If-None-Match
-        }),
+          headers: {} // 无 If-None-Match
+        })
       )
     })
   })

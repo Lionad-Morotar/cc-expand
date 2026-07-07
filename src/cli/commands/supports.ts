@@ -6,7 +6,7 @@ import { ConfigService } from '../../services/config.js'
 import { DiscoveryService } from '../../services/discovery.js'
 import { ChannelConfig, type ChannelConfigData } from '../../services/channel-config.js'
 import { t } from '../i18n.js'
-import { type CommandResult } from '../result.js'
+import type { CommandResult } from '../result.js'
 
 export interface SupportsData {
   currentVersion?: string
@@ -26,7 +26,7 @@ export interface SupportsOptions {
 
 export async function supportsCommand(
   _args: string[] = [],
-  options?: SupportsOptions,
+  options?: SupportsOptions
 ): Promise<CommandResult<SupportsData>> {
   const config = options?.configService ?? new ConfigService()
   const discovery = options?.discoveryService ?? new DiscoveryService()
@@ -36,7 +36,7 @@ export async function supportsCommand(
   // 解析当前激活版本：channel.json（migration/setup 选定）优先于 PATH 探测。
   // Why 不能只用 discovery.findClaudeBinary：PATH 上的 claude 可能是旧的系统安装
   // （如 homebrew），与用户通过 ccx channel 实际激活的版本脱节，曾导致 current 标记
-  // 指向 homebrew 的 2.1.161 而非激活的 2.1.186。与 status/patch/setup 的版本源对齐，见 ADR 0001。
+  // 指向 homebrew 的 2.1.161 而非激活的 2.1.186。与 status/patch/setup 的版本源对齐。
   let currentVersion: string | undefined
   let channel: ChannelConfigData | undefined
   try {
@@ -58,21 +58,21 @@ export async function supportsCommand(
   }
 
   const versions = index
-    .map((item) => ({
+    .map(item => ({
       version: item.version,
       platforms: item.platforms,
-      current: item.version === currentVersion,
+      current: item.version === currentVersion
     }))
-    .sort((a, b) => a.version.localeCompare(b.version, undefined, { numeric: true }),
+    .sort((a, b) => a.version.localeCompare(b.version, undefined, { numeric: true })
     )
 
   const warnings: string[] = []
-  if (currentVersion && !versions.some((v) => v.version === currentVersion)) {
+  if (currentVersion && !versions.some(v => v.version === currentVersion)) {
     warnings.push(
       t('command.supports.unsupportedCurrent', {
         version: currentVersion,
-        platform: `${process.platform}-${process.arch}`,
-      }),
+        platform: `${process.platform}-${process.arch}`
+      })
     )
   }
 
@@ -82,8 +82,8 @@ export async function supportsCommand(
     summary: t('command.supports.summary', { count: versions.length }),
     data: {
       currentVersion,
-      versions,
+      versions
     },
-    warnings,
+    warnings
   }
 }

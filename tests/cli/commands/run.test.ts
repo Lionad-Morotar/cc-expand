@@ -35,7 +35,7 @@ describe('run command', () => {
   }
 
   it('parses k suffix in token argument', async () => {
-    createBinary('claude-270000')
+    createBinary('claude-27w')
     const child = fakeChild()
     const promise = runCommand('270k', { exitOnChildExit: false, spawn: () => child })
     child.emit('exit', 0)
@@ -45,7 +45,7 @@ describe('run command', () => {
   })
 
   it('parses w suffix in token argument', async () => {
-    createBinary('claude-270000')
+    createBinary('claude-27w')
     const child = fakeChild()
     const promise = runCommand('27w', { exitOnChildExit: false, spawn: () => child })
     child.emit('exit', 0)
@@ -55,7 +55,7 @@ describe('run command', () => {
   })
 
   it('defaults to 270000 when no argument provided', async () => {
-    createBinary('claude-270000')
+    createBinary('claude-27w')
     const child = fakeChild()
     const promise = runCommand(undefined, { exitOnChildExit: false, spawn: () => child })
     child.emit('exit', 0)
@@ -78,7 +78,7 @@ describe('run command', () => {
   })
 
   it('returns error result when child emits error event (spawn failure)', async () => {
-    createBinary('claude-270000')
+    createBinary('claude-27w')
     const child = fakeChild()
     const promise = runCommand('270k', { exitOnChildExit: false, spawn: () => child })
     // 模拟 binary 存在但无法 spawn：权限不足、codesign 损坏、架构不匹配
@@ -92,7 +92,7 @@ describe('run command', () => {
   })
 
   it('resolves with success=false when child exits non-zero', async () => {
-    createBinary('claude-270000')
+    createBinary('claude-27w')
     const child = fakeChild()
     const promise = runCommand('270k', { exitOnChildExit: false, spawn: () => child })
     child.emit('exit', 1)
@@ -101,5 +101,46 @@ describe('run command', () => {
     expect(result).toBeDefined()
     expect((result as { success: boolean }).success).toBe(false)
     expect((result as { data?: { targetTokens: number } }).data?.targetTokens).toBe(270000)
+  })
+
+  it('resolves explicit combo argument (27w-flow) directly (CR#10)', async () => {
+    createBinary('claude-27w-flow')
+    const child = fakeChild()
+    const promise = runCommand('27w-flow', { exitOnChildExit: false, spawn: () => child })
+    child.emit('exit', 0)
+    const result = await promise
+    expect(result).toBeDefined()
+    expect((result as { success: boolean }).success).toBe(true)
+    expect((result as { data?: { targetTokens: number } }).data?.targetTokens).toBe(270000)
+  })
+
+  it('normalizes uncanonical combo (270k-flow → 27w-flow) (CR#10)', async () => {
+    createBinary('claude-27w-flow')
+    const child = fakeChild()
+    const promise = runCommand('270k-flow', { exitOnChildExit: false, spawn: () => child })
+    child.emit('exit', 0)
+    const result = await promise
+    expect(result).toBeDefined()
+    expect((result as { success: boolean }).success).toBe(true)
+  })
+
+  it('rejects combo with invalid token segment (CR#10)', async () => {
+    await expect(runCommand('abc-flow')).rejects.toThrow('Invalid target tokens')
+  })
+
+  it('--print-binary outputs binary path and does not spawn', async () => {
+    createBinary('claude-27w')
+    const logs: string[] = []
+    const originalLog = console.log
+    console.log = (msg: string) => logs.push(msg)
+    try {
+      const result = await runCommand('270k', { printBinary: true })
+      expect(result).toBeDefined()
+      expect((result as { success: boolean }).success).toBe(true)
+      expect(logs).toHaveLength(1)
+      expect(logs[0]).toMatch(/claude-27w$/)
+    } finally {
+      console.log = originalLog
+    }
   })
 })

@@ -5,13 +5,12 @@
 import { accessSync, constants, readFileSync } from 'node:fs'
 import type { PatchItem } from '../types/index.js'
 import { CcxError, ErrorCode } from '../types/index.js'
-import { encodeTokenLiteral } from '../utils/encode-token-literal.js'
 
 export interface VerifyConfig {
   /** 二进制文件路径 */
   binaryPath: string
-  /** 目标 tokens 值 */
-  targetTokens: number
+  /** token-encode 策略：对无 literal target 的 patch，按 slot 生成期望字面量（与 PatchEngine 对称） */
+  targetGenerator: (slot: number) => string
   /** 源 tokens 值 */
   sourceValue: string
   /** patch 项列表 */
@@ -50,7 +49,7 @@ export class Verifier {
     // Check 1: per-patch 替换验证
     // 写入的是等长编码字面量（如 1e6   ）。每个 patch 按各自 sourceValue 槽位宽度编码，
     // 故须逐项校验：(a) 原 search 模式已消失 (b) 该项编码字面量已出现——与 PatchEngine 的
-    // per-patch 编码对称，避免不同槽位宽度时用单一 slotWidth 误判（见 ADR-0002）。
+    // per-patch 编码对称，避免不同槽位宽度时用单一 slotWidth 误判。
     let allPatched = true
     let allTargetsPresent = true
     const failedPatches: string[] = []
@@ -75,7 +74,7 @@ export class Verifier {
         const currentValue = content.subarray(replaceAt, replaceAt + patch.sourceValue.length).toString('utf8')
         if (currentValue === patch.sourceValue) {
           foundUnpatched = true
-          failedPatches.push(patch.desc)
+          failedPatches.push(patch.desc ?? '')
           break
         }
         offset = idx + searchBuf.length
@@ -84,8 +83,17 @@ export class Verifier {
         allPatched = false
       }
 
-      // (b) 该 patch 的等长编码字面量应出现（按本 item 的 sourceValue 槽位宽度编码）
-      const expectedLiteral = encodeTokenLiteral(config.targetTokens, patch.sourceValue.length)
+      // (b) 该 patch 的等长编码字面量应出现。与 PatchEngine 编码逻辑对称：
+      // literal-target 用 value（pad:right-space 凑等长），否则 token-encode。
+      // 旧实现统一 token-encode，导致 installed literal patch 误判 → verify 失败 → binary 被误删。
+      let expectedLiteral: string
+      if (patch.target) {
+        expectedLiteral = patch.target.pad === 'right-space'
+          ? patch.target.value.padEnd(patch.sourceValue.length, ' ')
+          : patch.target.value
+      } else {
+        expectedLiteral = config.targetGenerator(patch.sourceValue.length)
+      }
       if (content.indexOf(Buffer.from(expectedLiteral, 'utf8')) === -1) {
         allTargetsPresent = false
       }
@@ -96,7 +104,7 @@ export class Verifier {
       passed: allPatched && allTargetsPresent,
       message: allPatched && allTargetsPresent
         ? undefined
-        : `Unpatched patterns: ${failedPatches.join(', ') || 'none found'}`,
+        : `Unpatched patterns: ${failedPatches.join(', ') || 'none found'}`
     })
 
     // Check 2: 可执行性
@@ -110,7 +118,7 @@ export class Verifier {
     checks.push({
       name: 'executable',
       passed: isExecutable,
-      message: isExecutable ? undefined : 'Binary is not executable',
+      message: isExecutable ? undefined : 'Binary is not executable'
     })
 
     // Check 3: codesign（仅在 macOS）
@@ -132,8 +140,8 @@ export class Verifier {
       error: new CcxError(
         ErrorCode.VERIFICATION_FAILED,
         `Verification failed: ${failedChecks}`,
-        'Run "cc-expand restore" to revert to original binary',
-      ),
+        'Run "cc-expand restore" to revert to original binary'
+      )
     }
   }
 

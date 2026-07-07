@@ -17,6 +17,7 @@ import { ShardWriter } from '../src/services/shard-writer.js'
 import { PatchEngine } from '../src/core/patch-engine.js'
 import type { OsPatterns } from '../src/services/pattern.js'
 import type { PatchItem } from '../src/types/index.js'
+import { encodeTokenLiteral } from '../src/utils/encode-token-literal.js'
 import { classifyDesc } from '../src/services/desc-classifier.js'
 
 interface PlatformSpec {
@@ -79,7 +80,11 @@ function readFromExtracted(root: string, version: string, spec: PlatformSpec): B
 
 /** patch 模拟:每条 PatchItem 必须能在二进制中定位并替换 sourceValue(0 残留) */
 function simulatePatch(buffer: Buffer, patches: PatchItem[]): boolean {
-  const result = new PatchEngine().patch(Buffer.from(buffer), patches, 256000)
+  const result = new PatchEngine().patch(
+    Buffer.from(buffer),
+    patches,
+    (slot: number) => encodeTokenLiteral(256000, slot)
+  )
   return result.success && result.replaceCount === patches.length
 }
 

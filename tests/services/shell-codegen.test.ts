@@ -8,7 +8,7 @@ import {
   generatePowerShellFunction,
   generateShellFunction,
   generateRestoredBashFunction,
-  generateRestoredShellFunction,
+  generateRestoredShellFunction
 } from '../../src/services/shell-codegen.js'
 
 describe('shell-codegen', () => {
@@ -35,8 +35,20 @@ describe('shell-codegen', () => {
   it('generates bash function with given target', () => {
     const code = generateBashFunction(256000)
     expect(code).toContain('cc() {')
-    expect(code).toContain("alias c='cc 256000'")
-    expect(code).toContain('binary="$HOME/.cc-expand/bin/claude-256000"')
+    expect(code).toContain('alias c=\'cc 25w6k\'')
+    // 支持 shortVer 或纯数字 target，通过 ccx run --print-binary 定位 binary
+    expect(code).toContain('cc-expand run "$ctx" --print-binary 2>/dev/null')
+    expect(code).toContain('cc-expand patch --target "$ctx" --yes')
+  })
+
+  it('uses command grep to avoid rg alias breaking version guard', () => {
+    const code = generateBashFunction(256000)
+    expect(code).toContain('command grep -oE')
+    // 所有 grep -oE 出现处都必须带 command 前缀，避免用户把 grep alias 成 rg
+    const total = (code.match(/grep -oE/g) ?? []).length
+    const withCommand = (code.match(/command grep -oE/g) ?? []).length
+    expect(total).toBeGreaterThan(0)
+    expect(total).toBe(withCommand)
   })
 
   it('version-guards against stale patched binaries (no silent outdated runs)', () => {
@@ -50,9 +62,9 @@ describe('shell-codegen', () => {
   it('generates powershell function with given target', () => {
     const code = generatePowerShellFunction(256000)
     expect(code).toContain('function cc {')
-    expect(code).toContain('param([string]$ctx = "256000")')
+    expect(code).toContain('param([string]$ctx = "25w6k")')
     expect(code).toContain('function c {')
-    expect(code).toContain('cc 256000 @args')
+    expect(code).toContain('cc 25w6k @args')
   })
 
   it('generateShellFunction uses platform-specific backend', () => {
@@ -70,7 +82,7 @@ describe('shell-codegen', () => {
     const code = generateRestoredBashFunction()
     expect(code).toContain('cc() {')
     expect(code).toContain('claude --dangerously-skip-permissions "$@"')
-    expect(code).toContain("alias c='cc'")
+    expect(code).toContain('alias c=\'cc\'')
     // restore 块不应引用 patched binary 路径
     expect(code).not.toContain('.cc-expand/bin/claude-')
     expect(code).toContain('# --- cc-expand generated start ---')

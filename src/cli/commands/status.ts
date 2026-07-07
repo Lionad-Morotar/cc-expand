@@ -12,6 +12,7 @@ import { ChannelConfig, type ChannelConfigData } from '../../services/channel-co
 import { queryLatestVersion } from '../../services/latest-checker.js'
 import { readShortcutState } from '../../services/shell-profile.js'
 import { isVersionGreater } from '../../utils/version.js'
+import { extractCombos } from '../../utils/patched-combos.js'
 import { t } from '../i18n.js'
 import { makeErrorResult, type CommandResult } from '../result.js'
 import { CcxError, ErrorCode } from '../../types/index.js'
@@ -27,10 +28,11 @@ export interface StatusOptions {
 export interface StatusData {
   version?: string
   binaryPath?: string
-  /** version 来源：channel（channel.json 激活版本）或 system（PATH 原生 claude）。见 ADR 0001 */
+  /** version 来源：channel（channel.json 激活版本）或 system（PATH 原生 claude） */
   activeSource?: 'channel' | 'system'
   patched: boolean
   targets?: number[]
+  combos?: string[]
   patchedAt?: string
   shortcuts?: {
     ccTarget?: string
@@ -39,7 +41,8 @@ export interface StatusData {
   }
   installedVersions: Array<{
     version: string
-    targets: number[]
+    targets?: number[]
+    combos?: string[]
     patchedAt: string
     current: boolean
   }>
@@ -48,9 +51,9 @@ export interface StatusData {
 /** 当前版本已 patch、npm latest 更新、且 latest 尚未 patch 时，建议 migration；否则无 next */
 async function buildMigrationHint(
   options: StatusOptions | undefined,
-  patchedInfo: { targets: number[]; patchedAt: string } | undefined,
+  patchedInfo: { targets?: number[], patchedAt: string } | undefined,
   currentVersion: string,
-  patchedVersions: Record<string, { targets: number[]; patchedAt: string }>,
+  patchedVersions: Record<string, { targets?: number[], patchedAt: string }>
 ): Promise<string[] | undefined> {
   if (!patchedInfo) return undefined
   const resolver = options?.latestResolver ?? (() => queryLatestVersion())
@@ -75,7 +78,7 @@ export async function statusCommand(options?: StatusOptions): Promise<CommandRes
 
   let binaryPath: string | undefined
   let version: string | undefined
-  // Active Version（channel.json）优先于 System Version（PATH 探测），与 patch/setup 的版本源对齐。见 ADR 0001
+  // Active Version（channel.json）优先于 System Version（PATH 探测），与 patch/setup 的版本源对齐
   let activeSource: 'channel' | 'system'
 
   // channel.json 损坏（手编/写入被中断）时 getChannel 内的 JSON.parse 会抛 SyntaxError——
@@ -102,9 +105,10 @@ export async function statusCommand(options?: StatusOptions): Promise<CommandRes
         const userConfig = configService.getUserConfig()
         const installedVersions = Object.entries(userConfig.patchedVersions).map(([v, info]) => ({
           version: v,
-          targets: info.targets,
+          targets: info.targets ?? [],
+          combos: extractCombos(info),
           patchedAt: info.patchedAt,
-          current: false,
+          current: false
         }))
 
         return {
@@ -113,8 +117,8 @@ export async function statusCommand(options?: StatusOptions): Promise<CommandRes
           summary: t('command.status.noBinary'),
           data: {
             patched: false,
-            installedVersions,
-          },
+            installedVersions
+          }
         }
       }
 
@@ -130,15 +134,18 @@ export async function statusCommand(options?: StatusOptions): Promise<CommandRes
 
   const shortcutState = readShortcutState(options?.homeDir)
 
+  // combos 权威（plugin 体系），targets 仅 legacy 回退；统一走 extractCombos 避免读侧分叉
+  const combos = extractCombos(patchedInfo)
   const summary = patchedInfo
-    ? t('command.status.patched', { version, targets: patchedInfo.targets.join(', ') })
+    ? t('command.status.patched', { version, targets: combos.join(', ') })
     : t('command.status.unpatched', { version })
 
   const installedVersions = Object.entries(userConfig.patchedVersions).map(([v, info]) => ({
     version: v,
-    targets: info.targets,
+    targets: info.targets ?? [],
+    combos: extractCombos(info),
     patchedAt: info.patchedAt,
-    current: v === version,
+    current: v === version
   }))
 
   const next = await buildMigrationHint(options, patchedInfo, version, userConfig.patchedVersions)
@@ -153,14 +160,15 @@ export async function statusCommand(options?: StatusOptions): Promise<CommandRes
       activeSource,
       patched: !!patchedInfo,
       targets: patchedInfo?.targets,
+      combos: patchedInfo?.combos,
       patchedAt: patchedInfo?.patchedAt,
       shortcuts: {
         ccTarget: shortcutState.ccTarget,
         cTarget: shortcutState.cTarget,
-        pointsToPatched: shortcutState.pointsToPatched,
+        pointsToPatched: shortcutState.pointsToPatched
       },
-      installedVersions,
+      installedVersions
     },
-    next,
+    next
   }
 }

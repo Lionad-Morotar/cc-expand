@@ -4,8 +4,8 @@ import { CcxError, ErrorCode } from '../../src/types/index.js'
 
 // 用分号分隔片段,模拟真实 minified 二进制中变量名前的符号边界
 // (下划线会连接字母被正则误吞为变量名前缀,故用符号分隔)
-const FIXTURE =
-  'hdr;AP_=200000,YP_=20000;u6O=200000,m6O=1536;Z07=200000,Gh=50;xj3=200000,I8q=3;OpK=200000,N9q=3,v9q=3;K)>200000:!1};trl'
+const FIXTURE
+  = 'hdr;AP_=200000,YP_=20000;u6O=200000,m6O=1536;Z07=200000,Gh=50;xj3=200000,I8q=3;OpK=200000,N9q=3,v9q=3;K)>200000:!1};trl'
 
 describe('PatternDiscovery', () => {
   describe('discover()', () => {
@@ -31,7 +31,7 @@ describe('PatternDiscovery', () => {
     it('produces search strings with companion fields (greedy multi-field)', () => {
       const buffer = Buffer.from(FIXTURE, 'latin1')
 
-      const searches = new PatternDiscovery().discover(buffer).map((p) => p.search)
+      const searches = new PatternDiscovery().discover(buffer).map(p => p.search)
 
       expect(searches).toContain('AP_=200000,YP_=20000')
       expect(searches).toContain('OpK=200000,N9q=3,v9q=3')
@@ -53,7 +53,7 @@ describe('PatternDiscovery', () => {
     it('throws PATTERN_DISCOVERY_FAILED when anchor count is not 5', () => {
       const buffer = Buffer.from(
         'hdr;AP_=200000,YP_=20000;u6O=200000,m6O=1536;Z07=200000,Gh=50;xj3=200000,Ij_=3;K)>200000:!1};trl',
-        'latin1',
+        'latin1'
       )
 
       expect(() => new PatternDiscovery().discover(buffer)).toThrow(CcxError)
@@ -68,7 +68,7 @@ describe('PatternDiscovery', () => {
     it('throws PATTERN_DISCOVERY_FAILED when exceeds200k threshold count is not 1', () => {
       const buffer = Buffer.from(
         'hdr;AP_=200000,YP_=20000;u6O=200000,m6O=1536;Z07=200000,Gh=50;xj3=200000,Ij_=3;OpK=200000,N9q=3;K)>200000:!1};K)>200000:!1};trl',
-        'latin1',
+        'latin1'
       )
 
       expect(() => new PatternDiscovery().discover(buffer)).toThrow(CcxError)
@@ -78,11 +78,11 @@ describe('PatternDiscovery', () => {
     it('handles overlapping anchors (shared physical segment) producing distinct unique searches', () => {
       const buffer = Buffer.from(
         'hdr;_Z_=200000,ct=200000,qZ_=20000,gd5=32000;Pw3=200000,Ww3=1536;YS7=200000,Gk=50;gVO=200000,NOq=3;K)>200000:!1};trl',
-        'latin1',
+        'latin1'
       )
       const text = buffer.toString('latin1')
 
-      const searches = new PatternDiscovery().discover(buffer).map((p) => p.search)
+      const searches = new PatternDiscovery().discover(buffer).map(p => p.search)
 
       expect(searches).toHaveLength(6)
       // 两个重叠锚点各自贪婪,指向不同的 200000 字节
