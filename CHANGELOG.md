@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-07-07
+
+### Fixed
+- 压缩 README cover banner（`assets/cover-banner.png`），将 npm 包体积从约 1.2M 降至 268K
+
 ## [0.4.0] - 2026-07-07
 
 ### Added
