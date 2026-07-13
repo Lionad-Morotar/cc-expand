@@ -11,8 +11,8 @@ export interface DiscoveredPattern {
   sourceValue: string
 }
 
-/** 期望的 =200000 上下文窗口锚点数(5 个语义模式 + 1 个 exceeds 阈值 = 6 条) */
-const EXPECTED_ANCHOR_COUNT = 5
+/** 期望的 =200000 上下文窗口锚点数(2.1.206 起 7 个语义模式 + 1 个 exceeds 阈值 = 8 条;2.1.205 及更早版本为 5) */
+const EXPECTED_ANCHOR_COUNT = 7
 
 export class PatternDiscovery {
   /**
