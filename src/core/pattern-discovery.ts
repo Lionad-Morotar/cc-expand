@@ -11,20 +11,20 @@ export interface DiscoveredPattern {
   sourceValue: string
 }
 
-/** 期望的 =200000 上下文窗口锚点数(2.1.206 起 7 个语义模式 + 1 个 exceeds 阈值 = 8 条;2.1.205 及更早版本为 5) */
-const EXPECTED_ANCHOR_COUNT = 7
+/** 期望的 =200000 上下文窗口锚点数(2.1.205 及更早为 5;2.1.206–2.1.209 为 7;2.1.210 起合并为 6) */
+const EXPECTED_ANCHOR_COUNTS = [5, 6, 7]
 
 export class PatternDiscovery {
   /**
    * 从二进制 buffer 中发现上下文窗口 pattern
    *
    * 结构不变量(任一违反抛 PATTERN_DISCOVERY_FAILED,触发人工兜底):
-   * - =200000 锚点恰好 5 个(排除 20000000 噪声后)
+   * - =200000 锚点数量为 5、6 或 7 个(排除 20000000 等噪声后)
    * - exceeds200k 阈值 `>200000:!1}` 恰好出现 1 次
-   * 这些不变量在 2.1.169–178 九个版本上从未被违反;保留守卫是为应对未来版本增删模式。
+   * 这些不变量在已发布版本上未被违反;保留守卫是为应对未来版本增删模式。
    *
    * @param buffer Claude Code 平台二进制
-   * @returns 发现的 pattern 列表(6 条)
+   * @returns 发现的 pattern 列表(7 或 8 条)
    */
   discover(buffer: Buffer): DiscoveredPattern[] {
     const text = buffer.toString('latin1')
@@ -32,10 +32,10 @@ export class PatternDiscovery {
 
     // =200000 上下文窗口锚点;(?![0-9]) 排除 20000000(8位零)等噪声
     const anchors = [...text.matchAll(/[A-Za-z0-9_$]+=200000(?![0-9])/g)]
-    if (anchors.length !== EXPECTED_ANCHOR_COUNT) {
+    if (!EXPECTED_ANCHOR_COUNTS.includes(anchors.length)) {
       throw new CcxError(
         ErrorCode.PATTERN_DISCOVERY_FAILED,
-        `Expected ${EXPECTED_ANCHOR_COUNT} context-window anchors, found ${anchors.length}`,
+        `Expected context-window anchors to be one of ${EXPECTED_ANCHOR_COUNTS.join(', ')}, found ${anchors.length}`,
         '二进制结构可能突变(模式增减),需人工核对混淆变量'
       )
     }
