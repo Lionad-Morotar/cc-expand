@@ -19,6 +19,7 @@ import type { OsPatterns } from '../src/services/pattern.js'
 import type { PatchItem } from '../src/types/index.js'
 import { encodeTokenLiteral } from '../src/utils/encode-token-literal.js'
 import { classifyDesc } from '../src/services/desc-classifier.js'
+import { cleanupVersions } from './cleanup-versions.js'
 
 interface PlatformSpec {
   os: string
@@ -106,12 +107,13 @@ function main(): void {
 
   const osPatterns: OsPatterns = {}
   const platformsDone: string[] = []
+  const workDir = join(process.cwd(), 'zRefs/claude-codes')
 
   for (const spec of PLATFORMS) {
     try {
       const buffer = fromExtracted
         ? readFromExtracted(fromExtracted, version, spec)
-        : downloadAndExtract(version, spec, join(process.cwd(), 'zRefs/claude-codes'))
+        : downloadAndExtract(version, spec, workDir)
 
       const discovered = new PatternDiscovery().discover(buffer)
       const patches: PatchItem[] = discovered.map((d) => ({ ...d, desc: classifyDesc(d.search) }))
@@ -140,6 +142,12 @@ function main(): void {
   writer.upsertVersionIndex(version, platformsDone)
   console.log(`\n生成 ${patternsDir}/${version}.json (${platformsDone.length} 平台)`)
   console.log('watch:patterns 后台进程将自动上传 OSS')
+
+  // 真实下载路径下顺带清理 >7 天的旧版本缓存（pattern 已在 OSS，本地缓存可重建）；
+  // --from-extracted 是调试 dry-run，跳过清理避免干扰
+  if (!fromExtracted) {
+    cleanupVersions(workDir)
+  }
 }
 
 main()
