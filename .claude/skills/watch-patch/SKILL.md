@@ -18,7 +18,7 @@ description: 定时检索 Claude Code 新包，Patch 并发版
 0. **环境检查**
   0.1 确认 CronList 的状态（是否包含重复或过期的计时器）
   0.2 上传由 `pnpm pattern:upload` 事件驱动，无需 `watch:patterns` 持续监听（该进程在会话后台会被 SIGTERM 杀掉，exit 143，不可靠）
-1. **interval**：每半小时运行 `pnpm pattern:latest-check`，解析输出 JSON `{ latest, processed, needWork }`：
+1. **interval**：每小时运行 `pnpm pattern:latest-check`，解析输出 JSON `{ latest, processed, needWork }`：
   1.1 `needWork=false`（pattern 已含 latest）则忽略，等待下一次扫描
   1.2 `needWork=true`（pattern 缺 latest）则准备开始任务，允许越过版本执行（比如 latest v2.1.180 而 pattern 只包含 v2.1.160 那么直接从 180 开始）
   1.3 无需暂停 interval，创建后台子代理并告知它执行 patch-steps 完成生成（而你自己需要维持干净的 interval monitor 上下文）
