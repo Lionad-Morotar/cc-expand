@@ -93,5 +93,19 @@ describe('PatternDiscovery', () => {
         expect(text.split(s).length - 1).toBe(1)
       }
     })
+
+    // B10: 表达式形态锚点(200000+expr,2.1.227 起 git/crypto buffer)被 lookahead 过滤,不计入配置常量
+    it('filters out expression-form anchors (200000+expr) so they are not mistaken for context-window constants', () => {
+      const buffer = Buffer.from(
+        FIXTURE.replace(';K)>200000:!1}', ';bsr=200000+T3i;K)>200000:!1}'),
+        'latin1',
+      )
+
+      const result = new PatternDiscovery().discover(buffer)
+
+      // 5 个常规锚点 + 1 exceeds = 6 条;bsr=200000+T3i 被过滤
+      expect(result).toHaveLength(6)
+      expect(result.every(p => !p.search.startsWith('bsr'))).toBe(true)
+    })
   })
 })

@@ -11,7 +11,7 @@ export interface DiscoveredPattern {
   sourceValue: string
 }
 
-/** 期望的 =200000 上下文窗口锚点数(2.1.205 及更早为 5;2.1.206–2.1.209 为 7;2.1.210 起合并为 6;2.1.218 起扩展为 8) */
+/** 期望的 =200000 上下文窗口锚点数(2.1.205 及更早为 5;2.1.206–2.1.209 为 7;2.1.210 起合并为 6;2.1.218 起扩展为 8;2.1.227 起伴生 200000+expr 表达式锚点,被 lookahead 过滤后真配置常量仍 8) */
 const EXPECTED_ANCHOR_COUNTS = [5, 6, 7, 8]
 
 export class PatternDiscovery {
@@ -19,19 +19,20 @@ export class PatternDiscovery {
    * 从二进制 buffer 中发现上下文窗口 pattern
    *
    * 结构不变量(任一违反抛 PATTERN_DISCOVERY_FAILED,触发人工兜底):
-   * - =200000 锚点数量为 5、6 或 7 个(排除 20000000 等噪声后)
+   * - =200000 锚点数量为 5、6、7 或 8 个(排除 20000000 噪声与 200000+expr 表达式后)
    * - exceeds200k 阈值 `>200000:!1}` 恰好出现 1 次
    * 这些不变量在已发布版本上未被违反;保留守卫是为应对未来版本增删模式。
    *
    * @param buffer Claude Code 平台二进制
-   * @returns 发现的 pattern 列表(7 或 8 条)
+   * @returns 发现的 pattern 列表(6 至 9 条)
    */
   discover(buffer: Buffer): DiscoveredPattern[] {
     const text = buffer.toString('latin1')
     const out: DiscoveredPattern[] = []
 
-    // =200000 上下文窗口锚点;(?![0-9]) 排除 20000000(8位零)等噪声
-    const anchors = [...text.matchAll(/[A-Za-z0-9_$]+=200000(?![0-9])/g)]
+    // =200000 上下文窗口锚点;(?![0-9+\-*/%]) 同时排除数字噪声(20000000)与表达式形态(200000+T3i 这类 git/crypto buffer)，
+    // 后者非 LLM 上下文窗口配置常量(2.1.227 起新增),避免误 patch 计算式里的 200000
+    const anchors = [...text.matchAll(/[A-Za-z0-9_$]+=200000(?![0-9+\-*/%])/g)]
     if (!EXPECTED_ANCHOR_COUNTS.includes(anchors.length)) {
       throw new CcxError(
         ErrorCode.PATTERN_DISCOVERY_FAILED,
