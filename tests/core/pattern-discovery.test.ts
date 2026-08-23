@@ -4,8 +4,10 @@ import { CcxError, ErrorCode } from '../../src/types/index.js'
 
 // 用分号分隔片段,模拟真实 minified 二进制中变量名前的符号边界
 // (下划线会连接字母被正则误吞为变量名前缀,故用符号分隔)
+// 锚点形态对齐 2.1.228+ 现役结构:伴生字段携带签名值(32000/1536/50/26214400),
+// memories 裸锚紧邻 "/memories" 路径;LPx 是 2.1.235 起出现的无签名显示截断噪声锚
 const FIXTURE
-  = 'hdr;AP_=200000,YP_=20000;u6O=200000,m6O=1536;Z07=200000,Gh=50;xj3=200000,I8q=3;OpK=200000,N9q=3,v9q=3;K)>200000:!1};trl'
+  = 'hdr;AP_=200000,YP_=32000;u6O=200000,m6O=1536;Z07=200000,Gh=50;OpK=200000,N9q=26214400,v9q=20000;Mm_=200000,Np_="/memories";LPx=200000,avi=48,yle=256;K)>200000:!1};trl'
 
 describe('PatternDiscovery', () => {
   describe('discover()', () => {
@@ -33,8 +35,8 @@ describe('PatternDiscovery', () => {
 
       const searches = new PatternDiscovery().discover(buffer).map(p => p.search)
 
-      expect(searches).toContain('AP_=200000,YP_=20000')
-      expect(searches).toContain('OpK=200000,N9q=3,v9q=3')
+      expect(searches).toContain('AP_=200000,YP_=32000')
+      expect(searches).toContain('OpK=200000,N9q=26214400,v9q=20000')
     })
 
     // B2: 每条产出 search 在 buffer 中唯一(count===1),这是 patch 定位正确的充要条件
@@ -49,10 +51,11 @@ describe('PatternDiscovery', () => {
       }
     })
 
-    // B6: =200000 锚点数 ≠ 5(结构突变,如模式增减)时抛 PATTERN_DISCOVERY_FAILED
+    // B6: 过滤后的 context 锚点数 ∉ {5,6,7,8}(结构突变,如模式增减)时抛 PATTERN_DISCOVERY_FAILED
     it('throws PATTERN_DISCOVERY_FAILED when anchor count is not 5', () => {
+      // u6O 的伴生 48 无签名,被过滤后真锚仅 4 个
       const buffer = Buffer.from(
-        'hdr;AP_=200000,YP_=20000;u6O=200000,m6O=1536;Z07=200000,Gh=50;xj3=200000,Ij_=3;K)>200000:!1};trl',
+        'hdr;AP_=200000,YP_=32000;u6O=200000,m6O=48;Z07=200000,Gh=50;OpK=200000,N9q=26214400;Mm_=200000,Np_="/memories";K)>200000:!1};trl',
         'latin1'
       )
 
@@ -67,7 +70,7 @@ describe('PatternDiscovery', () => {
     // B7: exceeds200k 阈值出现次数 ≠ 1 时抛错
     it('throws PATTERN_DISCOVERY_FAILED when exceeds200k threshold count is not 1', () => {
       const buffer = Buffer.from(
-        'hdr;AP_=200000,YP_=20000;u6O=200000,m6O=1536;Z07=200000,Gh=50;xj3=200000,Ij_=3;OpK=200000,N9q=3;K)>200000:!1};K)>200000:!1};trl',
+        FIXTURE.replace('K)>200000:!1}', 'K)>200000:!1};K)>200000:!1}'),
         'latin1'
       )
 
@@ -77,7 +80,7 @@ describe('PatternDiscovery', () => {
     // B9: 重叠锚点(2.1.178 式,MODEL 与 other 共享 ct=200000 物理段)各自产出唯一 search
     it('handles overlapping anchors (shared physical segment) producing distinct unique searches', () => {
       const buffer = Buffer.from(
-        'hdr;_Z_=200000,ct=200000,qZ_=20000,gd5=32000;Pw3=200000,Ww3=1536;YS7=200000,Gk=50;gVO=200000,NOq=3;K)>200000:!1};trl',
+        'hdr;_Z_=200000,ct=200000,qZ_=20000,gd5=32000;Pw3=200000,Ww3=1536;YS7=200000,Gk=50;gVO=200000,NOq=50000000;K)>200000:!1};trl',
         'latin1'
       )
       const text = buffer.toString('latin1')
@@ -106,6 +109,17 @@ describe('PatternDiscovery', () => {
       // 5 个常规锚点 + 1 exceeds = 6 条;bsr=200000+T3i 被过滤
       expect(result).toHaveLength(6)
       expect(result.every(p => !p.search.startsWith('bsr'))).toBe(true)
+    })
+
+    // B11: 2.1.235 起出现的无签名显示截断常量(approval 预览 48/256 等)被伴生签名过滤,
+    // 不计入 context 配置锚,也不产 pattern
+    it('filters out display-truncation anchors without companion signatures', () => {
+      const buffer = Buffer.from(FIXTURE, 'latin1')
+
+      const result = new PatternDiscovery().discover(buffer)
+
+      expect(result).toHaveLength(6)
+      expect(result.every(p => !p.search.startsWith('LPx'))).toBe(true)
     })
   })
 })
