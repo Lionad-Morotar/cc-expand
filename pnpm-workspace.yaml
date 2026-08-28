@@ -1,4 +1,6 @@
-allowBuilds:
-  esbuild: false
 packages:
-  - 'packages/*'
+  - packages/*
+
+allowBuilds:
+  '@parcel/watcher': true
+  esbuild: false
