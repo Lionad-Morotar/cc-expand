@@ -194,6 +194,8 @@ export function parseStandaloneGraph(buffer: Buffer, section: BunSection): Stand
     })
   }
 
+  checkSpan(buffer, section, offsets.compileExecArgvPtr, 'compile_exec_argv')
+
   return {
     byteCount: offsets.byteCount,
     modules,

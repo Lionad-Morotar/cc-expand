@@ -188,6 +188,15 @@ describe('parseStandaloneGraph', () => {
       expect(() => parseStandaloneGraph(buffer, section)).toThrow(/越界|bounds/i)
     })
 
+    it('throws when compile_exec_argv_ptr overruns the payload', () => {
+      const { payload } = makeStandaloneGraph([{ contents: 'x' }], { compileExecArgv: '--x' })
+      const offAt = payload.length - 32 - 16 // Offsets 起点 = payloadLen - Offsets - trailer
+      payload.writeUInt32LE(payload.length + 100, offAt + 20) // compile_exec_argv_ptr.off 超出 payload
+      const { buffer, section } = withSection(payload)
+
+      expect(() => parseStandaloneGraph(buffer, section)).toThrow(/越界|bounds/i)
+    })
+
     it('throws when the module table length is not a multiple of 52', () => {
       const { payload } = makeStandaloneGraph([{ contents: 'x' }])
       const offAt = payload.length - 32 - 16 // Offsets 起点 = payloadLen - Offsets - trailer
