@@ -52,9 +52,13 @@ export function discoverBytecodeAnchor(buffer: Buffer, signature: string, source
     )
   }
 
+  // 纯槽位 needle（n=0）的全 binary 计数对所有候选必然相同，提前算一次：
+  // ===1 时全 binary 仅此一处，n=0 即唯一；≥2 时所有候选的 n=0 都不唯一，直接从 n=1 扩展
+  const baseCount = countOccurrencesCapped(buffer, needle)
+
   const qualified: string[] = []
   for (const pos of slots) {
-    const pattern = extendToUnique(buffer, bc, pos, sourceTokens)
+    const pattern = extendToUnique(buffer, bc, pos, sourceTokens, baseCount)
     if (pattern !== null) qualified.push(pattern)
   }
   if (qualified.length !== 1) {
@@ -93,27 +97,40 @@ export function discoverBytecodeAnchor(buffer: Buffer, signature: string, source
 /**
  * 从槽位起点向后逐 4B 追加伴生：每步把 sourceTokens 填进首槽得到完整字节串，
  * 做全 binary 唯一性检查；首次恰好命中 1 次即合格，返回 '{{tokens}}' + 伴生序列 hex。
+ * n=0（纯槽位）判定已由调用方以 baseCount 统一做过：===1 时全 binary 仅此一处，
+ * 该候选即纯槽位锚点（slots 搜索已保证此处在目标模块区间内）。
  * 伴生只读目标模块 bytecode 区间内相邻字节，越界即该候选失败；8 个伴生仍不唯一返回 null。
  */
-function extendToUnique(buffer: Buffer, bc: Span, pos: number, sourceTokens: number): string | null {
-  for (let n = 0; n <= MAX_COMPANIONS; n++) {
+function extendToUnique(
+  buffer: Buffer,
+  bc: Span,
+  pos: number,
+  sourceTokens: number,
+  baseCount: number,
+): string | null {
+  if (baseCount === 1) return '{{tokens}}'
+  for (let n = 1; n <= MAX_COMPANIONS; n++) {
     const total = SLOT_WIDTH + n * SLOT_WIDTH
     if (pos + total > bc.off + bc.len) return null
     const bytes = Buffer.alloc(total)
     bytes.writeUInt32LE(sourceTokens, 0)
     buffer.copy(bytes, SLOT_WIDTH, pos + SLOT_WIDTH, pos + total)
-    if (countOccurrences(buffer, bytes) === 1) {
+    if (countOccurrencesCapped(buffer, bytes) === 1) {
       return '{{tokens}}' + bytes.subarray(SLOT_WIDTH).toString('hex')
     }
   }
   return null
 }
 
-/** 全 binary 出现次数（indexOf 循环，offset 推进 idx+1 防重叠命中） */
-function countOccurrences(buffer: Buffer, needle: Buffer): number {
+/**
+ * 全 binary 出现次数，三态语义（0/1/≥2）：调用方只需「是否恰好唯一」，
+ * 数到 2 即短路返回，非唯一场景不再数完全程（150MB 级 binary 上避免无谓全扫）。
+ * indexOf 循环，offset 推进 idx+1 防重叠命中。
+ */
+function countOccurrencesCapped(buffer: Buffer, needle: Buffer): number {
   let count = 0
   let offset = 0
-  while (true) {
+  while (count < 2) {
     const idx = buffer.indexOf(needle, offset)
     if (idx === -1) break
     count++
