@@ -337,9 +337,10 @@ export async function migrationCommand(
   const failedCombos: Array<{ combo: string, message: string }> = []
   const failedTargets: Array<{ target: number, message: string }> = []
   const producedShortVers: string[] = []
-  // bytecode 版本（2.1.246+）无锚点警告：多个 target 共享同一 platform 结论，只提醒一次
+  // bytecode 版本（2.1.246+）无锚点警告：多个 target 共享同一 platform 结论，只提醒一次。
+  // 循环内 toVersion 是固定常量、platform 是进程常量，整个循环只有一种结论，单布尔即等价于按版本+平台去重
   const bytecodeAnchorWarnings: string[] = []
-  const warnedBytecodePlatforms = new Set<string>()
+  let bytecodeAnchorWarned = false
   // 按 token 去重：同 token 的多个 combo（如 27w 与 27w-flow 都反解为 270000）只 execute 一次，
   // 避免目标 binary 互相覆盖；后续同 token combo 仍记入 migratedCombos（展示源配置），但标记 skipped
   const seenTokens = new Set<number>()
@@ -363,13 +364,10 @@ export async function migrationCommand(
     seenTokens.add(targetTokens)
     const outcome = await applier.execute(toVersion, targetTokens, prepared.data, applierOptions)
     if (outcome.ok) {
-      if (outcome.data.bytecodeAnchorMissing) {
+      if (outcome.data.bytecodeAnchorMissing && !bytecodeAnchorWarned) {
+        bytecodeAnchorWarned = true
         const platform = `${process.platform}-${process.arch}`
-        const key = `${toVersion}:${platform}`
-        if (!warnedBytecodePlatforms.has(key)) {
-          warnedBytecodePlatforms.add(key)
-          bytecodeAnchorWarnings.push(t('warning.bytecodePatternMissing', { version: toVersion, platform }))
-        }
+        bytecodeAnchorWarnings.push(t('warning.bytecodePatternMissing', { version: toVersion, platform }))
       }
       const producedShortVer = extractShortVerFromPath(outcome.data.binaryPath)
       migratedCombos.push(combo)
