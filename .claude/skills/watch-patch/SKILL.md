@@ -10,8 +10,9 @@ description: 定时检索 Claude Code 新包，Patch 并发版
 * CC：Claude Code
 * pattern: `<project-root>/patterns/*.json`（分片格式，按版本独立文件，如 `2.1.180.json`）
 * pattern-index: `<project-root>/patterns/versions.json`（版本索引，如 `{ "version": "2.1.161", "platforms": [ "darwin-arm64" ]}`）
+* bytecodePlatforms: `versions.json` 每版本的 bytecode 锚点已实证平台列表（如 `["darwin-arm64"]`）；仅实证平台在列，2.1.246 之前版本无此字段
 * watch-patch: 即本技能，`<project-root>/.claude/skills/watch-patch/SKILL.md`
-* patch-steps: 如何针对新版本生成 pattern 的步骤 `<project-root>/.claude/skills/watch-patch/references/patch-steps.md`（核心已脚本化：`pnpm pattern:gen <version>` + `pnpm pattern:upload <version>`）
+* patch-steps: 如何针对新版本生成 pattern 的步骤 `<project-root>/.claude/skills/watch-patch/references/patch-steps.md`（核心已脚本化：`pnpm pattern:gen <version>` 内含文本锚点发现 + patch 模拟 + bytecode 锚点自动生成与实证（仅 ≥2.1.246 的 bytecode 版本），`pnpm pattern:upload <version>` 上传）
 * backoff level（退避级别）：轮询间隔档位 L0=30min / L1=60min / L2=120min / L3=240min（上限，4h）；`needWork=false` 升级（+1 封顶 L3），`needWork=true` 重置回 L0
 
 ## Workflow
@@ -55,4 +56,4 @@ echo "$(date -v+${N}M '+%M %H %d %m') *"
 - **退避链自包含**：退避级别编码在 cron 的 prompt（`backoff=Lk`）里接力传递，无需外部状态文件；session-only cron 随会话退出而消失，链路自然终止，下次手动 `/watch-patch` 重启即可
 - **one-shot 时刻**：必须用 `date -v+NM` 推算绝对时刻（自动处理跨日跨月跨年），dow 固定 `*`；切勿用 `ScheduleWakeup`（仅 /loop dynamic 会话可用）
 - **通知可靠性**：直接内联 `osascript`，不依赖 zsh 函数 `popup`（非交互 shell 不加载它）；完成用 `display notification`（非阻塞），超时告警用 `display dialog`（强提醒）
-- 子代理只需依次调 `pnpm pattern:gen <version>` 与 `pnpm pattern:upload <version>`，生成+上传逻辑已固化（详见 patch-steps.md），不再需要临场编写搜索脚本，但如果测试失败，仍然需要你来接入，并对脚本做出调整
+- 子代理只需依次调 `pnpm pattern:gen <version>`（已内含 bytecode 锚点自动生成与实证，仅 ≥2.1.246 的 bytecode 版本）与 `pnpm pattern:upload <version>`，生成+上传逻辑已固化（详见 patch-steps.md），不再需要临场编写搜索脚本，但如果测试失败，仍然需要你来接入，并对脚本做出调整
