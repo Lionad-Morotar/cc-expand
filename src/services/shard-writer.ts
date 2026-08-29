@@ -33,16 +33,21 @@ export class ShardWriter {
   /**
    * 幂等更新版本索引:同 version 已存在则更新 platforms,否则追加
    * 重复调用结果一致,不产生重复条目
+   * bytecodePlatforms 仅在传入时写入;省略时保留条目已有值,
+   * 因为锚点实证往往滞后于 pattern 生成,后续补证不应冲掉既有记录
    */
-  upsertVersionIndex(version: string, platforms: string[]): void {
+  upsertVersionIndex(version: string, platforms: string[], bytecodePlatforms?: string[]): void {
     this.ensureDir()
     const indexPath = join(this.patternsDir, 'versions.json')
     const items = this.readIndex(indexPath)
     const existing = items.findIndex(i => i.version === version)
     if (existing >= 0) {
       items[existing].platforms = platforms
+      if (bytecodePlatforms !== undefined) {
+        items[existing].bytecodePlatforms = bytecodePlatforms
+      }
     } else {
-      items.push({ version, platforms })
+      items.push({ version, platforms, ...(bytecodePlatforms !== undefined ? { bytecodePlatforms } : {}) })
     }
     writeFileSync(indexPath, JSON.stringify(items, null, 2))
   }

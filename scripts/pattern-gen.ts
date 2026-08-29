@@ -139,7 +139,8 @@ function main(): void {
 
   const writer = new ShardWriter({ patternsDir })
   writer.writeShard(version, osPatterns)
-  writer.upsertVersionIndex(version, platformsDone)
+  // bytecodePlatforms 先写空数组占位,锚点实证由后续自动生成流程填真值
+  writer.upsertVersionIndex(version, platformsDone, [])
   console.log(`\n生成 ${patternsDir}/${version}.json (${platformsDone.length} 平台)`)
   console.log('watch:patterns 后台进程将自动上传 OSS')
 

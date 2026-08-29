@@ -59,5 +59,56 @@ describe('ShardWriter', () => {
         platforms: ['darwin-arm64', 'darwin-x64', 'win32-x64']
       })
     })
+
+    it('writes bytecodePlatforms when provided for a new version', () => {
+      const dir = tmpPatternsDir()
+      const writer = new ShardWriter({ patternsDir: dir })
+
+      writer.upsertVersionIndex('2.1.200', ['darwin-arm64'], ['darwin-arm64'])
+
+      const items = JSON.parse(readFileSync(join(dir, 'versions.json'), 'utf8'))
+      expect(items).toEqual([
+        {
+          version: '2.1.200',
+          platforms: ['darwin-arm64'],
+          bytecodePlatforms: ['darwin-arm64']
+        }
+      ])
+    })
+
+    it('is idempotent for bytecodePlatforms: re-upserting replaces without duplicating', () => {
+      const dir = tmpPatternsDir()
+      const writer = new ShardWriter({ patternsDir: dir })
+
+      writer.upsertVersionIndex('2.1.200', ['darwin-arm64'], ['darwin-arm64'])
+      writer.upsertVersionIndex(
+        '2.1.200',
+        ['darwin-arm64', 'darwin-x64'],
+        ['darwin-arm64', 'darwin-x64']
+      )
+
+      const items = JSON.parse(readFileSync(join(dir, 'versions.json'), 'utf8'))
+      expect(items).toHaveLength(1)
+      expect(items[0]).toEqual({
+        version: '2.1.200',
+        platforms: ['darwin-arm64', 'darwin-x64'],
+        bytecodePlatforms: ['darwin-arm64', 'darwin-x64']
+      })
+    })
+
+    it('preserves existing bytecodePlatforms when omitted on re-upsert', () => {
+      const dir = tmpPatternsDir()
+      const writer = new ShardWriter({ patternsDir: dir })
+
+      writer.upsertVersionIndex('2.1.200', ['darwin-arm64'], ['darwin-arm64'])
+      writer.upsertVersionIndex('2.1.200', ['darwin-arm64', 'darwin-x64'])
+
+      const items = JSON.parse(readFileSync(join(dir, 'versions.json'), 'utf8'))
+      expect(items[0]).toEqual({
+        version: '2.1.200',
+        platforms: ['darwin-arm64', 'darwin-x64'],
+        bytecodePlatforms: ['darwin-arm64']
+      })
+    })
   })
 })
