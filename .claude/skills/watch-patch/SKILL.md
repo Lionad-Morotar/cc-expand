@@ -10,7 +10,7 @@ description: 定时检索 Claude Code 新包，Patch 并发版
 * CC：Claude Code
 * pattern: `<project-root>/patterns/*.json`（分片格式，按版本独立文件，如 `2.1.180.json`）
 * pattern-index: `<project-root>/patterns/versions.json`（版本索引，如 `{ "version": "2.1.161", "platforms": [ "darwin-arm64" ]}`）
-* bytecodePlatforms: `versions.json` 每版本的 bytecode 锚点已实证平台列表（如 `["darwin-arm64"]`）；仅实证平台在列，2.1.246 之前版本无此字段
+* bytecodePlatforms: `versions.json` 每版本的 bytecode 锚点已实证平台列表（如 `["darwin-arm64"]`）；仅实证平台在列；2.1.246 之前版本该字段为 `[]` 或缺失（pattern:gen 对任意版本无条件写入，空数组属正常而非数据异常）
 * watch-patch: 即本技能，`<project-root>/.claude/skills/watch-patch/SKILL.md`
 * patch-steps: 如何针对新版本生成 pattern 的步骤 `<project-root>/.claude/skills/watch-patch/references/patch-steps.md`（核心已脚本化：`pnpm pattern:gen <version>` 内含文本锚点发现 + patch 模拟 + bytecode 锚点自动生成与实证（仅 ≥2.1.246 的 bytecode 版本），`pnpm pattern:upload <version>` 上传）
 * backoff level（退避级别）：轮询间隔档位 L0=30min / L1=60min / L2=120min / L3=240min（上限，4h）；`needWork=false` 升级（+1 封顶 L3），`needWork=true` 重置回 L0

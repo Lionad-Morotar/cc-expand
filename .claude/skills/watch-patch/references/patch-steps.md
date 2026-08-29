@@ -46,9 +46,10 @@ npx vitest run tests/cli             # 针对性单测（加超时）
 
 2.1.246+ 的 pattern:gen 输出 `⚠ <平台> bytecode 锚点失败` 警告（或「锚点降级: 未找到 200000/32000/128000 语义主项」）表示该平台未产出 bytecode 锚点，仅文本 pattern，运行时可能不生效。诊断步骤：
 
-1. 用 `tsx zRefs/parse-graph.mjs <binary-path> <segment-offset>` 手工定位复核：binary 位于 `zRefs/claude-codes/<version>/` 解压目录，`<segment-offset>` 为 `__BUN` 段 fileoff（otool 读取）
-2. 确认属锚点布局漂移（Bun 编译器常量去重/布局变化）而非签名误判后，上报 cc-expand 维护者
-3. 锚点发现是 fail loud 的：唯一性硬约束下任何不确定性直接 throw，拒绝产出锚点而非产出错误锚点；实证事实参照——2.1.250 五平台（darwin-arm64/darwin-x64/linux-arm64/linux-x64/win32-x64）已全部自动产出锚点
+1. 用 `tsx zRefs/parse-graph.mjs <binary-path> <segment-offset>` 手工定位复核：binary 位于 `zRefs/claude-codes/extracted/v<version>/<os>-<arch>/package/<binary>`（如 `zRefs/claude-codes/extracted/v2.1.250/darwin-arm64/package/claude`；少数历史布局无 `package/` 一级，findBinary 兼容两种），`<segment-offset>` 为 `__BUN` 段 fileoff（otool 读取）
+2. 注意 pattern:gen 成功后会清理 `extracted/v<x>/` 与 `tarballs/` 中发布超 7 天的缓存——事后回顾诊断时 binary 常已被删，先确认目录仍存在；已清理则重新 `npm pack` 下载，或生成时改用 `--from-extracted` 保留
+3. 确认属锚点布局漂移（Bun 编译器常量去重/布局变化）而非签名误判后，上报 cc-expand 维护者
+4. 锚点发现是 fail loud 的：唯一性硬约束下任何不确定性直接 throw，拒绝产出锚点而非产出错误锚点；实证事实参照——2.1.250 五平台（darwin-arm64/darwin-x64/linux-arm64/linux-x64/win32-x64）已全部自动产出锚点
 
 ## 已知版本结构差异
 
