@@ -75,6 +75,34 @@ describe('discoverBytecodeAnchor', () => {
       expect(() => discoverBytecodeAnchor(buffer, SIGNATURE, SOURCE_TOKENS)).toThrow(/无 \d+ 槽位/)
     })
 
+    it('should throw when the target module bytecode span is empty', () => {
+      const graph = makeStandaloneGraph([
+        { name: 'target.js', contents: `// ${SIGNATURE}`, bytecode: Buffer.alloc(0) },
+      ])
+      const buffer = makeMachO(wrapSectionData(graph.payload))
+      expect(() => discoverBytecodeAnchor(buffer, SIGNATURE, SOURCE_TOKENS)).toThrow(/区间为空/)
+    })
+
+    it('should throw when two slots each extend to a distinct unique pattern (ambiguous)', () => {
+      // 两个槽位伴生链不同且各自全 binary 唯一：n=0 纯槽位出现 2 次，
+      // n=1 起 [200000][111] 与 [200000][444] 各恰 1 次 → 合格候选 2 个，歧义必须 fail loud
+      const seq = (...nums: number[]): Buffer => {
+        const buf = Buffer.alloc(nums.length * 4)
+        nums.forEach((v, i) => buf.writeUInt32LE(v, i * 4))
+        return buf
+      }
+      const graph = makeStandaloneGraph([
+        {
+          name: 'target.js',
+          contents: `// ${SIGNATURE}`,
+          bytecode: Buffer.concat([seq(SOURCE_TOKENS, 111, 222, 333), seq(SOURCE_TOKENS, 444, 555, 666)]),
+        },
+        { name: 'decoy.js', contents: '// decoy', bytecode: Buffer.alloc(16, 0xaa) },
+      ])
+      const buffer = makeMachO(wrapSectionData(graph.payload))
+      expect(() => discoverBytecodeAnchor(buffer, SIGNATURE, SOURCE_TOKENS)).toThrow(/合格候选 2 个/)
+    })
+
     it('should throw when the golden sequence appears twice (never unique)', () => {
       expect(() => discoverBytecodeAnchor(makeFixture(true), SIGNATURE, SOURCE_TOKENS)).toThrow(/合格候选/)
     })
