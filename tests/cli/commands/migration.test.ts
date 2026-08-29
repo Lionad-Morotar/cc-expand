@@ -389,6 +389,56 @@ describe('migration command', () => {
       expect(result.warnings?.some(w => w.includes('not-a-token'))).toBe(true)
     })
 
+    it('warns when bytecode target version has no anchor on this platform', async () => {
+      writeVersions(tempDir, { '2.1.177': { targets: [270000], patchedAt: '2026-06-15T10:00:00Z' } })
+      const applier = makeApplierStub({
+        execute: (target) => ({
+          ok: true,
+          data: {
+            version: '2.1.250', targetTokens: target, sourceValue: '200000',
+            replaceCount: 1, binaryPath: `/fake/claude-${target}`, details: [],
+            bytecodeAnchorMissing: true
+          }
+        })
+      })
+      const result = await migrationCommand([], {
+        homeDir: tempDir,
+        discoveryService: stubDiscovery('2.1.177'),
+        patchApplier: applier,
+        resolveLatest: async () => '2.1.250'
+      })
+      expect(result.success).toBe(true)
+      const warning = (result.warnings ?? []).find(w => w.includes('bytecode'))
+      expect(warning).toBeDefined()
+      expect(warning).toContain('2.1.250')
+      expect(warning).toContain(`${process.platform}-${process.arch}`)
+    })
+
+    it('dedupes bytecode anchor warning across targets (same version + platform)', async () => {
+      writeVersions(tempDir, {
+        '2.1.177': { targets: [270000, 500000], patchedAt: '2026-06-15T10:00:00Z' }
+      })
+      const applier = makeApplierStub({
+        execute: (target) => ({
+          ok: true,
+          data: {
+            version: '2.1.250', targetTokens: target, sourceValue: '200000',
+            replaceCount: 1, binaryPath: `/fake/claude-${target}`, details: [],
+            bytecodeAnchorMissing: true
+          }
+        })
+      })
+      const result = await migrationCommand([], {
+        homeDir: tempDir,
+        discoveryService: stubDiscovery('2.1.177'),
+        patchApplier: applier,
+        resolveLatest: async () => '2.1.250'
+      })
+      expect(result.success).toBe(true)
+      const bytecodeWarnings = (result.warnings ?? []).filter(w => w.includes('bytecode'))
+      expect(bytecodeWarnings).toHaveLength(1)
+    })
+
     it('should derive next from produced binary shortVer, not source combo (plugin segment mismatch)', async () => {
       // 源 combo 含 plugin 段（27w-flow），目标环境无 flow → 实际 binary 是 claude-27w，next 必须用 27w
       writeVersions(tempDir, {

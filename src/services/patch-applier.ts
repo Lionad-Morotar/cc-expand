@@ -22,6 +22,7 @@ import { PatchEngine } from '../core/patch-engine.js'
 import { BytecodePatchEngine } from '../core/bytecode-patch-engine.js'
 import { PatternDiscovery } from '../core/pattern-discovery.js'
 import { encodeTokenLiteral } from '../utils/encode-token-literal.js'
+import { isBytecodeVersion } from '../utils/version.js'
 import type { PluginsManager } from './plugins-manager.js'
 import { Verifier } from '../core/verifier.js'
 import { PackageService } from './package.js'
@@ -57,6 +58,9 @@ export interface AppliedPatch {
   replaceCount: number
   /** bytecode 常量池锚点替换次数（无锚点配置时为 0） */
   bytecodeReplaceCount?: number
+  /** bytecode 版本（2.1.246+）但当前 platform 无锚点配置：
+   *  文本替换会报告成功，运行时上下文窗口实际不变（是否警告由 CLI 层决定） */
+  bytecodeAnchorMissing?: boolean
   binaryPath: string
   details: Array<{ desc?: string, offset: number, sourceValue?: string, targetValue?: string }>
   /** codesign 失败时的告警（binary 可能无法执行） */
@@ -259,6 +263,9 @@ export class PatchApplier {
     // bytecode 常量池锚点替换（CC 2.1.246+）：文本替换只改嵌入源文本，运行时执行的是
     // bytecode，常量内联在常量池中。锚点聚合去重后统一替换；失败即整体失败（原子性由引擎保证）。
     const bytecodePatterns = [...new Set(patches.flatMap(p => p.bytecodePatterns ?? []))]
+    // bytecode 版本但本 platform 无锚点：文本替换「报告成功但运行时不变」，结构化标记交给
+    // CLI 层渲染警告（patch-applier 不依赖渲染层）。非 bytecode 版本不标记（文本替换真实生效）。
+    const bytecodeAnchorMissing = isBytecodeVersion(version) && bytecodePatterns.length === 0
     let bytecodeReplaced = 0
     if (bytecodePatterns.length > 0) {
       const sourceTokens = deriveSourceTokens(patches)
@@ -321,6 +328,7 @@ export class PatchApplier {
         sourceValue,
         replaceCount: patchResult.replaceCount ?? 0,
         bytecodeReplaceCount: bytecodeReplaced,
+        ...(bytecodeAnchorMissing ? { bytecodeAnchorMissing } : {}),
         binaryPath: patchedBinaryPath,
         details: patchResult.details,
         codesignWarning

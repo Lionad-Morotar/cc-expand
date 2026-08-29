@@ -46,3 +46,12 @@ export function isVersionGreater(a: string, b: string): boolean {
   }
   return false
 }
+
+/**
+ * 判定版本是否走 Bun bytecode 编译（2.1.246 起全面启用）。
+ * Why：bytecode 编译后运行时执行的是常量池内联字节，文本替换只改嵌入源文本，
+ * 无 bytecode 锚点的平台 patch 会「报告成功但运行时上下文窗口不变」，需要警告。
+ */
+export function isBytecodeVersion(version: string): boolean {
+  return isVersionGreater(version, '2.1.245')
+}

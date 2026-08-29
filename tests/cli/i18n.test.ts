@@ -53,6 +53,30 @@ describe('i18n locale guards', () => {
     })
   })
 
+  describe('warning.bytecodePatternMissing', () => {
+    const params = { version: '2.1.250', platform: 'darwin-arm64' }
+
+    it('has an English translation with placeholders replaced', () => {
+      setLocale('en')
+      const rendered = t('warning.bytecodePatternMissing', params)
+      expect(rendered).not.toBe('warning.bytecodePatternMissing') // 非缺失 key 回退
+      expect(rendered).toContain('2.1.250')
+      expect(rendered).toContain('darwin-arm64')
+      expect(rendered).not.toContain('{version}')
+      expect(rendered).not.toContain('{platform}')
+    })
+
+    it('has a Chinese translation with placeholders replaced', () => {
+      setLocale('zh')
+      const rendered = t('warning.bytecodePatternMissing', params)
+      expect(rendered).not.toBe('warning.bytecodePatternMissing')
+      expect(rendered).toContain('2.1.250')
+      expect(rendered).toContain('darwin-arm64')
+      expect(rendered).not.toContain('{version}')
+      expect(rendered).not.toContain('{platform}')
+    })
+  })
+
   describe('t() defensive lookup', () => {
     it('does not crash when currentLocale holds an unsupported value', () => {
       // 模拟 -l fr 等绕过校验的场景：currentLocale 被设为越界值

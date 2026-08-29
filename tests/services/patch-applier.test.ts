@@ -24,13 +24,23 @@ function fakeBinary(token = 200000): Buffer {
 }
 
 /** execute 全链路的公共夹具：prepare（注入带 bytecodePatterns 的 token pattern）→ execute */
-async function runExecute(binaryBuffer: Buffer) {
+async function runExecute(
+  binaryBuffer: Buffer,
+  opts: { version?: string, withBytecode?: boolean } = {}
+) {
+  const version = opts.version ?? '2.1.250'
+  const withBytecode = opts.withBytecode ?? true
   const homeDir = mkdtempSync(join(tmpdir(), 'ccx-applier-'))
   const binaryPath = join(homeDir, 'claude-raw')
   writeFileSync(binaryPath, binaryBuffer)
 
   const tokenPatches: PatchItem[] = [
-    { search: 'Aj8=200000,Ij_=20000', desc: 'token', sourceValue: '200000', bytecodePatterns: [BC_ANCHOR_HEX] }
+    {
+      search: 'Aj8=200000,Ij_=20000',
+      desc: 'token',
+      sourceValue: '200000',
+      ...(withBytecode ? { bytecodePatterns: [BC_ANCHOR_HEX] } : {})
+    }
   ]
   const configService = {
     ensureDirs: vi.fn(),
@@ -43,10 +53,10 @@ async function runExecute(binaryBuffer: Buffer) {
   } as unknown as PackageService
 
   const applier = new PatchApplier()
-  const prepared = await applier.prepare('2.1.250', { configService, packageService })
+  const prepared = await applier.prepare(version, { configService, packageService })
   if (!prepared.ok) throw new Error(`prepare failed: ${prepared.error.message}`)
 
-  const result = await applier.execute('2.1.250', 270000, prepared.data, { configService, packageService, homeDir })
+  const result = await applier.execute(version, 270000, prepared.data, { configService, packageService, homeDir })
   return { result, homeDir, configService }
 }
 
@@ -242,6 +252,47 @@ describe('PatchApplier.execute() bytecode 锚点', () => {
     if (result.ok) {
       expect(existsSync(result.data.binaryPath)).toBe(true)
       expect(vi.mocked(configService.recordPatchedCombo).mock.calls.length).toBe(1)
+    }
+    rmSync(homeDir, { recursive: true, force: true })
+  })
+})
+
+describe('PatchApplier.execute() bytecodeAnchorMissing 判定', () => {
+  it('bytecode 版本（2.1.250）无 bytecode 锚点 → bytecodeAnchorMissing === true', async () => {
+    // binary 只有文本锚点、pattern 无 bytecodePatterns：文本替换可成功，但运行时字节不变
+    const { result, homeDir } = await runExecute(
+      Buffer.from('Aj8=200000,Ij_=20000_X93=200000', 'utf8'),
+      { withBytecode: false }
+    )
+
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.data.bytecodeAnchorMissing).toBe(true)
+      expect(result.data.bytecodeReplaceCount).toBe(0)
+    }
+    rmSync(homeDir, { recursive: true, force: true })
+  })
+
+  it('非 bytecode 版本（2.1.239）无锚点 → 不标记（文本替换真实生效）', async () => {
+    const { result, homeDir } = await runExecute(
+      Buffer.from('Aj8=200000,Ij_=20000_X93=200000', 'utf8'),
+      { version: '2.1.239', withBytecode: false }
+    )
+
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.data.bytecodeAnchorMissing).toBeUndefined()
+    }
+    rmSync(homeDir, { recursive: true, force: true })
+  })
+
+  it('bytecode 版本（2.1.250）带锚点 → 不标记', async () => {
+    const { result, homeDir } = await runExecute(fakeBinary(200000), { withBytecode: true })
+
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.data.bytecodeAnchorMissing).toBeUndefined()
+      expect(result.data.bytecodeReplaceCount).toBeGreaterThan(0)
     }
     rmSync(homeDir, { recursive: true, force: true })
   })
