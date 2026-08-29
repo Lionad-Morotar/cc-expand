@@ -217,7 +217,7 @@ describe('CLI Integration', () => {
 
     const content = readFileSync(zshrc, 'utf-8')
     expect(content).toContain('cc()')
-    expect(content).toContain('alias c=\'cc 27w\'')
+    expect(content).toContain('alias c=\'cc 28w\'')
 
     rmSync(tempDir, { recursive: true, force: true })
   })
@@ -243,7 +243,7 @@ describe('CLI Integration', () => {
     const content = readFileSync(zshrc, 'utf-8')
     expect(content).toContain('cc_backup()')
     expect(content).toContain('alias c_backup=')
-    expect(content).toContain('alias c=\'cc 27w\'')
+    expect(content).toContain('alias c=\'cc 28w\'')
 
     rmSync(tempDir, { recursive: true, force: true })
   })

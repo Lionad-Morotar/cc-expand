@@ -58,7 +58,7 @@ describe('setup command', () => {
     const content = readFileSync(zshrc, 'utf-8')
     expect(result.success).toBe(true)
     expect(content).toContain('cc()')
-    expect(content).toContain('alias c=\'cc 27w\'')
+    expect(content).toContain('alias c=\'cc 28w\'')
     expect(content).toContain('cc-expand run "$ctx" --print-binary 2>/dev/null')
     expect(content).toContain('cc-expand patch --target "$ctx" --yes || {')
     expect(content).toContain('if [[ -z "$binary" || ! -x "$binary" ]]; then')
@@ -73,7 +73,7 @@ describe('setup command', () => {
     const content = readFileSync(zshrc, 'utf-8')
     expect(result.success).toBe(true)
     expect(content).toContain('cc()')
-    expect(content).toContain('alias c=\'cc 27w\'')
+    expect(content).toContain('alias c=\'cc 28w\'')
   })
 
   it('should backup existing cc function', async () => {
