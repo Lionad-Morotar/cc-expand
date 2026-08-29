@@ -6,6 +6,16 @@ import { Verifier } from '../../src/core/verifier.js'
 import { CcxError, ErrorCode } from '../../src/types/index.js'
 import { encodeTokenLiteral } from '../../src/utils/encode-token-literal.js'
 
+/** bytecode 锚点（与 bytecode-patch-engine.test 同款实证锚点） */
+const BC_ANCHOR_HEX = '{{tokens}}007d0000 00f40100 40420f00'.replace(/\s/g, '')
+
+/** 构造含 bytecode 槽位的 binary 片段：首槽 4B token + 三连邻居 Int32 */
+function bcSegment(token: number): Buffer {
+  const slot = Buffer.alloc(4)
+  slot.writeUInt32LE(token)
+  return Buffer.concat([slot, Buffer.from('007d0000 00f40100 40420f00'.replace(/\s/g, ''), 'hex')])
+}
+
 /** 构造 token-encode generator（与生产 patch-applier 等价） */
 const tokenGen = (tokens: number) => (slot: number) => encodeTokenLiteral(tokens, slot)
 
@@ -185,6 +195,61 @@ describe('Verifier', () => {
       expect(result.success).toBe(true)
       expect(result.checks).toContainEqual(
         expect.objectContaining({ name: 'pattern-replaced', passed: true })
+      )
+    })
+
+    it('should pass bytecode-verified when patched binary contains target-filled anchors', async () => {
+      // Arrange: 文本槽已替换 + bytecode 槽已是目标值（真实 patch 后的形态）
+      const binaryPath = join(tempDir, 'claude')
+      writeFileSync(binaryPath, Buffer.concat([
+        Buffer.from('Aj8=256000,Ij_=20000_X93=256000', 'utf8'),
+        bcSegment(256000)
+      ]))
+      chmodSync(binaryPath, 0o755)
+
+      const verifier = new Verifier()
+      const result = await verifier.verify({
+        binaryPath,
+        targetGenerator: tokenGen(256000),
+        sourceValue: '200000',
+        sourceTokens: 200000,
+        targetTokens: 256000,
+        patches: [
+          { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000', bytecodePatterns: [BC_ANCHOR_HEX] }
+        ]
+      })
+
+      expect(result.success).toBe(true)
+      expect(result.checks).toContainEqual(
+        expect.objectContaining({ name: 'bytecode-verified', passed: true })
+      )
+    })
+
+    it('should fail bytecode-verified when bytecode slot still holds source value', async () => {
+      // bug 现场复现：文本替换成功但 bytecode 槽未改（2.1.246+ 文本 patch 无效）→ verify 必须拦截
+      const binaryPath = join(tempDir, 'claude')
+      writeFileSync(binaryPath, Buffer.concat([
+        Buffer.from('Aj8=256000,Ij_=20000_X93=256000', 'utf8'),
+        bcSegment(200000) // 未替换的源值
+      ]))
+      chmodSync(binaryPath, 0o755)
+
+      const verifier = new Verifier()
+      const result = await verifier.verify({
+        binaryPath,
+        targetGenerator: tokenGen(256000),
+        sourceValue: '200000',
+        sourceTokens: 200000,
+        targetTokens: 256000,
+        patches: [
+          { search: 'Aj8=200000,Ij_=20000', desc: 'MODEL_CONTEXT_WINDOW_DEFAULT', sourceValue: '200000', bytecodePatterns: [BC_ANCHOR_HEX] }
+        ]
+      })
+
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe(ErrorCode.VERIFICATION_FAILED)
+      expect(result.checks).toContainEqual(
+        expect.objectContaining({ name: 'bytecode-verified', passed: false })
       )
     })
   })

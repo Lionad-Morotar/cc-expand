@@ -5,6 +5,7 @@
 import { accessSync, constants, readFileSync } from 'node:fs'
 import type { PatchItem } from '../types/index.js'
 import { CcxError, ErrorCode } from '../types/index.js'
+import { BytecodePatchEngine } from './bytecode-patch-engine.js'
 
 export interface VerifyConfig {
   /** 二进制文件路径 */
@@ -15,6 +16,10 @@ export interface VerifyConfig {
   sourceValue: string
   /** patch 项列表 */
   patches: PatchItem[]
+  /** 源 tokens 数值（bytecode 锚点搜索用）；有 bytecodePatterns 时必传 */
+  sourceTokens?: number
+  /** 目标 tokens 数值（bytecode 锚点验证用）；有 bytecodePatterns 时必传 */
+  targetTokens?: number
 }
 
 export interface VerifyResult {
@@ -106,6 +111,34 @@ export class Verifier {
         ? undefined
         : `Unpatched patterns: ${failedPatches.join(', ') || 'none found'}`
     })
+
+    // Check 1.5: bytecode 锚点验证（CC 2.1.246+ 必查）
+    // 文本替换在 bytecode 编译的 binary 上无效却报告成功（2.1.250 bug 现场），
+    // 故对聚合出的 bytecode 锚点做目标值回查：未改字节 → 锚点不命中 → 验证失败。
+    const bytecodePatterns = [...new Set(config.patches.flatMap(p => p.bytecodePatterns ?? []))]
+    if (bytecodePatterns.length > 0) {
+      // 缺参时显式失败而非静默填 0：按 0 填充搜索必然不命中，会把「配置缺参」
+      // 误报成「锚点未命中」，误导排障方向（patched binary 还会被误删）
+      if (config.sourceTokens === undefined || config.targetTokens === undefined) {
+        checks.push({
+          name: 'bytecode-verified',
+          passed: false,
+          message: 'bytecodePatterns configured but sourceTokens/targetTokens missing in VerifyConfig'
+        })
+      } else {
+        const bytecodeResult = new BytecodePatchEngine().verify(
+          content,
+          { bytecodePatterns, targetTokens: config.targetTokens, sourceTokens: config.sourceTokens }
+        )
+        checks.push({
+          name: 'bytecode-verified',
+          passed: bytecodeResult.success,
+          message: bytecodeResult.success
+            ? undefined
+            : `bytecode anchor check failed: ${bytecodeResult.error?.message ?? 'unknown'}`
+        })
+      }
+    }
 
     // Check 2: 可执行性
     let isExecutable = false
