@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Bytecode 常量池锚点 patch 机制：适配 contextWindow 配置常量编译进 bytecode 常量池的新格式二进制（Mach-O/PE/ELF 三格式 section 解析 + StandaloneModuleGraph 模块表定位），已在 2.1.250 全平台实证；老格式的字面量锚点 patch 路径不变
+- 支持 Claude Code 2.1.210 / 2.1.217 / 2.1.218 及 2.1.227 起的锚点形态演进：锚点计数合并与扩展自适应（5/6/7/8），过滤 `200000+expr` 伴生表达式噪声避免误 patch 计算式
+- `DiscoveryService` 新增安装位置兜底扫描表（内联自 tweakcc 社区经验，覆盖 npm/pnpm/yarn/bun 与 volta/fnm/nvm/nodenv/nvs/asdf/mise 及三平台原生安装路径）：PATH 与 NPX 缓存均未命中时仍可发现 native binary
+- 无 bytecode 锚点覆盖的平台执行 patch 时输出黄色警告，明确提示该版本暂不支持，而非静默无产出
+
+### Changed
+
+- 默认 target 档位从 27w 调整为 28w（对齐 2.1.x 运行时 contextWindow 实际上限 280000）
+- [internal] pattern-gen 自动发现 bytecode 常量池锚点并上传 OSS，versions.json 索引新增 `bytecodePlatforms` 元信息
+- [internal] watch-patch 轮询改为指数避退（30 分钟起步、封顶 4 小时）；新增 `pattern:cleanup` 自动清理 >7 天的 CC 版本缓存
+- [internal] 收敛 release 发布门禁链：`prebuild` 自动跑测试、`prerelease` 自动 build、`release` 锁官方 registry
+
+### Fixed
+
+- [internal] 修复 NPX cache 发现用例在非 win32 平台必然失败的问题（用例放置的二进制文件名与 `findInNpxCache` 平台分支不一致）
+
 ## [0.4.1] - 2026-07-07
 
 ### Fixed
