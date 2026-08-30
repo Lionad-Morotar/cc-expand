@@ -7,7 +7,7 @@
  */
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import { PatchApplier } from '../../services/patch-applier.js'
+import { PatchApplier, type AppliedPatch } from '../../services/patch-applier.js'
 import { collectPluginContext } from '../../services/plugin-patches.js'
 import { INTERNAL_PLUGINS } from '../../internal-plugins.js'
 import { ChannelConfig } from '../../services/channel-config.js'
@@ -25,6 +25,22 @@ import { patchRemoveCommand } from './patch-remove.js'
 
 /** re-export：getPatchedBinaryName 现归属 PatchApplier，此处转发以保持向后兼容（patch-binary-name.test.ts） */
 export { getPatchedBinaryName } from '../../services/patch-applier.js'
+
+/**
+ * 组装 patch 成功的 warnings（无警告时返回 undefined）。
+ * bytecode 版本无锚点：patch 报告成功但运行时上下文窗口不变，属警告而非失败（复用 warnings 先例）。
+ */
+function buildPatchWarnings(applied: AppliedPatch): string[] | undefined {
+  const warnings: string[] = []
+  if (applied.codesignWarning) warnings.push(applied.codesignWarning)
+  if (applied.bytecodeAnchorMissing) {
+    warnings.push(t('warning.bytecodePatternMissing', {
+      version: applied.version,
+      platform: `${process.platform}-${process.arch}`
+    }))
+  }
+  return warnings.length > 0 ? warnings : undefined
+}
 
 export interface PatchData {
   version: string
@@ -256,6 +272,6 @@ export async function patchCommand(
       `ccx run ${applied.targetTokens}`,
       `cc ${applied.targetTokens}`
     ],
-    warnings: applied.codesignWarning ? [applied.codesignWarning] : undefined
+    warnings: buildPatchWarnings(applied)
   }
 }

@@ -136,7 +136,7 @@ export async function setupCommand(
         success: true,
         command: 'setup',
         summary: 'Setup cancelled',
-        data: { configFile, defaultTarget: options?.defaultTarget ?? 270000 }
+        data: { configFile, defaultTarget: options?.defaultTarget ?? 280000 }
       }
     }
   }
@@ -145,7 +145,7 @@ export async function setupCommand(
   content = backupExistingDefinitions(content)
 
   // 追加生成的函数
-  const defaultTarget = options?.defaultTarget ?? 270000
+  const defaultTarget = options?.defaultTarget ?? 280000
   const shellCode = generateShellFunction(defaultTarget)
   writeFileSync(configFile, content + shellCode, 'utf-8')
 

@@ -87,7 +87,7 @@ describe('install command', () => {
     })
 
     expect(result.success).toBe(true)
-    expect(result.next).toEqual(['ccx patch --target 270000 --yes'])
+    expect(result.next).toEqual(['ccx patch --target 280000 --yes'])
   })
 
   it('suggests migration when patch history exists (upgrade scenario)', async () => {

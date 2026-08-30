@@ -54,14 +54,14 @@ describe('run command', () => {
     expect((result as { data?: { targetTokens: number } }).data?.targetTokens).toBe(270000)
   })
 
-  it('defaults to 270000 when no argument provided', async () => {
-    createBinary('claude-27w')
+  it('defaults to 280000 when no argument provided', async () => {
+    createBinary('claude-28w')
     const child = fakeChild()
     const promise = runCommand(undefined, { exitOnChildExit: false, spawn: () => child })
     child.emit('exit', 0)
     const result = await promise
     expect(result).toBeDefined()
-    expect((result as { data?: { targetTokens: number } }).data?.targetTokens).toBe(270000)
+    expect((result as { data?: { targetTokens: number } }).data?.targetTokens).toBe(280000)
   })
 
   it('returns error result for missing binary', async () => {

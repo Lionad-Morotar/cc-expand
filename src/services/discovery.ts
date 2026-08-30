@@ -5,6 +5,7 @@
 import { execFile } from 'node:child_process'
 import { existsSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
+import { findAllInstallations } from './claude-discovery.js'
 import { CcxError, ErrorCode } from '../types/index.js'
 
 export interface DiscoveryOptions {
@@ -44,6 +45,16 @@ export class DiscoveryService {
       if (npxBinary) {
         return npxBinary
       }
+    }
+
+    // 3. 使用 tweakcc 的硬编码搜索路径表兜底
+    // 这张表覆盖了 npm/pnpm/yarn/bun/volta/fnm/nvm/nodenv/nvs/asdf/mise
+    // 以及 macOS/Linux/Windows 的常见安装目录，还有原生安装路径。
+    // 只取 native binary：npm-based 的 path 指向 cli.js，直接 execFile 会失败。
+    const installations = await findAllInstallations()
+    const native = installations.find(i => i.kind === 'native')
+    if (native) {
+      return native.path
     }
 
     throw new CcxError(
@@ -103,7 +114,7 @@ export class DiscoveryService {
       '@anthropic-ai',
       'claude-code',
       'bin',
-      'claude.exe'
+      process.platform === 'win32' ? 'claude.exe' : 'claude'
     )
 
     for (const entry of readdirSync(npxDir)) {

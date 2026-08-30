@@ -29,7 +29,11 @@
     "pattern:verify-oss": "tsx scripts/oss-verify.ts",
     "pattern:latest-check": "tsx scripts/latest-check.ts",
     "pattern:verify": "tsx scripts/pattern-verify.ts",
-    "prepublishOnly": "pnpm build && vitest run --exclude tests/integration"
+    "pattern:cleanup": "tsx scripts/cleanup-versions.ts",
+    "prebuild": "vitest run --exclude tests/integration",
+    "prerelease": "pnpm run build",
+    "release": "pnpm publish --config.registry=https://registry.npmjs.org --no-git-checks",
+    "prepublishOnly": "tsup"
   },
   "keywords": [
     "claude-code",

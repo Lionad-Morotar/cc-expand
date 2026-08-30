@@ -61,7 +61,8 @@ export async function runCommand(
 ): Promise<CommandResult<RunData> | void> {
   // binary 名用 shortVer combo。支持纯 token（27w/270000）与 combo（27w-flow/270k-flow），
   // 首段 token 经 parse+format 规范化，plugin 段保留。
-  const shortVer = targetInput ? resolveRunShortVer(targetInput) : formatTokenCount(270000)
+  // 默认 target 28w：bytecode 锚点实证 280000 可用且为用户当前常用档（2026-08）
+  const shortVer = targetInput ? resolveRunShortVer(targetInput) : formatTokenCount(280000)
   // targetTokens 从规范 shortVer 的 token 段反解（parse(format(n))===n 双向对称保证还原）
   const targetTokens = parseTokenCount(shortVer.split('-')[0])
   const target = shortVer

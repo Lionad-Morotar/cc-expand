@@ -58,8 +58,12 @@ plugin 贡献给 patched binary 命名的短字符串。各 enabled plugin 的 s
 _Avoid_: tag、label、suffix、version（version 指 plugin/CC 版本号，shortVer 是命名标识）
 
 **Patch Item（patch 规则）**:
-plugin 清单里的一条等长二进制改写规则：`{search, sourceValue, target}`。`search` 定位上下文、`sourceValue` 是被覆盖的精确子串、`target` 是等长替换（`{value, pad?}` 的 literal）。`token-expansion` 的 item 无 target 字段（走 plugin 级 `token-encode` 策略）。是现有 `PatchItem` 类型的泛化——从“只替换数字常量”扩展到“任意等长 JS 源码改写”。
+plugin 清单里的一条等长二进制改写规则：`{search, sourceValue, target, bytecodePatterns?}`。`search` 定位上下文、`sourceValue` 是被覆盖的精确子串、`target` 是等长替换（`{value, pad?}` 的 literal）。`token-expansion` 的 item 无 target 字段（走 plugin 级 `token-encode` 策略）。是现有 `PatchItem` 类型的泛化——从“只替换数字常量”扩展到“任意等长 JS 源码改写”。
 _Avoid_: rule、operation、step
+
+**Bytecode Pattern（字节码锚点）**:
+针对 CC 2.1.246+ native binary 的第二类 patch 指令：hex 字节序列，`{{tokens}}` 占位符标记 bytecode 常量池中的 4 字节 Int32 token 槽位。CC 2.1.246 起 native binary 由 Bun 编译启用 bytecode，JS 常量内联在常量池，文本替换（Patch Item 的 `search`）触达不到运行时——必须同时替换常量池字节。挂在 Patch Item 的 `bytecodePatterns` 字段上；与文本锚点关键差异：**全 binary 唯一命中是硬约束**（0 次或多次命中均拒绝 patch，错误码 `PATTERN_NOT_FOUND`/`AMBIGUOUS_PATTERN`），搜索填源值、写入换目标值，不做幂等重放。锚点由 pattern-gen 自动生成：定位签名模块常量池槽位后伴生自适应扩展至全 binary 唯一，并经 BytecodePatchEngine patch+verify 的 binary 级实证才写入 pattern；实证失败的版本/平台不加锚点，由 `versions.json` 的 `bytecodePlatforms` 字段标注已实证平台。
+_Avoid_: byte pattern（与文本 search 混淆）、constant pool patch（实现细节不是概念）
 
 ## Flagged ambiguities
 
@@ -68,6 +72,7 @@ _Avoid_: rule、operation、step
 - **`update` 单独出现时永远歧义**。必须追问或根据上下文锁定到三重含义之一。README 中的"Version Update Mechanism"特指 pattern update（第 3 种）。
 - **`migration` 与 `patch` 的边界**。两者都产生 patched binary，但意图不同：`patch` 是「为某版本设定/调整 token 配置」（交互、单 target、可首次设定）；`migration` 是「把既有配置原样搬到新版本」（非交互、批量、仅升级场景）。当用户说「升级后还要重新 patch」时，正确引导是 `migration` 而非重复 `patch`。
 - **`status` 报告的版本以 Active Version（`channel.json`）为准，而非 System Version（PATH 原生 `claude`）**。`setup`/`migration` 切换 channel 后，`status` 必须反映新版本；若仍显示旧版本，说明 status 未读 `channel.json`（v0.3.7 前的 bug）。无 `channel.json` 时回退 DiscoveryService，照顾未 `setup` 的用户——这与 `patch`/`setup` 读 channel.json 的优先级一致。
+- **验证 patch 运行效果必须跑 `~/.cc-expand/bin/claude-<shortVer>`，不要用其他 binary**。三个路径是三个不同 binary：`~/.cc-expand/packages/<version>/bin/claude` 是只读源缓存（patch 的输入，永不被改写）；`~/.cc-expand/bin/claude-<shortVer>` 是 patch 产物（`ccx run <target>` 实际执行它）；PATH 上的 `claude` 是渠道安装的系统 binary（与 cc-expand 管理的 patch 无关）。在源缓存或系统 binary 上验证会看到「未生效」假象。
 
 ## 示例对话
 

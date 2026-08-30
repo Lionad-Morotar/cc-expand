@@ -6,6 +6,7 @@ import { patchCommand } from '../../../src/cli/commands/patch.js'
 import { patchRemoveCommand } from '../../../src/cli/commands/patch-remove.js'
 import { ConfigService } from '../../../src/services/config.js'
 import { PatchCleanupService } from '../../../src/services/patch-cleanup.js'
+import type { UserConfigService } from '../../../src/services/user-config.js'
 
 describe('patch command argument validation', () => {
   let tempDir: string
@@ -128,6 +129,40 @@ describe('patch command argument validation', () => {
     const result = await patchCommand(['--target', '500000', '2.1.170'], { configService: stubConfig })
     expect(result.error?.message ?? '').not.toContain('No version specified')
     expect(result.error?.message ?? '').toContain('2.1.170')
+  })
+
+  it('warns when bytecode version (2.1.250) has no anchor on this platform', async () => {
+    // 真实链路：2.1.250 + 无 bytecodePatterns 的 pattern → patch 成功但 bytecodeAnchorMissing，
+    // warnings 应渲染 i18n 文案（含版本号与平台标识）
+    const version = '2.1.250'
+    presetFakePackage(version)
+    const binPath = join(tempDir, '.cc-expand', 'packages', version, 'bin', 'claude')
+    // 纯文本锚点 binary：文本替换可成功，无 bytecode 常量池
+    writeFileSync(binPath, 'Aj8=200000,Ij_=20000_X93=200000')
+
+    const config = {
+      ensureDirs: () => {},
+      getPatternForVersion: async () => [
+        { search: 'Aj8=200000,Ij_=20000', desc: 'token', sourceValue: '200000' }
+      ],
+      recordPatchedCombo: () => {}
+    } as unknown as ConfigService
+    // autoMaintain 关闭：跳过 shell profile 维护，聚焦警告断言
+    const userConfigService = {
+      get: (key: string) => (key === 'autoMaintain' ? false : undefined)
+    } as unknown as UserConfigService
+
+    const result = await patchCommand(
+      [version, '--target', '270000', '--yes'],
+      { configService: config, userConfigService }
+    )
+
+    expect(result.success).toBe(true)
+    expect(result.warnings?.length).toBe(1)
+    const warning = result.warnings?.[0] ?? ''
+    expect(warning).toContain(version)
+    expect(warning).toContain(`${process.platform}-${process.arch}`)
+    expect(warning).toMatch(/bytecode/i)
   })
 })
 

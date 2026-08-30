@@ -19,14 +19,23 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { execSync } from 'node:child_process'
 import { PatchEngine } from '../core/patch-engine.js'
+import { BytecodePatchEngine } from '../core/bytecode-patch-engine.js'
 import { PatternDiscovery } from '../core/pattern-discovery.js'
 import { encodeTokenLiteral } from '../utils/encode-token-literal.js'
+import { isBytecodeVersion } from '../utils/version.js'
 import type { PluginsManager } from './plugins-manager.js'
 import { Verifier } from '../core/verifier.js'
 import { PackageService } from './package.js'
 import { classifyDesc } from './desc-classifier.js'
 import type { ConfigService } from './config.js'
 import { CcxError, ErrorCode, type PatchItem } from '../types/index.js'
+
+/** 从 pattern 推导源 tokens 数值（bytecode 锚点搜索用）；失败返回 undefined */
+function deriveSourceTokens(patches: PatchItem[]): number | undefined {
+  const raw = patches.find(p => p.sourceValue)?.sourceValue
+  const n = Number.parseInt(raw ?? '', 10)
+  return Number.isFinite(n) ? n : undefined
+}
 
 /** 获取 patched binary 文件名（Windows 需 .exe 扩展名）。
  *  参数是 shortVer 组合串（如 "27w-flow"），由 PluginsManager.computeShortVer 生成。 */
@@ -47,6 +56,11 @@ export interface AppliedPatch {
   targetTokens: number
   sourceValue: string
   replaceCount: number
+  /** bytecode 常量池锚点替换次数（无锚点配置时为 0） */
+  bytecodeReplaceCount?: number
+  /** bytecode 版本（2.1.246+）但当前 platform 无锚点配置：
+   *  文本替换会报告成功，运行时上下文窗口实际不变（是否警告由 CLI 层决定） */
+  bytecodeAnchorMissing?: boolean
   binaryPath: string
   details: Array<{ desc?: string, offset: number, sourceValue?: string, targetValue?: string }>
   /** codesign 失败时的告警（binary 可能无法执行） */
@@ -245,6 +259,32 @@ export class PatchApplier {
           : { code: ErrorCode.PATCH_FAILED, message: 'Patch failed' }
       }
     }
+
+    // bytecode 常量池锚点替换（CC 2.1.246+）：文本替换只改嵌入源文本，运行时执行的是
+    // bytecode，常量内联在常量池中。锚点聚合去重后统一替换；失败即整体失败（原子性由引擎保证）。
+    const bytecodePatterns = [...new Set(patches.flatMap(p => p.bytecodePatterns ?? []))]
+    // bytecode 版本但本 platform 无锚点：文本替换「报告成功但运行时不变」，结构化标记交给
+    // CLI 层渲染警告（patch-applier 不依赖渲染层）。非 bytecode 版本不标记（文本替换真实生效）。
+    const bytecodeAnchorMissing = isBytecodeVersion(version) && bytecodePatterns.length === 0
+    let bytecodeReplaced = 0
+    if (bytecodePatterns.length > 0) {
+      const sourceTokens = deriveSourceTokens(patches)
+      const bytecodeResult = new BytecodePatchEngine().patch(
+        buffer,
+        { bytecodePatterns, targetTokens, sourceTokens: sourceTokens ?? 0 }
+      )
+      if (!bytecodeResult.success) {
+        rmSync(patchedBinaryPath, { force: true })
+        return {
+          ok: false,
+          error: bytecodeResult.error
+            ? { code: bytecodeResult.error.code as ErrorCode, message: bytecodeResult.error.message, suggestion: bytecodeResult.error.suggestion }
+            : { code: ErrorCode.PATCH_FAILED, message: 'Bytecode patch failed' }
+        }
+      }
+      bytecodeReplaced = bytecodeResult.replaceCount
+    }
+
     writeFileSync(patchedBinaryPath, buffer)
 
     // macOS codesign（重新签名）
@@ -257,13 +297,15 @@ export class PatchApplier {
       }
     }
 
-    // 验证（替换完整性 + 可执行性）
+    // 验证（替换完整性 + bytecode 锚点 + 可执行性）
     const verifier = new Verifier()
     const verifyResult = await verifier.verify({
       binaryPath: patchedBinaryPath,
       targetGenerator: tokenGen,
       sourceValue,
-      patches
+      patches,
+      sourceTokens: deriveSourceTokens(patches),
+      targetTokens
     })
     if (!verifyResult.success) {
       rmSync(patchedBinaryPath, { force: true })
@@ -285,6 +327,8 @@ export class PatchApplier {
         targetTokens,
         sourceValue,
         replaceCount: patchResult.replaceCount ?? 0,
+        bytecodeReplaceCount: bytecodeReplaced,
+        ...(bytecodeAnchorMissing ? { bytecodeAnchorMissing } : {}),
         binaryPath: patchedBinaryPath,
         details: patchResult.details,
         codesignWarning

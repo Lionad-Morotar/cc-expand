@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { normalizeVersion, isValidVersion, isVersionGreater } from '../../src/utils/version.js'
+import { normalizeVersion, isValidVersion, isVersionGreater, isBytecodeVersion } from '../../src/utils/version.js'
 
 describe('normalizeVersion', () => {
   it('strips leading v from semver', () => {
@@ -67,5 +67,20 @@ describe('isVersionGreater', () => {
   it('returns false for malformed versions lacking major.minor (no false "newer")', () => {
     expect(isVersionGreater('2', '2.1.0')).toBe(false)
     expect(isVersionGreater('2.1.x-beta', '2.1.160')).toBe(false)
+  })
+})
+
+describe('isBytecodeVersion', () => {
+  it('returns false for versions before the Bun bytecode cutoff (2.1.245)', () => {
+    expect(isBytecodeVersion('2.1.245')).toBe(false)
+    expect(isBytecodeVersion('2.1.244')).toBe(false)
+  })
+
+  it('returns true from 2.1.246 onward', () => {
+    expect(isBytecodeVersion('2.1.246')).toBe(true)
+  })
+
+  it('returns true for newer bytecode versions', () => {
+    expect(isBytecodeVersion('2.1.250')).toBe(true)
   })
 })

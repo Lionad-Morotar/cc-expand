@@ -48,6 +48,7 @@ export type I18nKey
     | 'suggestion.selfUpdate.enoent'
     | 'warning.selfUpdate.stalled'
     | 'warning.selfUpdate.registryHint'
+    | 'warning.bytecodePatternMissing'
     | 'ui.warnings'
     | 'ui.nextSteps'
     | 'ui.pagerFooter'
@@ -138,6 +139,7 @@ const translations: Translations = {
     'suggestion.selfUpdate.enoent': 'Ensure the package manager is installed and in PATH',
     'warning.selfUpdate.stalled': 'The installed version is still {actual} while the latest is {latest}. Your npm registry mirror may lag behind the official registry.',
     'warning.selfUpdate.registryHint': 'Retry against the official registry to bypass mirror lag, e.g. npm install -g cc-expand@latest --registry=https://registry.npmjs.org',
+    'warning.bytecodePatternMissing': 'Claude Code {version} ({platform}) is built with Bun bytecode (2.1.246+) but no bytecode anchor is available for this platform yet — the patch may report success without affecting the runtime context window.',
     'ui.warnings': '⚠ Warnings:',
     'ui.nextSteps': 'Next steps:',
     'ui.pagerFooter': 'line {line}/{total}  ↑↓/jk move  Space/b page  g/G top/bottom  Ctrl-E bottom  q quit',
@@ -225,6 +227,7 @@ const translations: Translations = {
     'suggestion.selfUpdate.enoent': '请确认对应的包管理器已安装并在 PATH 中',
     'warning.selfUpdate.stalled': '已安装版本仍为 {actual}，而最新版本是 {latest}。你的 npm 镜像源可能尚未同步官方仓库。',
     'warning.selfUpdate.registryHint': '可指定官方源绕过镜像延迟，例如 npm install -g cc-expand@latest --registry=https://registry.npmjs.org',
+    'warning.bytecodePatternMissing': 'Claude Code {version}（{platform}）自 2.1.246 起采用 Bun bytecode 编译，当前平台尚无 bytecode 锚点——patch 可能报告成功，但运行时上下文窗口不会改变。',
     'ui.warnings': '⚠ 注意：',
     'ui.nextSteps': '建议操作：',
     'ui.pagerFooter': 'line {line}/{total}  ↑↓/jk 移动  Space/b 翻页  g/G 首尾  Ctrl-E 末行  q 退出',

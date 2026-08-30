@@ -24,6 +24,10 @@ export interface PatchItem {
   sourceValue: string
   /** literal target：固定等长替换（installed plugin 用）；省略则走 token-encode（internal token-expansion） */
   target?: { value: string, pad?: 'right-space' }
+  /** bytecode 常量池字节锚点（hex，支持 {{tokens}} 占位符标记 token 槽位）。
+   *  CC 2.1.246+ native binary 的常量内联在 bytecode 常量池，文本替换无效，需字节锚点。
+   *  挂在任一 patch 项上即可，applier 聚合去重后统一交给 BytecodePatchEngine。 */
+  bytecodePatterns?: string[]
 }
 
 /**

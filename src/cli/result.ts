@@ -23,6 +23,8 @@ export const EXIT_CODES: Record<ErrorCode, number> = {
   [ErrorCode.INVALID_TARGET]: 64,
   [ErrorCode.BINARY_NOT_FOUND]: 69,
   [ErrorCode.PATTERN_NOT_FOUND]: 69,
+  // 字节锚点多命中同样是 pattern 数据与 binary 布局不匹配（锚点/数据问题档 69）
+  [ErrorCode.AMBIGUOUS_PATTERN]: 69,
   [ErrorCode.PATCH_FAILED]: 70,
   [ErrorCode.CODESIGN_FAILED]: 70,
   [ErrorCode.VERIFICATION_FAILED]: 70,

@@ -29,7 +29,7 @@ export interface InstallOptions {
 /** 有历史 patch 记录 → 建议 migration；否则建议 patch（首次设定） */
 function nextStepsFor(configService: ConfigService, version: string): string[] {
   const hasHistory = Object.keys(configService.getUserConfig().patchedVersions ?? {}).length > 0
-  return hasHistory ? [`ccx migration ${version}`] : ['ccx patch --target 270000 --yes']
+  return hasHistory ? [`ccx migration ${version}`] : ['ccx patch --target 280000 --yes']
 }
 
 export async function installCommand(

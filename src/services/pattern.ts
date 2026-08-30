@@ -10,6 +10,8 @@ import type { PatchItem } from './config.js'
 export interface VersionsIndexItem {
   version: string
   platforms: string[]
+  /** 已实证 bytecode 锚点的平台列表（"os-arch" 拼接格式），未实证时缺省 */
+  bytecodePlatforms?: string[]
 }
 
 export interface OsPatterns {
