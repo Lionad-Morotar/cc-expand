@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-08-30
+
 ### Added
 
 - Bytecode 常量池锚点 patch 机制：适配 contextWindow 配置常量编译进 bytecode 常量池的新格式二进制（Mach-O/PE/ELF 三格式 section 解析 + StandaloneModuleGraph 模块表定位），已在 2.1.250 全平台实证；老格式的字面量锚点 patch 路径不变
