@@ -44,7 +44,9 @@ describe('DiscoveryService', () => {
       // Arrange: create fake NPX cache structure with claude-code
       const fakeNpxDir = join(tempDir, 'npx', 'abc123')
       mkdirSync(fakeNpxDir, { recursive: true })
-      const fakeClaude = join(fakeNpxDir, 'node_modules', '@anthropic-ai', 'claude-code', 'bin', 'claude.exe')
+      // 二进制文件名与 findInNpxCache 的平台分支一致：win32 为 claude.exe，其余为 claude
+      const binName = process.platform === 'win32' ? 'claude.exe' : 'claude'
+      const fakeClaude = join(fakeNpxDir, 'node_modules', '@anthropic-ai', 'claude-code', 'bin', binName)
       mkdirSync(join(fakeNpxDir, 'node_modules', '@anthropic-ai', 'claude-code', 'bin'), { recursive: true })
       writeFileSync(fakeClaude, 'fake-binary')
       chmodSync(fakeClaude, 0o755)
