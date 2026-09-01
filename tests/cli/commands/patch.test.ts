@@ -164,6 +164,79 @@ describe('patch command argument validation', () => {
     expect(warning).toContain(`${process.platform}-${process.arch}`)
     expect(warning).toMatch(/bytecode/i)
   })
+
+  it('exposes bytecode anchor status in patch data (JSON consumers can detect missing anchor)', async () => {
+    // 真实链路：2.1.250 + 无 bytecodePatterns 的 pattern → 命令层 data 应透传
+    // applier 的 bytecodeReplaceCount/bytecodeAnchorMissing，使 JSON 输出可判断字节码补丁是否命中
+    const version = '2.1.250'
+    presetFakePackage(version)
+    const binPath = join(tempDir, '.cc-expand', 'packages', version, 'bin', 'claude')
+    writeFileSync(binPath, 'Aj8=200000,Ij_=20000_X93=200000')
+
+    const config = {
+      ensureDirs: () => {},
+      getPatternForVersion: async () => [
+        { search: 'Aj8=200000,Ij_=20000', desc: 'token', sourceValue: '200000' }
+      ],
+      recordPatchedCombo: () => {}
+    } as unknown as ConfigService
+    const userConfigService = {
+      get: (key: string) => (key === 'autoMaintain' ? false : undefined)
+    } as unknown as UserConfigService
+
+    const result = await patchCommand(
+      [version, '--target', '270000', '--yes'],
+      { configService: config, userConfigService }
+    )
+
+    expect(result.success).toBe(true)
+    const data = result.data as Record<string, unknown>
+    // 缺锚点：bytecode 补丁零命中且显式标记，JSON 消费者据此判断
+    expect(data.bytecodeAnchorMissing).toBe(true)
+    expect(data.bytecodeReplaceCount).toBe(0)
+  })
+
+  it('exposes bytecodeReplaceCount in patch data when anchor is applied', async () => {
+    // 带 bytecode 槽位的 binary：替换命中后 data.bytecodeReplaceCount 应 > 0 且不标记缺失
+    const version = '2.1.250'
+    presetFakePackage(version)
+    const binPath = join(tempDir, '.cc-expand', 'packages', version, 'bin', 'claude')
+    // 文本锚点 + bytecode 槽位：源值 200000 LE（40 0d 03 00）+ 实证锚点字面量（007d0000 00f40100 40420f00）。
+    // 直接写 Buffer——latin1 字符串经 writeFileSync 的 UTF-8 编码会把 ≥0x80 字节展开成双字节，破坏字节布局
+    writeFileSync(
+      binPath,
+      Buffer.concat([
+        Buffer.from('Aj8=200000,Ij_=20000_X93=200000', 'utf8'),
+        Buffer.from('400d0300007d000000f4010040420f00', 'hex')
+      ])
+    )
+
+    const config = {
+      ensureDirs: () => {},
+      getPatternForVersion: async () => [
+        {
+          search: 'Aj8=200000,Ij_=20000',
+          desc: 'token',
+          sourceValue: '200000',
+          bytecodePatterns: ['{{tokens}}007d000000f4010040420f00']
+        }
+      ],
+      recordPatchedCombo: () => {}
+    } as unknown as ConfigService
+    const userConfigService = {
+      get: (key: string) => (key === 'autoMaintain' ? false : undefined)
+    } as unknown as UserConfigService
+
+    const result = await patchCommand(
+      [version, '--target', '270000', '--yes'],
+      { configService: config, userConfigService }
+    )
+
+    expect(result.success).toBe(true)
+    const data = result.data as Record<string, unknown>
+    expect(data.bytecodeAnchorMissing).toBeUndefined()
+    expect(data.bytecodeReplaceCount).toBeGreaterThan(0)
+  })
 })
 
 describe('patch remove command', () => {
