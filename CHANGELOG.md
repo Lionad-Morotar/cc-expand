@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-09-02
+
+### Fixed
+
+- patch 与 migration 的 JSON 输出透传 bytecode 锚点状态（`bytecodeReplaceCount` / `bytecodeAnchorMissing`），自动化脚本可程序化判断字节码补丁是否命中，不再被"文本替换成功但运行时不变"的静默盲区误导
+
 ## [0.5.0] - 2026-08-30
 
 ### Added
