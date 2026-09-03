@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `ccx self-update` 新增可选位置参数 `[channel]`（npm dist-tag 或精确版本，如 `latest` / `alpha` / `0.5.1`）：跳过"是否有更新"判定直接安装并回显真实装后版本。修复 alpha dist-tag 停更（stable 发布不推进该 tag）导致 prerelease 通道用户被"已是最新"死锁、无法升级到 stable 的问题；目标值经合法性校验（拒路径与特殊字符），空目标按非法值报错而非静默落回自动更新，安装后版本未变化时如实提示
+
 ## [0.5.1] - 2026-09-02
 
 ### Fixed

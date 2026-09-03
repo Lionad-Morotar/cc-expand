@@ -62,6 +62,7 @@ npx cc-expand <command>
 | `ccx patch remove <version> [combo]` | 移除已 patch 的 binary |
 | `ccx run [combo]` | 启动已 patch 的 Claude Code binary |
 | `ccx setup` | 安装 `cc`/`c` shell 快捷方式 |
+| `ccx self-update [channel]` | 更新 cc-expand 自身；可传 `latest`/`alpha` 或精确版本强制指定更新目标 |
 | `ccx restore` | 从备份恢复原始 binary |
 | `ccx verify` | 验证 binary 是否已被 patch |
 | `ccx status` | 显示版本和 patch 状态 |

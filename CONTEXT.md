@@ -19,7 +19,7 @@ cc-expand 自身被安装到用户系统所用的包管理器或分发途径。
 _Avoid_: channel（已专指 CC 渠道，见上）、source
 
 **Self-update（自更新）**:
-更新 cc-expand 自身（npm 包 `cc-expand`）到最新版本。由 `ccx self-update` 命令显式触发，或由隐式更新检查器提示后引导用户执行。
+更新 cc-expand 自身（npm 包 `cc-expand`）到最新版本。由 `ccx self-update` 命令显式触发，或由隐式更新检查器提示后引导用户执行。支持显式目标 `ccx self-update [channel]`（npm dist-tag 或精确版本），跳过更新检查直接安装，用于 dist-tag 停更（如 alpha 线终结后 stable 只推进 latest）把通道用户困死时的跨通道升级。
 _Avoid_: upgrade（语义模糊，可被理解为 CC 升级）、update（三重歧义，见下）
 
 **Update（更新）**:

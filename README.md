@@ -56,6 +56,7 @@ npx cc-expand <command>
 | `ccx patch remove <version> [combo]` | Remove a patched binary |
 | `ccx run [combo]` | Launch the patched Claude Code binary |
 | `ccx setup` | Install `cc`/`c` shell shortcuts |
+| `ccx self-update [channel]` | Update cc-expand itself; pass `latest`/`alpha` or an exact version to force a specific target |
 | `ccx restore` | Restore the original binary from backup |
 | `ccx verify` | Verify whether the binary has been patched |
 | `ccx status` | Show version and patch status |
