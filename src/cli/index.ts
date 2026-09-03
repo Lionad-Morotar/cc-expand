@@ -330,10 +330,12 @@ async function main(): Promise<void> {
     })
 
   cli
-    .command('self-update', t('help.command.selfUpdate.description'))
-    .action(async (options: Record<string, unknown>) => {
+    .command('self-update [channel]', t('help.command.selfUpdate.description'))
+    .example('  $ ccx self-update')
+    .example('  $ ccx self-update latest')
+    .action(async (channel: string | undefined, options: Record<string, unknown>) => {
       const renderer = getRenderer(options)
-      const result = await selfUpdateCommand()
+      const result = await selfUpdateCommand({ targetChannel: channel })
       await renderResult(renderer, result, 'self-update')
     })
 
