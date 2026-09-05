@@ -1,6 +1,6 @@
 {
   "name": "cc-expand",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Expand Claude Code capabilities via plugin-based binary patching",
   "bin": {
     "cc-expand": "dist/cli.js",
