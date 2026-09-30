@@ -1,6 +1,7 @@
 # Workflows
 
-为 Claude Code 新版本生成 pattern shard 的步骤。核心逻辑已固化为脚本（`src/core/pattern-discovery.ts` 等），子代理只需调用命令；仅当脚本因结构突变 exit 非 0 时才需人工介入。
+为 Claude Code 新版本生成 pattern shard 的步骤。核心逻辑已固化为脚本（`src/core/pattern-discovery.ts` 等），子代理只需调用命令；
+仅当脚本因结构突变 exit 非 0 时才需人工介入。
 
 ## 前置
 
@@ -19,7 +20,8 @@ pnpm pattern:upload <version>  # 一次性上传 shard + versions.json 到 OSS
 2. PatternDiscovery：对每个平台二进制发现 6 个上下文窗口锚点（贪婪多字段，每条 count==1）
 3. desc 启发式归类
 4. patch 模拟（替换 200000→256000，验证 0 残留）
-5. bytecode 锚点自动生成与实证（仅 2.1.246+）：以 200000/32000/128000 语义主项为输入，从目标模块 bytecode 常量池发现字节锚点（伴生扩展至全 binary 唯一），再对副本做 binary 级 patch→verify 实证，实证不过不配锚点
+5. bytecode 锚点自动生成与实证（仅 2.1.246+）：以 200000/32000/128000 语义主项为输入，从目标模块 bytecode 常量池发现字节锚点（伴生扩展至全 binary 唯一），
+   再对副本做 binary 级 patch→verify 实证，实证不过不配锚点
 6. 写 patterns/{version}.json + 更新 patterns/versions.json（bytecodePlatforms 仅列实证平台）
 
 `pattern:upload` 复用 PatternUploader（内容 hash 去重 + 持久化缓存 + 指数退避重试），上传 patterns/{version}.json 与 patterns/versions.json。
@@ -44,12 +46,18 @@ npx vitest run tests/cli             # 针对性单测（加超时）
 
 ## 人工兜底：bytecode 锚点失败时
 
-2.1.246+ 的 pattern:gen 输出 `⚠ <平台> bytecode 锚点失败` 警告（或「锚点降级: 未找到 200000/32000/128000 语义主项」）表示该平台未产出 bytecode 锚点，仅文本 pattern，运行时可能不生效。诊断步骤：
+2.1.246+ 的 pattern:gen 输出 `⚠ <平台> bytecode 锚点失败` 警告（或「锚点降级: 未找到 200000/32000/128000 语义主项」）表示该平台未产出 bytecode 锚点，
+仅文本 pattern，运行时可能不生效。诊断步骤：
 
-1. 用 `tsx zRefs/parse-graph.mjs <binary-path> <segment-offset>` 手工定位复核：binary 位于 `zRefs/claude-codes/extracted/v<version>/<os>-<arch>/package/<binary>`（如 `zRefs/claude-codes/extracted/v2.1.250/darwin-arm64/package/claude`；少数历史布局无 `package/` 一级，findBinary 兼容两种），`<segment-offset>` 为 `__BUN` 段 fileoff（otool 读取）
-2. 注意 pattern:gen 成功后会清理 `extracted/v<x>/` 与 `tarballs/` 中发布超 7 天的缓存——事后回顾诊断时 binary 常已被删，先确认目录仍存在；已清理则重新 `npm pack` 下载，或生成时改用 `--from-extracted` 保留
+1. 用 `tsx zRefs/parse-graph.mjs <binary-path> <segment-offset>` 手工定位复核：
+   binary 位于 `zRefs/claude-codes/extracted/v<version>/<os>-<arch>/package/<binary>`（
+   如 `zRefs/claude-codes/extracted/v2.1.250/darwin-arm64/package/claude`；少数历史布局无 `package/` 一级，findBinary 兼容两种），
+   `<segment-offset>` 为 `__BUN` 段 fileoff（otool 读取）
+2. 注意 pattern:gen 成功后会清理 `extracted/v<x>/` 与 `tarballs/` 中发布超 7 天的缓存——事后回顾诊断时 binary 常已被删，先确认目录仍存在；已清理则重新 `npm pack` 下载，
+   或生成时改用 `--from-extracted` 保留
 3. 确认属锚点布局漂移（Bun 编译器常量去重/布局变化）而非签名误判后，上报 cc-expand 维护者
-4. 锚点发现是 fail loud 的：唯一性硬约束下任何不确定性直接 throw，拒绝产出锚点而非产出错误锚点；实证事实参照——2.1.250 五平台（darwin-arm64/darwin-x64/linux-arm64/linux-x64/win32-x64）已全部自动产出锚点
+4. 锚点发现是 fail loud 的：唯一性硬约束下任何不确定性直接 throw，拒绝产出锚点而非产出错误锚点；实证事实参照——2.1.250 五平台（
+   darwin-arm64/darwin-x64/linux-arm64/linux-x64/win32-x64）已全部自动产出锚点
 
 ## 已知版本结构差异
 
