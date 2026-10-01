@@ -16,7 +16,8 @@ description: 定时检索 Claude Code 新包，Patch 并发版
 * watch-patch: 即本技能，`<project-root>/.claude/skills/watch-patch/SKILL.md`
 * patch-steps: 如何针对新版本生成 pattern 的步骤 `<project-root>/.claude/skills/watch-patch/references/patch-steps.md`（核心已脚本化：
   `pnpm pattern:gen <version>` 内含文本锚点发现 + patch 模拟 + bytecode 锚点自动生成与实证（仅 ≥2.1.246 的 bytecode 版本），
-  `pnpm pattern:upload <version>` 上传）
+  `pnpm pattern:upload <version>` 上传；同流程顺带生成 silence 插件 shard：`pnpm plugin:gen-silence <version>` +
+  `pnpm plugin:upload-silence <version>`）
 * backoff level（退避级别）：轮询间隔档位 L0=30min / L1=60min / L2=120min / L3=240min（上限，4h）；`needWork=false` 升级（+1 封顶 L3），
   `needWork=true` 重置回 L0
 * release-sticky: 新版本处理完成后贴发布日志黄色桌面便签的步骤 `<project-root>/.claude/skills/watch-patch/references/release-sticky.md`（
@@ -70,4 +71,6 @@ echo "$(date -v+${N}M '+%M %H %d %m') *"
 - **通知可靠性**：直接内联 `osascript`，不依赖 zsh 函数 `popup`（非交互 shell 不加载它）；完成用 `display notification`（非阻塞），超时告警用 `display dialog`（
   强提醒）
 - 子代理只需依次调 `pnpm pattern:gen <version>`（已内含 bytecode 锚点自动生成与实证，仅 ≥2.1.246 的 bytecode 版本）
-  与 `pnpm pattern:upload <version>`，生成+上传逻辑已固化（详见 patch-steps.md），不再需要临场编写搜索脚本，但如果测试失败，仍然需要你来接入，并对脚本做出调整
+  与 `pnpm pattern:upload <version>`，再调 `pnpm plugin:gen-silence <version>` 与 `pnpm plugin:upload-silence <version>`
+  （silence 插件 shard：本机探活选锚点，探针会真实调一次 API；探活或骨架扫描失败属 fail loud，处置见 patch-steps.md 的人工兜底），
+  生成+上传逻辑已固化（详见 patch-steps.md），不再需要临场编写搜索脚本，但如果测试失败，仍然需要你来接入，并对脚本做出调整
