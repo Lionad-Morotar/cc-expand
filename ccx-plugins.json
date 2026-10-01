@@ -1,0 +1,11 @@
+{
+  "plugins": [
+    {
+      "name": "silence-unrecognized-model",
+      "shardBaseUrl": "https://cc-expand.oss-cn-shanghai.aliyuncs.com/plugins/silence-unrecognized-model/",
+      "shortVer": { "kind": "literal", "value": "sil" },
+      "version": "1.0.0",
+      "description": "Silence the [claude-code:unrecognized_model] stderr warning by short-circuiting the guard that emits it; model recognition itself (and /model selection) is unaffected"
+    }
+  ]
+}
