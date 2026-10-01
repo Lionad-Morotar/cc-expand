@@ -37,15 +37,31 @@ interface PlatformResult {
   candidates: SilenceGuardCandidate[]
 }
 
-/** 跑探针：返回 stderr 是否含告警标记。exit code 不作判据（API 层失败也算有效探针） */
-function probeBinary(binPath: string): boolean {
+/** 探针观察：告警是否出现 + CLI 是否正常应答（二次确认用） */
+interface ProbeObservation {
+  warned: boolean
+  replied: boolean
+}
+
+/**
+ * 跑探针：stderr 是否含告警标记 + stdout 是否有实际回复。
+ * 探针自身失败（超时被杀、无法 spawn）必须 throw 而非返回 false——
+ * 失败探针的 stderr 为空或截断，会被误读为「告警已消除」，在无效观察下
+ * 选出的候选会直接进 shard。exit code 不作判据（API 层失败时告警判定仍有效）
+ */
+function probeBinary(binPath: string): ProbeObservation {
   const r = spawnSync(binPath, ['-p', 'reply with exactly: pong'], {
     env: { ...process.env, ANTHROPIC_MODEL: PROBE_MODEL },
     encoding: 'buffer',
     timeout: PROBE_TIMEOUT_MS,
   })
-  const stderr = r.stderr?.toString('utf8') ?? ''
-  return stderr.includes(WARN_MARKER)
+  if (r.error || (r.status === null && r.signal)) {
+    throw new Error(`探针执行失败（${r.error?.message ?? `signal ${String(r.signal)}`}），无法判定告警状态，拒绝在无效观察下选定候选`)
+  }
+  return {
+    warned: (r.stderr?.toString('utf8') ?? '').includes(WARN_MARKER),
+    replied: (r.stdout?.toString('utf8') ?? '').includes('pong')
+  }
 }
 
 /** darwin 上修改二进制后必须重签名（ad-hoc）才能执行 */
@@ -71,7 +87,7 @@ function selectYreByProbe(binPath: string, candidates: SilenceGuardCandidate[]):
     adHocCodesign(copyPath)
 
     const original = readFileSync(copyPath)
-    if (!probeBinary(copyPath)) {
+    if (!probeBinary(copyPath).warned) {
       throw new Error(
         `探针环境无效：未 patch 副本未出现 ${WARN_MARKER} 告警（检查 ANTHROPIC_MODEL=${PROBE_MODEL} 是否仍被识别或 API 不可用），拒绝在无效探针下选定锚点`,
       )
@@ -82,12 +98,16 @@ function selectYreByProbe(binPath: string, candidates: SilenceGuardCandidate[]):
       buf.write('\u0004', c.offset, 'latin1')
       writeFileSync(copyPath, buf)
       adHocCodesign(copyPath)
-      const silenced = !probeBinary(copyPath)
+      const observed = probeBinary(copyPath)
       // 恢复未 patch 形态，下一候选与收尾都从原始字节出发
       writeFileSync(copyPath, original)
-      if (silenced) {
-        console.log(`  探活命中: blob 内偏移 ${c.offsetInModule}（告警消失）`)
+      // 命中须双证：告警消失且 CLI 仍正常应答——「CLI 崩溃/无输出」不是消音
+      if (!observed.warned && observed.replied) {
+        console.log(`  探活命中: blob 内偏移 ${c.offsetInModule}（告警消失，应答正常）`)
         return c
+      }
+      if (!observed.warned && !observed.replied) {
+        throw new Error(`候选 blob 内偏移 ${c.offsetInModule} 告警消失但 CLI 无应答，疑似 patch 破坏执行，须人工核查`)
       }
       console.log(`  探活未命中: blob 内偏移 ${c.offsetInModule}，恢复后继续`)
     }
@@ -178,7 +198,14 @@ function main(): void {
       throw new Error(`${r.spec.os}-${r.spec.arch} 选定候选 patch 模拟未命中`)
     }
     if (!osPatterns[r.spec.os]) osPatterns[r.spec.os] = {}
-    osPatterns[r.spec.os][r.spec.arch] = [chosen]
+    // shard 只落 PatchItem 契约字段：offset/offsetInModule 是发现与探活的内部
+    // 状态（文件偏移因平台布局而异，进 shard 只会产生跨平台误导）
+    osPatterns[r.spec.os][r.spec.arch] = [{
+      search: chosen.search,
+      sourceValue: chosen.sourceValue,
+      target: chosen.target,
+      desc: chosen.desc
+    }]
     platformsDone.push(`${r.spec.os}-${r.spec.arch}`)
   }
 
