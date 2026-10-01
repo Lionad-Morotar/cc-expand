@@ -67,8 +67,8 @@ export class Verifier {
         continue
       }
 
-      // (a) 原 search 模式不应再以未替换形式出现
-      const searchBuf = Buffer.from(patch.search, 'utf8')
+      // (a) 原 search 模式不应再以未替换形式出现（latin1：与 PatchEngine 对称的任意字节语义）
+      const searchBuf = Buffer.from(patch.search, 'latin1')
       let offset = 0
       let foundUnpatched = false
       while (true) {
@@ -76,7 +76,7 @@ export class Verifier {
         if (idx === -1) break
 
         const replaceAt = idx + sourceOffsetInSearch
-        const currentValue = content.subarray(replaceAt, replaceAt + patch.sourceValue.length).toString('utf8')
+        const currentValue = content.subarray(replaceAt, replaceAt + patch.sourceValue.length).toString('latin1')
         if (currentValue === patch.sourceValue) {
           foundUnpatched = true
           failedPatches.push(patch.desc ?? '')
@@ -99,7 +99,7 @@ export class Verifier {
       } else {
         expectedLiteral = config.targetGenerator(patch.sourceValue.length)
       }
-      if (content.indexOf(Buffer.from(expectedLiteral, 'utf8')) === -1) {
+      if (content.indexOf(Buffer.from(expectedLiteral, 'latin1')) === -1) {
         allTargetsPresent = false
       }
     }

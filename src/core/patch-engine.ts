@@ -12,6 +12,24 @@ export interface PatchDetail {
   targetValue: string
 }
 
+/**
+ * latin1 单字节语义的入口校验：>U+00FF 的字符会被 Buffer 的 latin1 写入截断为低字节
+ * （如 '中'→0x2D），静默截断会把「编码不命中→PATTERN_NOT_FOUND」的 fail-safe 退化成
+ * 可能错位命中后写入。误写字面量（未按 \u00XX 转义）的 shard 须显式拒收。
+ * 仅需引擎侧拦截：Verifier 只在本引擎成功后被调用，非法输入到不了 verify
+ */
+function assertLatin1Representable(str: string, label: string): void {
+  for (let i = 0; i < str.length; i++) {
+    const code = str.charCodeAt(i)
+    if (code > 0xff) {
+      throw new CcxError(
+        ErrorCode.INVALID_TARGET,
+        `${label} contains non-latin1 char U+${code.toString(16).toUpperCase().padStart(4, '0')} at index ${i}; escape as \\u00XX in the shard`
+      )
+    }
+  }
+}
+
 export class PatchEngine {
   /**
    * 在二进制缓冲区中搜索并替换多个模式
@@ -37,7 +55,9 @@ export class PatchEngine {
     // 任一无法等长编码则整体失败，buffer 不被修改（原子性）
     let encoded: string[]
     try {
-      encoded = patches.map((item) => {
+      encoded = patches.map((item, i) => {
+        assertLatin1Representable(item.search, `patches[${i}].search`)
+        assertLatin1Representable(item.sourceValue, `patches[${i}].sourceValue`)
         if (item.target) {
           const slot = item.sourceValue.length
           const v = item.target.pad === 'right-space' ? item.target.value.padEnd(slot, ' ') : item.target.value
@@ -50,9 +70,12 @@ export class PatchEngine {
               `literal target length ${v.length}B != slot ${slot}B; add pad:"right-space" or adjust value`
             )
           }
+          assertLatin1Representable(v, `patches[${i}].target.value`)
           return v
         }
-        return gen(item.sourceValue.length)
+        const literal = gen(item.sourceValue.length)
+        assertLatin1Representable(literal, `patches[${i}] encoded literal`)
+        return literal
       })
     } catch (e) {
       // 跨包 CcxError 识别用 isCcxError 守卫（instanceof 跨包失效，见子包 ccx-error.ts）
@@ -70,7 +93,10 @@ export class PatchEngine {
     for (let i = 0; i < patches.length; i++) {
       const { search, desc, sourceValue } = patches[i]
       const targetStr = encoded[i]
-      const searchBuf = Buffer.from(search, 'utf8')
+      // latin1 而非 utf8：search/sourceValue 承载任意字节（installed plugin 的 bytecode
+      // 指令锚点含 >=0x80 字节，JSON 以 \u00XX 转义进来）；utf8 会双字节化致搜索错位。
+      // ASCII 区间两者编码一致，token pattern 行为不变
+      const searchBuf = Buffer.from(search, 'latin1')
       const sourceOffsetInSearch = search.indexOf(sourceValue)
 
       if (sourceOffsetInSearch === -1) {
@@ -83,13 +109,13 @@ export class PatchEngine {
         if (idx === -1) break
 
         const replaceAt = idx + sourceOffsetInSearch
-        const verify = buffer.subarray(replaceAt, replaceAt + sourceValue.length).toString('utf8')
+        const verify = buffer.subarray(replaceAt, replaceAt + sourceValue.length).toString('latin1')
         if (verify !== sourceValue) {
           offset = idx + 1
           continue
         }
 
-        buffer.write(targetStr, replaceAt)
+        buffer.write(targetStr, replaceAt, 'latin1')
         totalPatches++
         details.push({
           desc,
