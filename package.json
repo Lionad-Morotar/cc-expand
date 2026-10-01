@@ -30,6 +30,7 @@
     "pattern:latest-check": "tsx scripts/latest-check.ts",
     "pattern:verify": "tsx scripts/pattern-verify.ts",
     "pattern:cleanup": "tsx scripts/cleanup-versions.ts",
+    "plugin:gen-silence": "tsx scripts/plugin-silence-gen.ts",
     "prebuild": "vitest run --exclude tests/integration",
     "prerelease": "pnpm run build",
     "release": "pnpm publish --config.registry=https://registry.npmjs.org --no-git-checks",

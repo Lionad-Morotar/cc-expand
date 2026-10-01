@@ -25,6 +25,9 @@ coverage/
 # Generated patterns (watch-patch writes here, uploaded to OSS)
 patterns/
 
+# Generated plugin shards (plugin:gen-silence writes here, uploaded to OSS)
+plugin-shards/
+
 # watch-patterns upload dedup cache (content hash map; avoids re-upload on restart)
 .watch-patterns.cache.json
 
