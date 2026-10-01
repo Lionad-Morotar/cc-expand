@@ -72,5 +72,6 @@ echo "$(date -v+${N}M '+%M %H %d %m') *"
   强提醒）
 - 子代理只需依次调 `pnpm pattern:gen <version>`（已内含 bytecode 锚点自动生成与实证，仅 ≥2.1.246 的 bytecode 版本）
   与 `pnpm pattern:upload <version>`，再调 `pnpm plugin:gen-silence <version>` 与 `pnpm plugin:upload-silence <version>`
+  （上传后以 `pnpm pattern:verify-oss <version>` 与 `pnpm plugin:verify-silence <version>` 核验内容一致）
   （silence 插件 shard：本机探活选锚点，探针会真实调一次 API；探活或骨架扫描失败属 fail loud，处置见 patch-steps.md 的人工兜底），
   生成+上传逻辑已固化（详见 patch-steps.md），不再需要临场编写搜索脚本，但如果测试失败，仍然需要你来接入，并对脚本做出调整

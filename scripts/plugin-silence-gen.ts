@@ -3,8 +3,8 @@
  * 为指定 Claude Code 版本生成 silence-unrecognized-model 插件的 shard
  *
  * 用法:
- *   pnpm plugin:gen-silence <version>                        完整流程(下载→发现→探活→写)
- *   pnpm plugin:gen-silence <version> --from-extracted <dir> 跳过下载,用已解压目录
+ *   pnpm plugin:gen-silence <version>                        完整流程(复用缓存或下载→发现→探活→写)
+ *   pnpm plugin:gen-silence <version> --from-extracted <dir> 显式指定已解压目录(离线/复盘)
  *   pnpm plugin:gen-silence <version> --no-probe             跳过 runtime 探活(仅单候选时允许)
  *   pnpm plugin:gen-silence <version> --shards-dir <dir>     指定输出目录
  *
@@ -130,8 +130,26 @@ function main(): void {
   const shardsDir = flag(rest, '--shards-dir')
     ?? join(process.cwd(), 'plugin-shards', 'silence-unrecognized-model')
   const workDir = join(process.cwd(), 'zRefs/claude-codes')
-  // 两种获取路径的解压布局同构（downloadAndExtract 也写到 extracted/v<version>/<os-arch>）
+  // 三种获取路径的解压布局同构（downloadAndExtract 也写到 extracted/v<version>/<os-arch>）
   const extractRoot = fromExtracted ?? join(workDir, 'extracted')
+
+  /**
+   * 获取平台 binary：显式 --from-extracted 之外，默认路径优先复用 extracted/
+   * 下 pattern:gen 刚解压的缓存（零下载）；缓存缺失的平台回退完整下载解压
+   * （npm pack 每平台数百 MB，watch-patch 流程里 pattern:gen 先跑过则必然命中）
+   */
+  const loadPlatformBuffer = (spec: (typeof PLATFORMS)[number]): Buffer => {
+    if (fromExtracted) return readFromExtracted(fromExtracted, version, spec)
+    const cacheRoot = join(workDir, 'extracted')
+    try {
+      const buf = readFromExtracted(cacheRoot, version, spec)
+      console.log('  复用已解压缓存（零下载）')
+      return buf
+    } catch {
+      console.log('  缓存缺失，回退下载平台 tarball')
+      return downloadAndExtract(version, spec, workDir)
+    }
+  }
 
   /** 定位某平台解压后的 binary 文件路径（兼容 package/ 与平铺两种布局） */
   const resolveBin = (spec: (typeof PLATFORMS)[number]): string => {
@@ -143,9 +161,7 @@ function main(): void {
   const results: PlatformResult[] = []
   for (const spec of PLATFORMS) {
     try {
-      const buffer = fromExtracted
-        ? readFromExtracted(fromExtracted, version, spec)
-        : downloadAndExtract(version, spec, workDir)
+      const buffer = loadPlatformBuffer(spec)
       const candidates = discoverSilenceGuardCandidates(buffer)
       results.push({ spec, candidates })
       console.log(`✓ ${spec.os}-${spec.arch}: ${candidates.length} 个候选`)

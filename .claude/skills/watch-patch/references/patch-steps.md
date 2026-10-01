@@ -37,7 +37,8 @@ pnpm plugin:upload-silence <version>  # 上传到 OSS plugins/silence-unrecogniz
 
 `plugin:gen-silence` = 指令骨架扫描 + runtime 探活判别：
 
-1. 复用 pattern:gen 已下载解压的平台 binary（也可 `--from-extracted <dir>` 离线跑）
+1. 优先复用 pattern:gen 刚解压的平台 binary（`zRefs/claude-codes/extracted/` 缓存命中零下载）；
+   缓存缺失的平台自动回退 npm pack 下载（每平台数百 MB）；`--from-extracted <dir>` 显式指定其他解压目录（离线/复盘）
 2. silence-guard-discovery：模块 signature（`unrecognized-model-signal:`）定位 → bytecode 内搜 guard 指令骨架
    （`52 07 11 06 6a 12`，操作码为实测锚）→ 上下文扩展至全 binary 唯一，产出 literal patch 候选
 3. 本机平台 runtime 探活：先验证探针环境（未 patch 副本必须出现告警），再逐候选 patch 副本跑 CLI 探针，
@@ -50,7 +51,8 @@ pnpm plugin:upload-silence <version>  # 上传到 OSS plugins/silence-unrecogniz
 ## 验证
 
 ```bash
-pnpm pattern:verify-oss <version>   # 确认 shard 与 versions.json 已上传且内容一致(MD5)
+pnpm pattern:verify-oss <version>    # 确认 pattern shard 与 versions.json 已上传且内容一致(MD5)
+pnpm plugin:verify-silence <version> # 确认 silence 插件 shard 与 versions.json 已上传且内容一致(MD5)
 npx vitest run tests/cli             # 针对性单测（加超时）
 ```
 

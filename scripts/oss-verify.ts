@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 /**
- * 验证 pattern shard 已上传到 OSS 且与本地内容一致(MD5)
+ * 验证 shard 已上传到 OSS 且与本地内容一致(MD5)
  * 用法: pnpm pattern:verify-oss <version>
+ *       pnpm plugin:verify-silence <version>
+ *         （即 tsx scripts/oss-verify.ts --dir plugin-shards/silence-unrecognized-model
+ *           --prefix plugins/silence-unrecognized-model/ <version>）
  *
  * 复用 watch-patterns.ts 的 .env 加载与 OSS client 构造模式
  */
@@ -40,17 +43,34 @@ const client = new OSS({
   secure: true,
 })
 
-const version = process.argv[2]
+// flag+value 解析（pnpm 会把 <version> 追加在 script 末尾，故按 flag 过滤出位置参数）
+const args = process.argv.slice(2)
+const positional: string[] = []
+let dir = 'patterns'
+let prefix = 'patterns/'
+for (let i = 0; i < args.length; i++) {
+  if (args[i] === '--dir' || args[i] === '--prefix') {
+    if (args[i] === '--dir') dir = args[i + 1] ?? ''
+    if (args[i] === '--prefix') prefix = args[i + 1] ?? ''
+    i++
+    continue
+  }
+  if (args[i].startsWith('--')) continue
+  positional.push(args[i])
+}
+if (!prefix.endsWith('/')) prefix += '/'
+const version = positional[0]
 if (!version) {
-  console.error('用法: pnpm pattern:verify-oss <version>')
+  console.error('用法: pnpm pattern:verify-oss <version>（plugin shard 用 --dir/--prefix 包装，见 package.json 的 plugin:verify-silence）')
   process.exit(1)
 }
 
 async function main(): Promise<void> {
   const keys = [`${version}.json`, 'versions.json']
+  console.log(`核验 dir=${dir} prefix=${prefix}`)
   let allOk = true
   for (const key of keys) {
-    const localPath = join(process.cwd(), 'patterns', key)
+    const localPath = join(process.cwd(), dir, key)
     if (!existsSync(localPath)) {
       console.error(`✗ ${key}: 本地文件不存在 ${localPath}`)
       allOk = false
@@ -58,7 +78,7 @@ async function main(): Promise<void> {
     }
     const localMd5 = createHash('md5').update(readFileSync(localPath)).digest('hex')
     try {
-      const result = await client.get(`patterns/${key}`)
+      const result = await client.get(`${prefix}${key}`)
       const remoteMd5 = createHash('md5').update(Buffer.from(result.content)).digest('hex')
       const match = localMd5 === remoteMd5
       console.log(
