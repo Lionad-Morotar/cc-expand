@@ -1,12 +1,15 @@
 # Plugin 作者指南
 
-ccx 从 v0.4 起支持 plugin 体系（ADR 0003）——plugin 是 patch 的一等统一抽象，token 扩展降级为内置 plugin（`token-expansion`），第三方可从 GitHub repo 安装自定义 plugin。本文档指导如何编写和发布 plugin。
+ccx 从 v0.4 起支持 plugin 体系（ADR 0003）——plugin 是 patch 的一等统一抽象，token 扩展降级为内置 plugin（`token-expansion`），
+第三方可从 GitHub repo 安装自定义 plugin。本文档指导如何编写和发布 plugin。
 
-关联：[ADR 0003](../adr/0003-plugin-unified-patch-abstraction.md)、[CONTEXT.md](../CONTEXT.md)（Plugin/Shard/ShortVer/Patch Item 术语）、[PRD](../plans/2026-06-24-plugin-system.md)。
+关联：[ADR 0003](../adr/0003-plugin-unified-patch-abstraction.md)、[CONTEXT.md](../CONTEXT.md)（
+Plugin/Shard/ShortVer/Patch Item 术语）、[PRD](../plans/2026-06-24-plugin-system.md)。
 
 ## plugin 是什么
 
-一个 plugin = 极简 manifest（元信息）+ 远程 shard（per-version patches 数据）。ccx 在 `ccx patch` 时拉取 enabled plugin 的 shard，聚合所有 patches 对同一 Claude Code binary 一次扫描等长覆盖（ADR 0002），产物 binary 命名编码 plugin 集合（如 `claude-27w-flow`）。
+一个 plugin = 极简 manifest（元信息）+ 远程 shard（per-version patches 数据）。ccx 在 `ccx patch` 时拉取 enabled plugin 的 shard，
+聚合所有 patches 对同一 Claude Code binary 一次扫描等长覆盖（ADR 0002），产物 binary 命名编码 plugin 集合（如 `claude-27w-flow`）。
 
 ## 1. manifest（极简元信息）
 
@@ -23,8 +26,10 @@ ccx 从 v0.4 起支持 plugin 体系（ADR 0003）——plugin 是 patch 的一�
 字段：
 - `name`：唯一标识，kebab-case
 - `shardBaseUrl`：per-version patches 的远程根地址（OSS / GitHub raw / CDN 皆可）
-- `shortVer`：plugin 贡献给 binary 命名的短标识。`{kind:"literal", value:"flow"}`（固定）或 `{kind:"token-target"}`（仅 internal token-expansion 用，作者不需要）
-- `target`：**仅 internal plugin 使用**（`{type:"token-encode"}`，声明走 token-encode 策略）。第三方 plugin **不应设置**——installed plugin 的 patches 自带 item 级 literal target（见下文 PatchItem.target），无需 plugin 级策略
+- `shortVer`：plugin 贡献给 binary 命名的短标识。`{kind:"literal", value:"flow"}`（固定）或 `{kind:"token-target"}`（
+  仅 internal token-expansion 用，作者不需要）
+- `target`：**仅 internal plugin 使用**（`{type:"token-encode"}`，声明走 token-encode 策略）。第三方 plugin **不应设置**——
+  installed plugin 的 patches 自带 item 级 literal target（见下文 PatchItem.target），无需 plugin 级策略
 - `version` / `description`：可选
 
 ## 2. shard 数据布局（`shardBaseUrl` 下）
@@ -69,6 +74,17 @@ ccx 从 v0.4 起支持 plugin 体系（ADR 0003）——plugin 是 patch 的一�
 
 无 `target` 字段的 item 走 plugin 级 token-encode 策略（仅 internal token-expansion）。
 
+### bytecode 指令锚点（≥2.1.246，进阶）
+
+CC 2.1.246+ 的模块经 bytecode 编译执行，JS 文本锚点之外还可以对指令字节本身打锚：`search` 可承载任意字节，
+JSON 里以 `\u00XX` 转义表达（ccx 引擎按 latin1 单字节语义编解码，`>=0x80` 的高位字节不会被 utf8 双字节化；
+`>U+00FF` 的字符会被入口校验拒收）。槽位可以小到 1 字节（如把跳转偏移 `06` 改 `04` 使 guard 恒早退）。
+
+第一方示例 [silence-unrecognized-model](https://github.com/Lionad-Morotar/cc-expand)（本仓 `ccx-plugins.json`）：
+对告警发射函数的 `if(n==="model_validation")return;` 编译产物做 1B 等长改写，消除 `[claude-code:unrecognized_model]`
+stderr 告警。指令骨架跨版本可能漂移（CC 的 bun 是内部 fork），锚点由 `plugin:gen-silence` 生成器自动发现并
+runtime 探活实证，不建议手写；生成器扫描失败时显式 throw 触发人工重研究，不产出存疑锚点。
+
 ### 等长约束（关键）
 
 Mach-O binary 必须等长替换（ADR 0002）：
@@ -106,4 +122,5 @@ binary 命名：各 enabled plugin 的 shortVer 按序用 `-` 拼（如 token `2
 
 ## 5. 安全声明
 
-plugin 可对 Claude Code binary 做任意等长改写，**包括移除安全提示**（如跨会话权限提升警告）。ccx 不审核 plugin 内容，用户安装第三方 plugin 需自行信任来源。移除安全提示会削弱 CC 的跨会话安全设计，仅应在理解风险的前提下使用。
+plugin 可对 Claude Code binary 做任意等长改写，**包括移除安全提示**（如跨会话权限提升警告）。ccx 不审核 plugin 内容，用户安装第三方 plugin 需自行信任来源。
+移除安全提示会削弱 CC 的跨会话安全设计，仅应在理解风险的前提下使用。

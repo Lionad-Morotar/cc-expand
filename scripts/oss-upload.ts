@@ -1,7 +1,11 @@
 #!/usr/bin/env node
 /**
- * 一次性上传指定版本的 pattern shard + versions.json 到阿里云 OSS
- * 用法: pnpm pattern:upload <version>
+ * 一次性上传指定版本的 shard + versions.json 到阿里云 OSS
+ * 用法: pnpm pattern:upload <version> [--dir <local-dir>] [--prefix <oss-prefix>]
+ *
+ * 默认上传 patterns/（token pattern 分片）；--dir 与 --prefix 成对泛化后，
+ * plugin shard 流水线复用同一脚本（如 plugin:upload-silence 指向
+ * plugin-shards/silence-unrecognized-model 与 plugins/silence-unrecognized-model/）。
  *
  * Why: watch:patterns 是 chokidar persistent 监听，长时间运行会被会话
  * SIGTERM 杀掉（exit 143），作为上传通道不可靠。本脚本提供事件驱动的
@@ -38,9 +42,29 @@ if (!accessKeyId || !accessKeySecret) {
   process.exit(1)
 }
 
-const version = process.argv[2]
+// pnpm run 的用户传参追加在 script 末尾，version 位置不固定：
+// 从参数表中剔除 flag 对后取首个位置参数
+const args = process.argv.slice(2)
+const positional: string[] = []
+for (let i = 0; i < args.length; i++) {
+  if (args[i] === '--dir' || args[i] === '--prefix') { i++; continue }
+  if (args[i].startsWith('--')) continue
+  positional.push(args[i])
+}
+const version = positional[0]
+/** 顺序读取 --flag value（与 platform-artifacts.flag 同语义，入口处内联避免脚本间循环依赖） */
+const flagOf = (names: string[], name: string): string | null => {
+  const idx = names.indexOf(name)
+  return idx >= 0 ? (names[idx + 1] ?? null) : null
+}
+const localDir = flagOf(args, '--dir') ?? 'patterns'
+const ossPrefix = flagOf(args, '--prefix') ?? 'patterns/'
 if (!version) {
-  console.error('用法: pnpm pattern:upload <version>')
+  console.error('用法: pnpm pattern:upload <version> [--dir <local-dir>] [--prefix <oss-prefix>]')
+  // 带出实际生效的目录与前缀：plugin:upload-silence 等包装入口忘传 version 时，
+  // 用户照默认提示执行 pattern:upload 会传错目录（token pattern 而非 plugin shard）
+  console.error(`当前生效: --dir ${localDir} --prefix ${ossPrefix}`)
+  console.error('包装入口（如 plugin:upload-silence）需在命令后追加 <version>，如 pnpm plugin:upload-silence 2.1.285')
   process.exit(1)
 }
 
@@ -55,6 +79,7 @@ const ossClient = new OSS({
 const uploader = new PatternUploader({
   client: ossClient,
   cachePath: join(process.cwd(), '.watch-patterns.cache.json'),
+  prefix: ossPrefix,
 })
 
 async function main(): Promise<void> {
@@ -62,7 +87,7 @@ async function main(): Promise<void> {
   const targets = [`${version}.json`, 'versions.json']
   let allOk = true
   for (const name of targets) {
-    const localPath = join(process.cwd(), 'patterns', name)
+    const localPath = join(process.cwd(), localDir, name)
     if (!existsSync(localPath)) {
       console.error(`✗ ${name}: 本地文件不存在 ${localPath}`)
       allOk = false
@@ -70,11 +95,11 @@ async function main(): Promise<void> {
     }
     const outcome = await uploader.uploadFile(localPath)
     if (outcome === 'uploaded') {
-      console.log(`[UPLOAD] patterns/${name}`)
+      console.log(`[UPLOAD] ${ossPrefix}${name}`)
     } else if (outcome === 'skipped') {
       console.log(`[SKIP] ${name} (内容未变化)`)
     } else {
-      console.error(`[FAIL] patterns/${name}`)
+      console.error(`[FAIL] ${ossPrefix}${name}`)
       allOk = false
     }
   }

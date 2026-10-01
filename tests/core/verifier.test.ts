@@ -3,7 +3,7 @@ import { mkdtempSync, writeFileSync, chmodSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Verifier } from '../../src/core/verifier.js'
-import { CcxError, ErrorCode } from '../../src/types/index.js'
+import { ErrorCode } from '../../src/types/index.js'
 import { encodeTokenLiteral } from '../../src/utils/encode-token-literal.js'
 
 /** bytecode 锚点（与 bytecode-patch-engine.test 同款实证锚点） */
@@ -31,6 +31,55 @@ describe('Verifier', () => {
   })
 
   describe('verify()', () => {
+    it('should pass byte-exact verification for high-byte literal patches (latin1 语义)', async () => {
+      // bytecode 指令锚点场景：search/target 含 >=0x80 字节，verifier 的 (a) 原 search 消失
+      // 与 (b) 目标字面量出现两检查都必须按 latin1 比对。判别性关键在 target 含高字节：
+      // 若回退为 utf8，(a) 因 searchBuf 双字节化不命中而空转、(b) 因期望字面量双字节化
+      // 在 latin1 字节流中找不到 → 已 patch 的 binary 被误判失败（误删产物）
+      const binaryPath = join(tempDir, 'claude')
+      const before = '\u0085R\u0007\u0011\u0085\u0006j\u0012\u001eóû'
+      const after = '\u0085R\u0007\u0011\u0085\u0004j\u0012\u001eóû'
+      writeFileSync(binaryPath, Buffer.from('noise' + after + 'tail', 'latin1'))
+      chmodSync(binaryPath, 0o755)
+
+      const verifier = new Verifier()
+
+      const result = await verifier.verify({
+        binaryPath,
+        targetGenerator: tokenGen(0),
+        sourceValue: '\u0085\u0006',
+        patches: [{ search: before, sourceValue: '\u0085\u0006', target: { value: '\u0085\u0004' } }]
+      })
+
+      expect(result.success).toBe(true)
+      expect(result.checks).toContainEqual(
+        expect.objectContaining({ name: 'pattern-replaced', passed: true })
+      )
+    })
+
+    it('should fail when high-byte binary is left unpatched (latin1 命中未替换形态)', async () => {
+      // 负向行为锁定：未 patch 的含高字节 search 的 binary 必须被 (a) 检查拦截——
+      // latin1 语义下 searchBuf 命中且槽位仍是 sourceValue → foundUnpatched → 失败
+      const binaryPath = join(tempDir, 'claude')
+      const before = '\u0085R\u0007\u0011\u0085\u0006j\u0012\u001eóû'
+      writeFileSync(binaryPath, Buffer.from('noise' + before + 'tail', 'latin1'))
+      chmodSync(binaryPath, 0o755)
+
+      const verifier = new Verifier()
+
+      const result = await verifier.verify({
+        binaryPath,
+        targetGenerator: tokenGen(0),
+        sourceValue: '\u0085\u0006',
+        patches: [{ search: before, sourceValue: '\u0085\u0006', target: { value: '\u0085\u0004' } }]
+      })
+
+      expect(result.success).toBe(false)
+      expect(result.checks).toContainEqual(
+        expect.objectContaining({ name: 'pattern-replaced', passed: false })
+      )
+    })
+
     it('should pass when all checks succeed', async () => {
       // Arrange: create a fake binary with the expected pattern
       const binaryPath = join(tempDir, 'claude')

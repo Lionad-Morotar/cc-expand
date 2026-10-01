@@ -26,10 +26,33 @@ pnpm pattern:upload <version>  # 一次性上传 shard + versions.json 到 OSS
 
 `pattern:upload` 复用 PatternUploader（内容 hash 去重 + 持久化缓存 + 指数退避重试），上传 patterns/{version}.json 与 patterns/versions.json。
 
+## 主流程（续）：silence 插件 shard
+
+token pattern 完成后顺带产出 silence-unrecognized-model 插件的 per-version shard（消音 unrecognized_model 告警的第一方插件）：
+
+```bash
+pnpm plugin:gen-silence <version>     # 生成 plugin-shards/silence-unrecognized-model/{version}.json + versions.json
+pnpm plugin:upload-silence <version>  # 上传到 OSS plugins/silence-unrecognized-model/ 前缀
+```
+
+`plugin:gen-silence` = 指令骨架扫描 + runtime 探活判别：
+
+1. 优先复用 pattern:gen 刚解压的平台 binary（`zRefs/claude-codes/extracted/` 缓存命中零下载）；
+   缓存缺失的平台自动回退 npm pack 下载（每平台数百 MB）；`--from-extracted <dir>` 显式指定其他解压目录（离线/复盘）
+2. silence-guard-discovery：模块 signature（`unrecognized-model-signal:`）定位 → bytecode 内搜 guard 指令骨架
+   （`52 07 11 06 6a 12`，操作码为实测锚）→ 上下文扩展至全 binary 唯一，产出 literal patch 候选
+3. 本机平台 runtime 探活：先验证探针环境（未 patch 副本必须出现告警），再逐候选 patch 副本跑 CLI 探针，
+   命中判据双证（告警消失且应答正常）；探针超时/无应答 fail loud
+4. 其余平台按锚字节序列对齐（各平台 blob 布局不同构，blob 内偏移不可对齐；锚字节跨平台一致且唯一，2.1.285 五平台实证）
+5. patch 模拟实证后写 shard（只落 PatchItem 契约字段）
+
+探活探针用 `ANTHROPIC_MODEL=glm-5.3`（非白名单模型触发告警），每次探针真实调一次 API，全流程最多约 10 次小请求。
+
 ## 验证
 
 ```bash
-pnpm pattern:verify-oss <version>   # 确认 shard 与 versions.json 已上传且内容一致(MD5)
+pnpm pattern:verify-oss <version>    # 确认 pattern shard 与 versions.json 已上传且内容一致(MD5)
+pnpm plugin:verify-silence <version> # 确认 silence 插件 shard 与 versions.json 已上传且内容一致(MD5)
 npx vitest run tests/cli             # 针对性单测（加超时）
 ```
 
@@ -43,6 +66,16 @@ npx vitest run tests/cli             # 针对性单测（加超时）
 2. 检查 `>200000:!1}` 是否仍存在且唯一
 3. 判断是否出现新模式（第 7 个锚点）或旧模式消失
 4. 若结构确实变化，调整 PatternDiscovery 的不变量（EXPECTED_ANCHOR_COUNT）或手动生成 shard
+
+## 人工兜底：silence shard 生成失败时
+
+`plugin:gen-silence` 的 throw 都是 fail loud，两类信号：
+
+1. `signature 未命中` / `无指令骨架，操作码或常量池布局已漂移`：CC 的 bun fork 改了指令编码或常量池布局。
+   需重新逆向（差分编译方法论：bun 1.4.2 `--compile --bytecode` 对照 + 操作数骨架搜索 + runtime 消音判别），
+   更新 src/core/silence-guard-discovery.ts 的骨架常量后重跑
+2. `全部 N 个候选探活未命中` / `告警消失但 CLI 无应答`：告警发射器不在同形候选内，或 patch 破坏执行。
+   先用未 patch binary 复核告警仍可复现（探针环境有效），再人工逐候选定位
 
 ## 人工兜底：bytecode 锚点失败时
 
