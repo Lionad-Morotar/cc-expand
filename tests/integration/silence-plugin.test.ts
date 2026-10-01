@@ -27,9 +27,10 @@ const silenceManifest: PluginManifest = {
   description: 'test fixture'
 }
 
-/** 与生成器产出的 shard 同构（纯 PatchItem 契约字段，无发现器内部字段） */
+/** 与生成器产出的 shard 同构（纯 PatchItem 契约字段，无发现器内部字段）。
+ *  平台/架构键按当前主机自适应：collectPluginContext 按 process.platform/arch 取档 */
 const silenceShard: OsPatterns = {
-  darwin: {
+  [process.platform]: {
     [process.arch]: [{
       search: ANCHOR_BEFORE,
       sourceValue: '\u0006',

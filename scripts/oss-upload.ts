@@ -61,6 +61,10 @@ const localDir = flagOf(args, '--dir') ?? 'patterns'
 const ossPrefix = flagOf(args, '--prefix') ?? 'patterns/'
 if (!version) {
   console.error('用法: pnpm pattern:upload <version> [--dir <local-dir>] [--prefix <oss-prefix>]')
+  // 带出实际生效的目录与前缀：plugin:upload-silence 等包装入口忘传 version 时，
+  // 用户照默认提示执行 pattern:upload 会传错目录（token pattern 而非 plugin shard）
+  console.error(`当前生效: --dir ${localDir} --prefix ${ossPrefix}`)
+  console.error('包装入口（如 plugin:upload-silence）需在命令后追加 <version>，如 pnpm plugin:upload-silence 2.1.285')
   process.exit(1)
 }
 
