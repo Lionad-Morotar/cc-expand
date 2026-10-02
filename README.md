@@ -12,10 +12,13 @@
 
 ---
 
-cc-expand patches the Claude Code binary to change hard-coded behavior. The most common use case is raising the context-window limit so longer conversations delay auto-compaction:
+cc-expand patches the Claude Code binary to change hard-coded behavior.
+The most common use case is raising the context-window limit so longer conversations delay auto-compaction:
 
-1. **Break through the 200K context window limit** to delay auto-compaction. When a model supports 256K, Claude Code's native 200K ceiling becomes a bottleneck.
-2. **Cap 1M models at a lower target** to stay in the optimal performance range, since quality drops noticeably past 256K/512K.
+1. **Break through the 200K context window limit** to delay auto-compaction. When a model supports 256K,
+   Claude Code's native 200K ceiling becomes a bottleneck.
+2. **Cap 1M models at a lower target** to stay in the optimal performance range,
+   since quality drops noticeably past 256K/512K.
 
 | Before | After |
 |--------|-------|
@@ -64,7 +67,8 @@ npx cc-expand <command>
 | `ccx --version` | Show cc-expand version |
 
 - Install version: `latest` or `2.1.170`
-- Token counts accept plain numbers, `k` for thousands, or `w` for ten-thousands: `256000`, `270k`, and `27w` all mean 270000 tokens.
+- Token counts accept plain numbers, `k` for thousands, or `w` for ten-thousands: `256000`, `270k`,
+  and `27w` all mean 270000 tokens.
 - Patch options:
   ```
   <version>               Claude Code version to patch (e.g. 2.1.170)
@@ -82,15 +86,20 @@ Supported versions are determined by remote pattern shards stored on Aliyun OSS.
 ccx supports
 ```
 
-to see the dynamically updated list for your platform. Patterns are cached locally under `~/.cc-expand/cache/patterns/` with ETag conditional requests to minimize bandwidth.
+to see the dynamically updated list for your platform.
+Patterns are cached locally under `~/.cc-expand/cache/patterns/` with ETag conditional requests to minimize bandwidth.
 
-When a new Claude Code version is released, the `watch-patch` skill discovers its obfuscated constants and uploads a new pattern shard. You usually do not need to update the `cc-expand` npm package to get support for a newer CC version.
+When a new Claude Code version is released,
+the `watch-patch` skill discovers its obfuscated constants and uploads a new pattern shard.
+You usually do not need to update the `cc-expand` npm package to get support for a newer CC version.
 
-If your CC version is not yet supported, temporarily use an older version (e.g. `npx @anthropic-ai/claude-code@2.1.197`) or generate a pattern locally by running the `watch-patch` skill/agent against the project source.
+If your CC version is not yet supported, temporarily use an older version (e.g. `npx @anthropic-ai/claude-code@2.1.197`)
+or generate a pattern locally by running the `watch-patch` skill/agent against the project source.
 
 ## Extending with Plugins
 
-cc-expand treats every binary modification as a plugin. The context-window expansion is just one built-in plugin; you can install third-party plugins to alter other Claude Code behaviors.
+cc-expand treats every binary modification as a plugin. The context-window expansion is just one built-in plugin;
+you can install third-party plugins to alter other Claude Code behaviors.
 
 ```bash
 ccx plugins add owner/repo        # install a plugin
@@ -99,9 +108,11 @@ ccx plugins enable/disable <name> # enable or disable
 ccx plugins remove <name>         # remove
 ```
 
-When multiple plugins are enabled, `ccx patch` applies them all in one pass. The resulting binary name encodes the plugin set, e.g. `claude-27w-flow`.
+When multiple plugins are enabled, `ccx patch` applies them all in one pass.
+The resulting binary name encodes the plugin set, e.g. `claude-27w-flow`.
 
-Want to write your own? See the [Plugin Authoring Guide](docs/plugin-authoring.md) and [ADR 0003](docs/adr/0003-plugin-unified-patch-abstraction.md).
+Want to write your own? See the [Plugin Authoring Guide](docs/plugin-authoring.md)
+and [ADR 0003](docs/adr/0003-plugin-unified-patch-abstraction.md).
 
 ## Support Me
 

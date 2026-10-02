@@ -6,17 +6,22 @@
 
 ## 背景
 
-ADR 0003 把 token 工具（encodeTokenLiteral / parseTokenCount / formatTokenCount）搬入子包 `@cc-expand/plugin-context-expand`。子包内部抛错误需要 CcxError，但子包不能 import root（root 依赖子包，反向依赖会成环），于是子包**复制了一份**精简版 CcxError / ErrorCode（仅 INVALID_TARGET）。
+ADR 0003 把 token 工具（encodeTokenLiteral / parseTokenCount / formatTokenCount）搬入子包 `@cc-expand/plugin-context-expand`。
+子包内部抛错误需要 CcxError，但子包不能 import root（root 依赖子包，反向依赖会成环），于是子包**复制了一份**精简版 CcxError / ErrorCode（仅 INVALID_TARGET）。
 
-后果：root 与子包各有一份 CcxError 类。`instanceof CcxError` 跨包失效——子包 encodeTokenLiteral 抛的是子包 CcxError，root 代码 `catch (e) { if (e instanceof CcxError) }` 判断的是 root CcxError，两者不同类，instanceof 永远 false。
+后果：root 与子包各有一份 CcxError 类。`instanceof CcxError` 跨包失效——子包 encodeTokenLiteral 抛的是子包 CcxError，
+root 代码 `catch (e) { if (e instanceof CcxError) }` 判断的是 root CcxError，两者不同类，instanceof 永远 false。
 
-临时止血：新增 `isCcxError(e)` 守卫（按 `name === 'CcxError' && typeof code === 'string'` 识别），patch-engine 等消费方改用守卫。功能正确，但 instanceof 这一标准手段失效是基础设施债——未来新消费方仍可能误用 instanceof。
+临时止血：新增 `isCcxError(e)` 守卫（按 `name === 'CcxError' && typeof code === 'string'` 识别），patch-engine 等消费方改用守卫。功能正确，
+但 instanceof 这一标准手段失效是基础设施债——未来新消费方仍可能误用 instanceof。
 
 ## 决策
 
-**CcxError / ErrorCode 的单一来源定为子包 `packages/plugin-context-expand/src/ccx-error.ts`**，root `src/types/index.ts` 通过 `import` + `export` re-export 它。root 与子包从此用**同一个 CcxError 类**，`instanceof` 跨包自然恢复有效。
+**CcxError / ErrorCode 的单一来源定为子包 `packages/plugin-context-expand/src/ccx-error.ts`**，
+root `src/types/index.ts` 通过 `import` + `export` re-export 它。root 与子包从此用**同一个 CcxError 类**，`instanceof` 跨包自然恢复有效。
 
-子包 ccx-error.ts 的 ErrorCode 扩展为完整 11 个错误码（原仅 INVALID_TARGET），承担通用错误定义职责。isCcxError 守卫保留——单一来源后 instanceof 已可用，但守卫对来自 JSON / 边界（非 Error 子类）的对象更稳健，且语义自文档化。
+子包 ccx-error.ts 的 ErrorCode 扩展为完整 11 个错误码（原仅 INVALID_TARGET），承担通用错误定义职责。isCcxError 守卫保留——单一来源后 instanceof 已可用，
+但守卫对来自 JSON / 边界（非 Error 子类）的对象更稳健，且语义自文档化。
 
 ## 理由
 
