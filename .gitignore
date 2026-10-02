@@ -33,3 +33,4 @@ plugin-shards/
 
 # Reference sources
 zRefs/
+.claude/worktrees/
