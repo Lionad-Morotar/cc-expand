@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- CLI 入口新增 node 版本守卫（经 tsup banner 注入，先于 bundle 一切依赖 require 执行）：cli.js 的 shebang `env node` 按 PATH 解析，在声明 `.node-version`/`.nvmrc` 的项目目录会被 fnm use-on-cd 劫持到老版本 node，而依赖链（cac）只发 ESM、require 它需要 require(esm)（v22 起 unflagged，v20.19 backport 默认启用），老 node 下报 ERR_REQUIRE_ESM 且错误落在 patch/install 子命令上、与真实根因相距甚远。守卫检测到版本不足时按 `CC_EXPAND_NODE` → fnm default（mac/Linux）→ volta → homebrew → /usr/local 顺序找达标 node 重执行自身（stdio 与退出码透传），无可用替代时给出三条修复指引后退出
+
 ## [0.5.2] - 2026-09-04
 
 ### Added
