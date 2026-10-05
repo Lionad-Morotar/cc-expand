@@ -15,6 +15,7 @@ cc-expand 通过插件化二进制 patch 扩展 Claude Code 能力：最常见�
 | [STACK.md](./.planning/codebase/STACK.md)                  | 技术栈、开发命令、部署流程 |
 | [STRUCTURE.md](./.planning/codebase/STRUCTURE.md)          | 目录结构、命名规范         |
 | [ARCHITECTURE.md](./.planning/codebase/ARCHITECTURE.md)    | 架构模式、术语表           |
+| [C4 架构模型](./.planning/c4/)                             | LikeC4 架构模型（npx likec4 start 本地查看） |
 | [CONVENTIONS.md](./.planning/codebase/CONVENTIONS.md)      | 代码风格、开发约定         |
 | [TESTING.md](./.planning/codebase/TESTING.md)              | 测试规范                   |
 | [INTEGRATIONS.md](./.planning/codebase/INTEGRATIONS.md)    | 外部服务、环境变量         |

@@ -1,0 +1,168 @@
+/* cc-expand — LikeC4 架构模型
+   事实源：.planning/codebase/{ARCHITECTURE,INTEGRATIONS,STRUCTURE,STACK}.md（2026-10-02）
+   代码实测（2026-10-06）：bin 双注册 ccx/cc-expand → dist/cli.js；engines node>=18；
+   workspace packages/*；无 docker/k8s/.github 清单；OSS 端点见 src/services/pattern.ts:36
+   本文件随 .planning/codebase/ 同步维护 */
+specification {
+  element actor { notation "参与者"; style { shape person } }
+  element system
+  element container
+  element component { notation "组件"; style { shape component } }
+  element database { notation "本地数据存储"; style { shape storage } }
+
+  deploymentNode environment { notation "环境"; style { color gray } }
+  deploymentNode machine { notation "机器 / 托管平台" }
+  deploymentNode localDir { notation "本地目录"; style { shape storage } }
+}
+
+model {
+  actor user "Claude Code 用户" {
+    description "在本机执行 ccx 子命令 patch / run / migration / status；CLI 无账号体系"
+  }
+  actor maintainer "仓库维护者" {
+    description "驱动 watch-patch 定时闭环，为新 CC 版本生产并上传 pattern 与插件 shard"
+  }
+
+  system ccx "cc-expand" {
+    description "插件化二进制 patch 扩展 Claude Code 能力的 CLI 体系（突破 / 压低上下文窗口上限）；新版本支持靠 OSS 下发 pattern，通常无需发新 npm 包"
+
+    container cli "CLI 本体" {
+      technology "npm 包 cc-expand 0.5.2，tsup 双 bundle，Node >= 18"
+      description "根包主体，bin 双注册 ccx / cc-expand → dist/cli.js，14 个子命令"
+
+      component commands "CLI 命令层" {
+        description "cac 路由、@inquirer 交互、renderer / i18n(en/zh) / pager、CommandResult 信封与 BSD 退出码"
+      }
+      component services "服务层" {
+        description "CLI 无关的领域编排：PatchApplier 两阶段、PatternService(OSS+ETag)、PackageService、PluginsManager、channel/shell/update 系列深模块"
+      }
+      component core "核心引擎" {
+        description "纯 Buffer 字节操作、零 token 知识、无文件 IO：PatchEngine(latin1 等长)、BytecodePatchEngine(锚点唯一性硬约束)、Verifier、发现模块与二进制格式解析"
+      }
+    }
+
+    container tokenPkg "token 逻辑子包" {
+      technology "@cc-expand/plugin-context-expand 0.4.0-alpha.2 (private)"
+      description "token 紧凑命名 / 等长编码 / 解析与 CcxError 单一来源（ADR 0004）；经 tsup noExternal inline 进 CLI dist"
+    }
+
+    container website "官网" {
+      technology "Nuxt 4 SPA (ssr:false) + Three.js banner"
+      description "产品官网，Nitro github-pages preset，本地构建后手动发布"
+    }
+
+    container opsPipeline "pattern 生产流水线" {
+      technology "tsx scripts + ali-oss"
+      description "watch-patch 定时闭环：latest-check → pattern:gen（锚点发现 + patch 模拟 + 实证）→ 上传 OSS → MD5 核验；scripts/ 12 个脚本复用核心引擎发现模块"
+    }
+
+    database localState "本地状态存储" {
+      technology "~/.cc-expand/ JSON + 二进制文件"
+      description "文件即状态、无数据库：channel/versions/plugins.json 状态机、ETag 缓存、只读源 binary 缓存（packages/<v>）与 patch 产物（bin/claude-<shortVer>）"
+    }
+  }
+
+  system claudeCode "Claude Code 本体" {
+    technology "@anthropic-ai/claude-code，wrapper + 平台二进制"
+    description "约 215MB Bun standalone native 可执行文件（Mach-O/ELF/PE）；唯一被 patch 的外部目标，硬约束为字节级等长替换（ADR 0002）"
+  }
+
+  system oss "阿里云 OSS" {
+    technology "bucket cc-expand @ oss-cn-shanghai，公共读"
+    description "pattern 分片（patterns/）与插件 shard（plugins/<name>/）的唯一分发面；维护侧凭 .env 凭据写入"
+  }
+
+  system npmRegistry "npm registry" {
+    technology "用户本机 npm（execFile，尊重镜像源）"
+    description "cc-expand 发布与自更新版本查询；CC wrapper 包与平台二进制包的下载源"
+  }
+
+  system github "GitHub" {
+    technology "raw 内容 + GitHub Pages，无 CI"
+    description "第三方插件索引（raw ccx-plugins.json）与官网托管；部署为本地构建后手动发布"
+  }
+
+  // 关系（顶层 FQN；parent 与 child 间禁止直接关系）
+  user -> ccx.cli "执行 ccx 子命令"
+  user -> ccx.website "访问官网"
+  maintainer -> ccx.opsPipeline "驱动定时流水线"
+
+  ccx.cli.commands -> ccx.cli.services "prepare/execute 编排，领域结果转 CommandResult"
+  ccx.cli.commands -> github "fetch raw 插件索引，validateManifest 校验后持久化" {
+    technology "HTTPS"
+  }
+  ccx.cli.commands -> claudeCode "ccx run spawn patched binary（stdio inherit）；shell 快捷方式指向产物"
+  ccx.cli.services -> ccx.cli.core "patches + Buffer；token 策略经回调/注册表注入，内核零 token 知识"
+  ccx.cli.services -> ccx.tokenPkg "encode/format/parse-token-count + CcxError/isCcxError"
+  ccx.cli.services -> ccx.localState "读写状态机 JSON、ETag 缓存、源 binary 缓存与 patch 产物"
+  ccx.cli.services -> oss "拉取 token pattern 与 installed plugin shard（双角色同一服务类）" {
+    technology "HTTPS fetch + If-None-Match ETag"
+  }
+  ccx.cli.services -> npmRegistry "npm pack CC 平台包 → tar 提取 binary；npm view 版本查询" {
+    technology "execFile 子进程"
+  }
+  ccx.cli.services -> claudeCode "拷贝至产物 → 等长 patch → codesign(macOS) → Verifier 验证"
+  ccx.cli -> ccx.tokenPkg "devDependencies workspace:*；tsup noExternal inline 进 dist"
+  ccx.opsPipeline -> ccx.cli.core "复用 PatternDiscovery / bytecode 锚点 / silence guard 发现模块"
+  ccx.opsPipeline -> npmRegistry "latest-check（显式官方源绕镜像）+ 五平台 binary 下载"
+  ccx.opsPipeline -> oss "上传 pattern 与插件 shard（hash 去重 + 指数退避）" {
+    technology "ali-oss SDK"
+  }
+  ccx.opsPipeline -> claudeCode "silence shard runtime 探活：patch 后副本真实 API 往返"
+  npmRegistry -> claudeCode "分发 wrapper 包与平台二进制包"
+  ccx.website -> github "nuxt generate 产物手动发布" {
+    technology "GitHub Pages"
+  }
+}
+
+deployment {
+  environment prod "生产" {
+    technology "无 CI/CD：npm 手动发布 + 官网本地构建手动部署"
+    machine userMachine "用户机器" {
+      technology "macOS / Windows / Linux，Node >= 18"
+      cliRun = instanceOf ccx.cli
+      localDir ccHome "~/.cc-expand" {
+        technology "状态 JSON + binary 缓存与 patch 产物"
+      }
+    }
+    machine maintainerMachine "维护机" {
+      technology "Node >= 18 + pnpm + 全局 tsx + .env OSS 写凭据"
+      opsRun = instanceOf ccx.opsPipeline
+    }
+    machine pagesHost "GitHub Pages" {
+      technology "Nitro preset github-pages，预渲染 /"
+      websiteSite = instanceOf ccx.website
+    }
+  }
+}
+
+views {
+  view index {
+    title "cc-expand 系统全景"
+    include *
+    autoLayout LeftRight
+  }
+  view cliDetail of ccx.cli {
+    title "CLI 本体：命令 / 服务 / 核心引擎"
+    description "分层架构与外部依赖面（含 tsup inline 的 token 子包）"
+    include *
+    include * -> ccx.cli
+    include ccx.cli -> *
+    autoLayout TopBottom
+  }
+  dynamic view patchFlow {
+    title "ccx patch 主流程"
+    user -> ccx.cli.commands "执行 ccx patch --target <tokens>"
+    ccx.cli.commands -> ccx.cli.services "collectPluginContext 聚合 + PatchApplier.prepare"
+    ccx.cli.services -> oss "拉取 token pattern 与 installed plugin shard"
+    ccx.cli.services -> npmRegistry "源缓存缺失则 npm pack 下载 CC 平台包"
+    ccx.cli.services -> ccx.tokenPkg "encodeTokenLiteral 等长编码 target"
+    ccx.cli.services -> ccx.cli.core "PatchEngine / BytecodePatchEngine 等长替换 + Verifier 验证"
+    ccx.cli.services -> ccx.localState "落盘 claude-<shortVer> 产物，记录 combo 与 active channel"
+    ccx.cli.commands -> claudeCode "shell 快捷方式指向产物，ccx run 可 spawn"
+  }
+  deployment view deployView {
+    title "部署视图：单机 CLI + 维护机 + Pages"
+    include prod.**
+  }
+}
