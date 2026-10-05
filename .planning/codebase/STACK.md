@@ -1,6 +1,6 @@
 # 技术栈（Technology Stack）
 
-**分析日期：** 2026-10-02
+**分析日期：** 2026-10-06
 
 ## 语言
 
@@ -15,6 +15,7 @@
 
 **环境：**
 - Node.js >= 18.0.0（`package.json` 的 `engines` 字段；类型基准 `@types/node ^22`）
+- CLI 实际运行底线为支持 `require(esm)` 的 node（v22+，或 v20.19+ backport）：`src/cli/guard-banner.js` 以 banner 形态注入 `dist/cli.js` 首部，先于一切第三方 require 检测老 node（如被 `.node-version` / fnm use-on-cd 劫持的环境），命中时按 `CC_EXPAND_NODE` → fnm/volta/Homebrew 默认安装位顺序找可用 node 重执行自身，找不到则以可操作提示退出
 - 运行时无原生依赖，产物为纯 JS bundle
 
 **包管理器：**
@@ -103,7 +104,7 @@ pnpm release         # pnpm publish --config.registry=https://registry.npmjs.org
 `tsup.config.ts` 定义两个 bundle：
 
 1. **库 bundle**（`src/index.ts` → `dist/index.js` / `index.mjs` / `index.d.ts`）：`cjs` + `esm` 双格式，`dts: true`，sourcemap，`clean: true`
-2. **CLI bundle**（`src/cli/index.ts` → `dist/cli.js`）：`cjs` 单格式，banner 注入 `#!/usr/bin/env node`；`noExternal: ['@cc-expand/plugin-context-expand']` 将子包运行时代码内联——因子包 `main` 直指 `.ts` 源文件，Node 无法直接执行（见 `tsup.config.ts:25-27` 注释）
+2. **CLI bundle**（`src/cli/index.ts` → `dist/cli.js`）：`cjs` 单格式，banner 注入 shebang + `src/cli/guard-banner.js` 全文（构建时 `readFileSync` 读入，`tsup.config.ts:6-9`——node 版本守卫必须先于 bundle 的一切第三方 require，只能走 banner 不能走 import，见 `src/cli/guard-banner.js` 头注释）；`noExternal: ['@cc-expand/plugin-context-expand']` 将子包运行时代码内联——因子包 `main` 直指 `.ts` 源文件，Node 无法直接执行（见 `tsup.config.ts:33-35` 注释）
 
 **顺序约束：** `prebuild` 钩子先跑 `vitest run --exclude tests/integration`（集成测试需要 dist 产物），再执行 `tsup`。
 
@@ -145,6 +146,4 @@ pnpm release         # pnpm publish --config.registry=https://registry.npmjs.org
 **产物运行：**
 - CLI 支持为 Claude Code patch 产出 macOS / Windows / Linux 二进制（`scripts/platform-artifacts.ts` 的 `PLATFORMS` 五平台矩阵）
 
----
-
-*技术栈分析：2026-10-02*
+*技术栈分析：2026-10-06*

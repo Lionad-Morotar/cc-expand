@@ -1,6 +1,6 @@
 # 编码约定（Coding Conventions）
 
-**分析日期：** 2026-10-02
+**分析日期：** 2026-10-06
 
 ## 语言与类型规范
 
@@ -9,6 +9,7 @@
 - 类型导入两种写法并存，均可用：`import type { ConfigService } from '...'` 与内联 `import { ChannelConfig, type ChannelConfigData } from '...'`（`src/cli/commands/status.ts:11`）
 - 相对导入必须带 `.js` 后缀（NodeNext 要求，源文件虽是 `.ts`，如 `from '../types/index.js'`）
 - Node 内建模块一律用 `node:` 前缀：`node:fs`、`node:path`、`node:os`、`node:child_process`
+- 唯一 `.js` 源文件：`src/cli/guard-banner.js`（CommonJS、ES5 风格），经 `tsup.config.ts` 读文件后以 banner 注入 `dist/cli.js` 顶部——"须先于所有 require 执行"的代码必须走 banner 注入并以自包含 JS 维护（只依赖 node 内置），禁止以 import 形态接入（esbuild 会把 import 提升为顶部 require，晚于 cac 的 require）；tsup 读文件而非内联字符串，正是为了守卫逻辑能被单测
 
 ## 代码风格
 
@@ -79,6 +80,8 @@ export interface StatusOptions {
 
 **核心引擎零业务知识：** `PatchEngine` 不认识 token 概念，等长替换字面量由调用方注入 `targetGenerator`（`src/core/patch-engine.ts:51`）。
 
+**带顶层副作用守卫的模块导出纯函数面：** 守卫逻辑（IIFE 包裹，达标环境直接 return 保证导入无副作用）与可测逻辑分离，纯函数经 `module.exports` 导出供单测（`supportsRequireEsm`、`candidateNodePaths`，`src/cli/guard-banner.js:83`）；dist 内导出面被 bundle exports 覆盖，无碍。
+
 ## i18n 约定
 
 - 所有用户可见文案（summary、error、warning、help）必须走 `t(key)`，键定义在 `src/cli/i18n.ts` 的 `I18nKey` 联合类型，en/zh 双份翻译
@@ -138,9 +141,9 @@ merge(flow-dev): <标题>（4 切片）
 ## 环境与构建
 
 - Node `>=18.0.0`（`package.json` engines）；包管理器 pnpm（workspace 根 `pnpm-workspace.yaml`，子包 `packages/*`）
-- 构建用 tsup（`tsup.config.ts`）：library 入口 `src/index.ts`（cjs+esm+dts），CLI 入口 `src/cli/index.ts`（cjs + shebang）；子包运行时代码 `noExternal` inline 进 dist（ADR 0003）——**新增 workspace 依赖若要进 dist，须加进 noExternal**
+- 构建用 tsup（`tsup.config.ts`）：library 入口 `src/index.ts`（cjs+esm+dts），CLI 入口 `src/cli/index.ts`（cjs + shebang），CLI bundle 的 banner 注入 `src/cli/guard-banner.js`（node 版本守卫，先于一切 require 执行）；子包运行时代码 `noExternal` inline 进 dist（ADR 0003）——**新增 workspace 依赖若要进 dist，须加进 noExternal**
 - 根目录存在 `.env` 与 `.npmrc`（凭证类文件，不要读取或提交其内容）
 
 ---
 
-*约定分析：2026-10-02*
+*约定分析：2026-10-06*

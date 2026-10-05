@@ -1,6 +1,6 @@
 # 代码库关注点（技术债务 / 风险 / 注意事项）
 
-**分析日期：** 2026-10-02
+**分析日期：** 2026-10-06
 
 本文档基于代码实证（源码、注释、`docs/adr/`、`docs/qa/`、`docs/reports/`、测试跳过项），供规划阶段评估改动风险与优先级。所有路径相对仓库根。
 
@@ -132,6 +132,12 @@
 - Why fragile: 用户原渠道是 brew/npm-global 时，一次 patch 后 channel.json 永久指向 local（快照版本）。用户随后用 brew 升级 CC，系统 binary 已是新版本，而 ccx 的 active version 仍停旧版——`status` 按 active version 报告（CONTEXT.md 明确的语义），状态与系统真实状态脱节；`migration` 的默认源版本也取自 channel。
 - Safe modification: 这是保证 shell 快捷方式版本校验基准的有意设计；改动需同步 `status` 增加「系统版本 ≠ active 版本」的提示（对照 DiscoveryService 的 PATH 探测），而非改写 channel 语义。
 
+**入口 node 版本守卫的候选探测面与双份实现：**
+- Files: `src/cli/guard-banner.js`（经 `tsup.config.ts` 读入作 `dist/cli.js` 的 banner，先于一切第三方 require 执行）、`tests/cli/guard-banner.test.ts`
+- Why fragile: 其一，候选 node 查找序（`CC_EXPAND_NODE` → fnm default 别名（mac/Linux 各一）→ volta → homebrew → /usr/local）全是 mac/Linux 布局，nvm 与 Windows 版本管理器不在候选序内；Windows 下全部候选不存在，命中老 node 只能靠 `CC_EXPAND_NODE` 逃生舱或按结构化报错手动切版本（fail-loud，可接受）。其二，`supportsRequireEsm`/`candidateNodePaths` 在 IIFE 闭包内与 `module.exports` 各有一份等价实现（可测性取舍，源码注释已声明），单测只覆盖导出面副本，运行时实际执行的是 IIFE 内副本，两处漂移时测试不会变红。其三，守卫自举依赖 `node:` 前缀 require（≥14.18/16 可用），更老环境下守卫自身以底层模块错误崩溃而非结构化提示，现实概率极低。
+- Safe modification: 调整版本阈值（v20.19/v22）或候选路径时两份实现必须同步修改并跑 `tests/cli/guard-banner.test.ts`；重执行循环已被实测探测阻断——候选须通过 `spawnSync --version`（5s 超时）加 `supportsRequireEsm` 验证才被采用，重执行后达标 node 的 banner 直接 return，仅当候选二进制伪装版本串才可能循环（现实概率可忽略），`CC_EXPAND_NODE` 指向老 node 只会 fallthrough 到后续候选或结构化报错；子进程信号终止按 exit 1 兜底，属预期行为勿「修复」。
+- Test coverage: 纯函数面已覆盖；重执行分支（候选探测、换 node 再执行、候选全灭报错路径）无自动化测试，依赖真实老 node 环境人工验证。
+
 ## 扩展上限
 
 **pattern/shard 生产链路为单人运维流：**
@@ -184,4 +190,4 @@
 
 ---
 
-*关注点审计：2026-10-02*
+*关注点审计：2026-10-06*

@@ -1,6 +1,6 @@
 # 测试规范（Testing Patterns）
 
-**分析日期：** 2026-10-02
+**分析日期：** 2026-10-06
 
 ## 测试框架
 
@@ -19,7 +19,7 @@ export default defineConfig({
 })
 ```
 
-**约定：尽管 `globals: true`，每个测试文件仍显式 `import { describe, it, expect } from 'vitest'`**（全部 58 个测试文件实证一致），新增测试跟随此写法。
+**约定：尽管 `globals: true`，每个测试文件仍显式 `import { describe, it, expect } from 'vitest'`**（全部 59 个测试文件实证一致），新增测试跟随此写法。
 
 **Assertion Library：** Vitest 内置 `expect`。
 
@@ -52,7 +52,7 @@ cd packages/plugin-context-expand && pnpm test   # 子包测试（vitest run，�
 tests/
 ├── cli/                  # CLI 层单测（进程内，不依赖 dist）
 │   ├── commands/         # 15 个命令各一个 .test.ts，与 src/cli/commands/ 一一对应
-│   ├── i18n.test.ts / pager.test.ts / renderer.test.ts / result.test.ts
+│   ├── guard-banner.test.ts / i18n.test.ts / pager.test.ts / renderer.test.ts / result.test.ts
 │   ├── update-check-runner.test.ts / version-line.test.ts
 ├── core/                 # 核心引擎单测（纯 buffer 算法）
 │   ├── patch-engine.test.ts / bytecode-patch-engine.test.ts / verifier.test.ts
@@ -173,7 +173,7 @@ function fakeBinary(token = 200000): Buffer { /* 文本锚点 + bytecode 槽位�
 
 ## 测试类型全景
 
-- **单元测试：** 51 个文件，进程内，秒级。utils/core 全覆盖，services/cli 近 1:1（60 个 src 文件 vs 58 个测试文件）
+- **单元测试：** 54 个文件（tests/cli、core、services、utils、scripts），进程内，秒级。utils/core 全覆盖，services/cli 近 1:1（61 个 src 文件 vs 59 个测试文件）
 - **进程内端到端：** `tests/integration/plugin-patch.test.ts`、`silence-plugin.test.ts`——跨模块全链路（manifest → shard → patch → 字节断言）
 - **CLI e2e：** `tests/integration/cli.test.ts`——子进程跑构建产物，断言 stdout/stderr 与退出码
 - **视觉回归：** `scripts/visual-regression.ts`（vitest 外，playwright + pixelmatch）
@@ -185,10 +185,12 @@ function fakeBinary(token = 200000): Buffer { /* 文本锚点 + bytecode 槽位�
 
 **行为驱动的 it 命名：** 描述可观察行为而非实现（`'returns needWork=false when latest is already processed locally'`）。
 
+**CJS 模块测试：** ESM 测试加载 CommonJS 模块用 `createRequire(import.meta.url)`，返回值以 `as { ... }` 手工标注纯函数形状（模块是无类型的 `.js`，见 `src/cli/guard-banner.js`）；带顶层副作用守卫的模块只测其导出的纯函数面——顶层守卫在达标 node 上直接 return，导入无副作用（实证 `tests/cli/guard-banner.test.ts:9`）。
+
 **用例编号注释：** 少数文件用行号注释标记用例意图（`// B13: ...`，`tests/services/latest-checker.test.ts:6`）——历史产物，新测试不效仿，用清晰的 it 描述即可。
 
 **Vitest workspace：** 不存在（无 `vitest.workspace.*`）；子包用自己的 `package.json` script（`vitest run`）独立跑。
 
 ---
 
-*测试分析：2026-10-02*
+*测试分析：2026-10-06*

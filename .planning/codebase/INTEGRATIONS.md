@@ -1,6 +1,6 @@
 # 外部集成（External Integrations）
 
-**分析日期：** 2026-10-02
+**分析日期：** 2026-10-06
 
 ## 外部服务总览
 
@@ -90,7 +90,8 @@
 
 ## 环境配置
 
-**必需环境变量（仅维护侧脚本需要，CLI 运行时零环境变量依赖）：**
+**环境变量（维护侧脚本必需；CLI 运行时仅一个可选覆盖项）：**
+- `CC_EXPAND_NODE` — 可选，仅 CLI 运行时：node 版本守卫（`src/cli/guard-banner.js`）在当前 node 不支持 `require(esm)` 时按此路径优先探测可用 node 并重执行自身；未设置则自动尝试 fnm/volta/Homebrew 等默认安装位（macOS/Linux 路径），全部失败则报错退出
 - `AccessKeyID` / `AccessKeySecret` — 阿里云 OSS 写凭据；从根目录 `.env` 加载（`scripts/oss-upload.ts:24-43`、`scripts/watch-patterns.ts`、`scripts/oss-verify.ts` 各自内联 `loadEnv()`，手写解析 `KEY=VALUE`，无 dotenv 依赖）；缺失时 fail loud（`process.exit(1)`）
 - `NUXT_APP_BASE_URL` — 官网构建 baseURL（`packages/website/nuxt.config.ts:4`，默认 `/`）
 - `XDG_CONFIG_HOME` — 可选，用户配置目录定位（`src/services/user-config.ts:31-43`；默认 `~/.config/cc-expand/config.json`，Windows 走 `appData`）
@@ -105,6 +106,4 @@
 
 **出站：** 无 webhook；对外交互仅上述 fetch / npm 子进程 / ali-oss 三类
 
----
-
-*集成审计：2026-10-02*
+*集成审计：2026-10-06*

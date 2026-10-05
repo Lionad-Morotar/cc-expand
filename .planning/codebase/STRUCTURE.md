@@ -1,7 +1,6 @@
-<!-- refreshed: 2026-10-02 -->
 # 代码库结构（Codebase Structure）
 
-**分析日期：** 2026-10-02
+**分析日期：** 2026-10-06
 
 ## 目录布局
 
@@ -11,6 +10,7 @@ cc-expand/
 │   ├── cli/                    # CLI 层：cac 入口 + 渲染 + i18n + 14 个子命令
 │   │   ├── commands/           # 每个命令一个文件，导出 <name>Command 函数
 │   │   ├── index.ts            # CLI 入口（tsup 打包为 dist/cli.js，bin: ccx / cc-expand）
+│   │   ├── guard-banner.js     # node 版本守卫（tsup banner 注入 dist/cli.js 头部，先于一切 require）
 │   │   ├── renderer.ts         # 输出渲染（color/quiet/JSON 信封/locale）
 │   │   ├── i18n.ts             # en/zh 翻译键与 t() 函数
 │   │   ├── result.ts           # CommandResult 类型 + BSD 退出码映射
@@ -105,7 +105,7 @@ cc-expand/
 ├── ccx-plugins.json            # GitHub 插件仓根索引格式示例（ccx plugins add 消费）
 ├── package.json                # 根包（bin: ccx/cc-expand；pnpm scripts 定义流水线）
 ├── pnpm-workspace.yaml         # workspace: packages/*
-├── tsup.config.ts              # 双入口构建（lib + cli，子包 noExternal inline）
+├── tsup.config.ts              # 双入口构建（lib + cli banner 注入 node 版本守卫，子包 noExternal inline）
 ├── vitest.config.ts            # 测试配置（forks pool，排除 tests/website 与 zRefs）
 └── tsconfig.json               # TypeScript 配置
 ```
@@ -151,13 +151,14 @@ cc-expand/
 
 **入口点：**
 - `src/cli/index.ts`：CLI 入口（bin: `ccx`/`cc-expand` → `dist/cli.js`）
+- `src/cli/guard-banner.js`：dist/cli.js 的 node 版本守卫 banner（`tsup.config.ts` 读取注入，先于 bundle 一切 require；导出 `supportsRequireEsm`/`candidateNodePaths` 纯函数供 `tests/cli/guard-banner.test.ts` 单测）
 - `src/index.ts`：库入口（程序化使用 PatchEngine）
 - `packages/website/app/app.vue`：website 根组件
 
 **配置：**
 - `package.json`：根包 manifest + 全部 pnpm scripts
 - `pnpm-workspace.yaml`：workspace 定义
-- `tsup.config.ts`：构建（双 entry、子包 inline、cli banner shebang）
+- `tsup.config.ts`：构建（双 entry、子包 inline、cli banner 注入 shebang + node 版本守卫）
 - `vitest.config.ts`：测试（happy-dom + forks pool + 排除项）
 - `packages/website/nuxt.config.ts`：website 构建
 
@@ -236,8 +237,9 @@ cc-expand/
 | `packages/website/.output/` `.nuxt/` | 构建产物 | nuxt generate / dev | 否 |
 | `tmp/` | 临时产物 | `scripts/visual-regression.ts` 截图输出 | 否（未跟踪） |
 | `zRefs/` | 调试参考 | 手动放置第三方源码（tweakcc、bun） | 否（.gitignore） |
+| `.claude/worktrees/` | git worktree 工作树 | `git worktree add` 手动创建 | 否（.gitignore） |
 | `tests/website/` | website 测试 | 手写 | 是，但主包 vitest 排除，独立运行 |
 | `.claude/skills/watch-patch/` | 运维技能定义 | 手写 | 是 |
 | `~/.cc-expand/` | 运行时状态 | CLI 运行时生成 | 不在仓库内 |
 
-结构分析：2026-10-02
+结构分析：2026-10-06

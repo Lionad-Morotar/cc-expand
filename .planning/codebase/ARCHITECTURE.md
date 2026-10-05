@@ -1,7 +1,6 @@
-<!-- refreshed: 2026-10-02 -->
 # 架构（Architecture）
 
-**分析日期：** 2026-10-02
+**分析日期：** 2026-10-06
 
 ## 系统概览
 
@@ -86,7 +85,7 @@ cc-expand 是一个 Node CLI 工具（命令名 `ccx` / `cc-expand`），通过�
 
 **CLI 层（`src/cli/`）：**
 - 职责：cac 路由、参数解析、交互确认、结果渲染（彩色/quiet/JSON 信封）、i18n（en/zh）、pager 分页、隐式更新检查编排、BSD 风格退出码
-- 位置：`src/cli/index.ts`、`src/cli/commands/*.ts`、`src/cli/renderer.ts`、`src/cli/i18n.ts`、`src/cli/pager.ts`、`src/cli/result.ts`、`src/cli/update-check-runner.ts`
+- 位置：`src/cli/index.ts`、`src/cli/commands/*.ts`、`src/cli/renderer.ts`、`src/cli/i18n.ts`、`src/cli/pager.ts`、`src/cli/result.ts`、`src/cli/update-check-runner.ts`、`src/cli/guard-banner.js`（node 版本守卫，经 banner 注入 dist 头部）
 - 依赖：services 层 + `src/internal-plugins.ts`
 - 14 个子命令：config / status / supports / install / setup / restore / verify / run / patch（含 remove 子命令 `patch-remove.ts`）/ migration / list / self-update / plugins
 
@@ -200,6 +199,7 @@ cc-expand 是一个 Node CLI 工具（命令名 `ccx` / `cc-expand`），通过�
 **CLI 入口：**
 - 位置：`src/cli/index.ts`（tsup 打包为 `dist/cli.js`，带 node shebang）
 - 触发：`ccx` / `cc-expand` bin（`package.json` bin 字段）
+- 前置守卫：`src/cli/guard-banner.js` 经 tsup banner（`tsup.config.ts` 读该文件拼接 shebang）注入 `dist/cli.js` 头部，先于 bundle 一切 require 执行。node 不满足 require(esm)（v20.19+ backport / v22+，典型场景：项目目录 `.node-version`/`.nvmrc` 经 fnm use-on-cd 把 `env node` 劫持到老版本）时，按候选序（`CC_EXPAND_NODE` 环境变量 → fnm default 别名 → volta → Homebrew → `/usr/local/bin/node`）spawnSync 探活并以子进程接力重执行自身；无可用候选则 stderr 提示修复路径后 exit 1（不走 CommandResult 信封）。守卫必须自包含（仅 node 内置），且只能经 banner 注入——esbuild 把 import 提升为顶部 require，任何 import 形态接入的守卫都晚于 cac 的 require
 - 职责：locale 预解析（help 文案需在 cac parse 前定 locale）、命令注册、隐式更新检查 promise 启动、未知命令兜底渲染
 
 **库入口：**
@@ -218,7 +218,7 @@ cc-expand 是一个 Node CLI 工具（命令名 `ccx` / `cc-expand`），通过�
 - **原子性**：引擎先全量预编码校验再动 buffer；applier 始终在拷贝上 patch，任一阶段失败删除产物
 - **依赖方向**：root → 子包单向；子包不得 import root（CcxError 因此放子包，ADR 0004）；core 层不 import CLI 渲染层
 - **内核零 token 知识**：`src/core/` 不 import token 编码工具，策略经回调/注册表注入；新增 internal plugin 理论上零改内核
-- **运行时**：Node >= 18（`package.json` engines），依赖原生 `fetch`；macOS patch 后需重签名；Windows binary 需 `.exe` 扩展名处理（`getPatchedBinaryName`）
+- **运行时**：Node >= 18（`package.json` engines）；实际运行需 require(esm) 能力（v20.19 backport / v22+，依赖链 cac 等纯 ESM），入口 banner 守卫（`src/cli/guard-banner.js`）对老 node 自动换可用 node 重执行；依赖原生 `fetch`；macOS patch 后需重签名；Windows binary 需 `.exe` 扩展名处理（`getPatchedBinaryName`）
 - **发布形态**：子包 tsup `noExternal` inline 进 dist（`tsup.config.ts`），单包发布；`patterns/`、`plugin-shards/` 是生成物（gitignored），数据通过 OSS 分发而非 npm
 
 ## 反模式（本仓库明令避免）
@@ -294,4 +294,4 @@ cc-expand 是一个 Node CLI 工具（命令名 `ccx` / `cc-expand`），通过�
 - **codesign 验证是空实现**：`Verifier.verifyCodesign` 固定返回 passed（`src/core/verifier.ts:181`），实际签名校验由 patch 时的 `codesign --verify` 缺省与运行时表现兜底
 - **website 独立于主包测试**：`vitest.config.ts` 排除 `tests/website/**`，website 构建验证单独运行
 
-架构分析：2026-10-02
+架构分析：2026-10-06
