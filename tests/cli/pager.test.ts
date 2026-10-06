@@ -107,11 +107,18 @@ describe('runPager', () => {
     const stream = new Readable({ read() {} })
     stream.isTTY = true
     ;(stream as unknown as { setRawMode: () => void }).setRawMode = () => {}
-    setTimeout(() => {
-      for (const key of keySequence) {
-        stream.emit('keypress', null, key)
+    // Why 固定延迟推送有竞态：全量并发下 inquirer 的 keypress listener 挂载可能晚于
+    // 事件发出，按键被静默丢弃、pager 永久等待；改为轮询等 listener 就绪再推
+    const tryEmit = (): void => {
+      if (stream.listenerCount('keypress') > 0) {
+        for (const key of keySequence) {
+          stream.emit('keypress', null, key)
+        }
+      } else {
+        setImmediate(tryEmit)
       }
-    }, 5)
+    }
+    setImmediate(tryEmit)
     return stream
   }
 
