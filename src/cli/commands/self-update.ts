@@ -32,6 +32,10 @@ export interface SelfUpdateOptions {
   currentVersion?: string
   /** 安装后版本验证器（注入用），默认 readCurrentVersion 重读 package.json 实际版本 */
   versionVerifier?: () => string
+  /** 显式更新目标（npm dist-tag 或精确版本，如 latest / alpha / 0.5.1）。
+   *  传入时跳过"是否有更新"判定直接安装 cc-expand@<targetChannel>——
+   *  解决 dist-tag 停更（如 alpha tag 未随 stable 发布推进）把通道用户困死的问题。 */
+  targetChannel?: string
 }
 
 /** 各安装方式 + channel 的更新命令。channel = npm dist-tag（latest/alpha/beta/...），
@@ -58,6 +62,71 @@ function readCurrentVersion(): string {
   }
 }
 
+/** 显式目标合法性：npm dist-tag 或精确版本共用的安全字符集（拒路径分隔符、空白与 shell 元字符） */
+const TARGET_PATTERN = /^[a-z0-9][a-z0-9._-]*$/i
+
+/**
+ * 执行安装命令并统一处理非零退出码与 spawn 异常（显式目标与常规路径共用，防失败行为漂移）。
+ * 成功时返回 null，由调用方继续版本验证与回显。
+ */
+async function runInstaller(cmd: string, args: readonly string[], spawner: Spawner): Promise<CommandResult | null> {
+  try {
+    const result = await spawner(cmd, args)
+    if (result.code !== 0) {
+      return makeErrorResult(
+        'self-update',
+        ErrorCode.SELF_UPDATE_FAILED,
+        t('error.selfUpdate.exitCode', { code: result.code ?? 'killed' })
+      )
+    }
+    return null
+  } catch (error) {
+    return handleSpawnError(error)
+  }
+}
+
+/**
+ * 安装显式目标（dist-tag 或精确版本）。
+ *
+ * 不查 registry、不判 hasUpdate——用户点名目标即安装，装后读回真实版本回显；
+ * 版本未变（已处于该版本）时如实提示而非冒充更新成功。
+ */
+async function installExplicitTarget(
+  target: string,
+  method: Exclude<InstallMethod, 'npx' | 'unknown'>,
+  options: SelfUpdateOptions
+): Promise<CommandResult> {
+  if (!TARGET_PATTERN.test(target)) {
+    return makeErrorResult(
+      'self-update',
+      ErrorCode.SELF_UPDATE_FAILED,
+      t('error.selfUpdate.invalidTarget', { value: target }),
+      t('suggestion.selfUpdate.invalidTarget')
+    )
+  }
+
+  const from = options.currentVersion ?? readCurrentVersion()
+  const [cmd, args] = getUpdateCommand(method, target)
+  const spawner = options.spawner ?? createDefaultSpawner()
+
+  const failure = await runInstaller(cmd, args, spawner)
+  if (failure) return failure
+
+  const to = options.versionVerifier?.() ?? readCurrentVersion()
+  if (to === from) {
+    return {
+      success: true,
+      command: 'self-update',
+      summary: t('command.selfUpdate.explicitUnchanged', { version: to, target })
+    }
+  }
+  return {
+    success: true,
+    command: 'self-update',
+    summary: t('command.selfUpdate.updated', { from, to })
+  }
+}
+
 export async function selfUpdateCommand(options?: SelfUpdateOptions): Promise<CommandResult> {
   const detector = options?.installMethodDetector ?? new InstallMethodDetector()
   const method = await detector.detect()
@@ -79,6 +148,12 @@ export async function selfUpdateCommand(options?: SelfUpdateOptions): Promise<Co
       t('error.selfUpdate.unknownMethod'),
       t('suggestion.selfUpdate.unknownMethod')
     )
+  }
+
+  // 显式目标：用户意图明确，跳过更新检查（hasUpdate 判定对停更 dist-tag 无意义），直接安装。
+  // 用 !== undefined 而非 truthy：空字符串也是"用户传了目标"，应走校验报错而非静默落回常规路径
+  if (options?.targetChannel !== undefined) {
+    return installExplicitTarget(options.targetChannel, method, options)
   }
 
   // 强制查最新版（skipCache：手动执行不读缓存，拉真实 registry）
@@ -111,54 +186,44 @@ export async function selfUpdateCommand(options?: SelfUpdateOptions): Promise<Co
   const [cmd, args] = getUpdateCommand(method, channel)
   const spawner = options?.spawner ?? createDefaultSpawner()
 
-  try {
-    const result = await spawner(cmd, args)
-    if (result.code !== 0) {
-      return makeErrorResult(
-        'self-update',
-        ErrorCode.SELF_UPDATE_FAILED,
-        t('error.selfUpdate.exitCode', { code: result.code ?? 'killed' })
-      )
-    }
+  const failure = await runInstaller(cmd, args, spawner)
+  if (failure) return failure
 
-    // 验证：重新读实际安装版本，确认更新真正生效。
-    // 防止镜像同步延迟等导致"npm 装了旧版、退出码 0、却谎报已更新到 latest"。
-    if (info) {
-      const actualVersion = options?.versionVerifier?.() ?? readCurrentVersion()
-      if (isVersionGreater(info.latestVersion, actualVersion)) {
-        // spawn 成功但实际版本仍落后 → 告警而非撒谎，提示用官方源重试
-        return {
-          success: true,
-          command: 'self-update',
-          severity: 'warning',
-          summary: t('command.selfUpdate.stalledSummary', { actual: actualVersion }),
-          warnings: [
-            t('warning.selfUpdate.stalled', {
-              actual: actualVersion,
-              latest: info.latestVersion
-            }),
-            t('warning.selfUpdate.registryHint')
-          ]
-        }
-      }
+  // 验证：重新读实际安装版本，确认更新真正生效。
+  // 防止镜像同步延迟等导致"npm 装了旧版、退出码 0、却谎报已更新到 latest"。
+  if (info) {
+    const actualVersion = options?.versionVerifier?.() ?? readCurrentVersion()
+    if (isVersionGreater(info.latestVersion, actualVersion)) {
+      // spawn 成功但实际版本仍落后 → 告警而非撒谎，提示用官方源重试
       return {
         success: true,
         command: 'self-update',
-        summary: t('command.selfUpdate.updated', {
-          from: info.currentVersion,
-          to: info.latestVersion
-        })
+        severity: 'warning',
+        summary: t('command.selfUpdate.stalledSummary', { actual: actualVersion }),
+        warnings: [
+          t('warning.selfUpdate.stalled', {
+            actual: actualVersion,
+            latest: info.latestVersion
+          }),
+          t('warning.selfUpdate.registryHint')
+        ]
       }
     }
-
-    // info=null（版本查询失败）→ 无法验证，直接报成功
     return {
       success: true,
       command: 'self-update',
-      summary: t('command.selfUpdate.success')
+      summary: t('command.selfUpdate.updated', {
+        from: info.currentVersion,
+        to: info.latestVersion
+      })
     }
-  } catch (error) {
-    return handleSpawnError(error)
+  }
+
+  // info=null（版本查询失败）→ 无法验证，直接报成功
+  return {
+    success: true,
+    command: 'self-update',
+    summary: t('command.selfUpdate.success')
   }
 }
 

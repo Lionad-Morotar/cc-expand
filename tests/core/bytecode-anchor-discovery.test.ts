@@ -26,6 +26,13 @@ const goldenSequence = (last: number): Buffer => {
   return buf
 }
 
+/** 构造任意 u32 LE 序列（bytecode 常量池片段） */
+const seq = (...nums: number[]): Buffer => {
+  const buf = Buffer.alloc(nums.length * 4)
+  nums.forEach((v, i) => buf.writeUInt32LE(v, i * 4))
+  return buf
+}
+
 /** 构造 fixture binary：目标模块（contents 含 signature，bytecode 为黄金序列真身）+
  *  反例模块（相同前缀序列、不同尾值，迫使锚点扩展伴生才能在全 binary 中唯一）。
  *  duplicate 时目标模块 bytecode 为对称两份真身（前后填充相同），扩展永远不唯一。 */
@@ -86,11 +93,6 @@ describe('discoverBytecodeAnchor', () => {
     it('should throw when two slots each extend to a distinct unique pattern (ambiguous)', () => {
       // 两个槽位伴生链不同且各自全 binary 唯一：n=0 纯槽位出现 2 次，
       // n=1 起 [200000][111] 与 [200000][444] 各恰 1 次 → 合格候选 2 个，歧义必须 fail loud
-      const seq = (...nums: number[]): Buffer => {
-        const buf = Buffer.alloc(nums.length * 4)
-        nums.forEach((v, i) => buf.writeUInt32LE(v, i * 4))
-        return buf
-      }
       const graph = makeStandaloneGraph([
         {
           name: 'target.js',
@@ -109,6 +111,42 @@ describe('discoverBytecodeAnchor', () => {
   })
 })
 
+describe('discoverBytecodeAnchor · 语义伴生裁决（多候选）', () => {
+  const TIEBREAK_SIGNATURE = 'MARKER=200000,OUT=32000,CTX=128000'
+
+  it('should pick the candidate whose leading companion matches the signature companion', () => {
+    // 复刻 linux-x64 2.1.291 布局漂移：模块内 2 个 200000 槽各自扩展均已唯一，
+    // 语义主项（首伴生 32000）与漂移噪声槽（首伴生 703466）靠语义伴生判别
+    const graph = makeStandaloneGraph([
+      {
+        name: 'target.js',
+        contents: `// ${TIEBREAK_SIGNATURE}`,
+        bytecode: Buffer.concat([seq(SOURCE_TOKENS, 32000, 211), seq(SOURCE_TOKENS, 703466, 212)]),
+      },
+      { name: 'decoy.js', contents: '// decoy', bytecode: Buffer.alloc(16, 0xaa) },
+    ])
+    const buffer = makeMachO(wrapSectionData(graph.payload))
+
+    expect(discoverBytecodeAnchor(buffer, TIEBREAK_SIGNATURE, SOURCE_TOKENS)).toEqual(['{{tokens}}007d0000'])
+  })
+
+  it('should fail loud when no candidate leading companion matches the signature companion', () => {
+    const graph = makeStandaloneGraph([
+      {
+        name: 'target.js',
+        contents: `// ${TIEBREAK_SIGNATURE}`,
+        bytecode: Buffer.concat([seq(SOURCE_TOKENS, 111, 222, 333), seq(SOURCE_TOKENS, 444, 555, 666)]),
+      },
+      { name: 'decoy.js', contents: '// decoy', bytecode: Buffer.alloc(16, 0xaa) },
+    ])
+    const buffer = makeMachO(wrapSectionData(graph.payload))
+
+    expect(() => discoverBytecodeAnchor(buffer, TIEBREAK_SIGNATURE, SOURCE_TOKENS)).toThrow(
+      /首伴生 == 0x007d0000 者 0 个/,
+    )
+  })
+})
+
 describe.skipIf(!binaryExists)('golden test (real binary)', () => {
   it('should rediscover a unique anchor of CC 2.1.250 darwin/arm64 (shortest, not the manual 3-companion)', () => {
     const buffer = readFileSync(binaryPath)
@@ -119,5 +157,23 @@ describe.skipIf(!binaryExists)('golden test (real binary)', () => {
     // 手工实证的 3 伴生四连（docs/research/2026-08-28-bun-bytecode-patch.md 只验证了
     // 四连唯一后直接采用）是充分值而非最短值，两形态等价有效。
     expect(result).toEqual(['{{tokens}}007d000000f40100'])
+  })
+}, 30_000)
+
+/** 语义伴生裁决黄金测试用的真实二进制：linux-x64 2.1.291（唯一性失效的双 200000 槽）。
+ *  CCX_ANCHOR_TIEBREAK_BINARY 覆盖；默认取本机 extracted 缓存，不存在则跳过。 */
+const tiebreakBinaryPath =
+  process.env.CCX_ANCHOR_TIEBREAK_BINARY ??
+  join(process.cwd(), 'zRefs/claude-codes/extracted/v2.1.291/linux-x64/package/claude')
+const tiebreakBinaryExists = existsSync(tiebreakBinaryPath)
+
+describe.skipIf(!tiebreakBinaryExists)('golden test · 语义伴生裁决 (real linux-x64 2.1.291)', () => {
+  it('should resolve the duplicate 200000 slot to the semantic main item via the companion', () => {
+    const buffer = readFileSync(tiebreakBinaryPath)
+    const result = discoverBytecodeAnchor(buffer, 'o2e=200000,D6=200000,cv=32000,YI=128000', SOURCE_TOKENS)
+
+    // 目标模块内 2 个 200000 槽各自扩展均可全 binary 唯一（rel 92484 与 182288），
+    // 唯一性无法区分；仅 rel 92484 的首伴生槽为 32000（语义主项），182288 落在浮点噪声区
+    expect(result).toEqual(['{{tokens}}007d0000f6570300'])
   })
 }, 30_000)

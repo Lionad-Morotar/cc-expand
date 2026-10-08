@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-06
+
+### Added
+
+- patch 引擎与验证器改按 latin1 单字节语义处理高位字节：≥0x80 字节不再被 utf8 双字节化，已安装插件（installed plugin）的 bytecode 指令锚点（shard 中以 `\u00XX` 转义）可精确命中与写入；已 patch 高字节产物的验证不再被误判失败（产物不会被误删），含 >U+00FF 字符的 shard 显式报错而非静默截断错位写入
+
+- silence-unrecognized-model 插件基建：guard 锚点发现器、shard 生成器、仓根 `ccx-plugins.json` 插件索引与 OSS 分发通道，端到端测试实证；探针失败不再误判为消音，shard 不再夹带发现器内部字段
+
+- [internal] watch-patch 新版本处理流程自动生成并上传 silence 插件 shard（默认复用解压缓存，上传后以 MD5 核验闭环），完成后向桌面贴发布日志便签
+
+### Fixed
+
+- CLI 入口新增 node 版本守卫（经 tsup banner 注入，先于 bundle 一切依赖 require 执行）：cli.js 的 shebang `env node` 按 PATH 解析，在声明 `.node-version`/`.nvmrc` 的项目目录会被 fnm use-on-cd 劫持到老版本 node，而依赖链（cac）只发 ESM、require 它需要 require(esm)（v22 起 unflagged，v20.19 backport 默认启用），老 node 下报 ERR_REQUIRE_ESM 且错误落在 patch/install 子命令上、与真实根因相距甚远。守卫检测到版本不足时按 `CC_EXPAND_NODE` → fnm default（mac/Linux）→ volta → homebrew → /usr/local 顺序找达标 node 重执行自身（stdio 与退出码透传），无可用替代时给出三条修复指引后退出
+
+## [0.5.2] - 2026-09-04
+
+### Added
+
+- `ccx self-update` 新增可选位置参数 `[channel]`（npm dist-tag 或精确版本，如 `latest` / `alpha` / `0.5.1`）：跳过"是否有更新"判定直接安装并回显真实装后版本。修复 alpha dist-tag 停更（stable 发布不推进该 tag）导致 prerelease 通道用户被"已是最新"死锁、无法升级到 stable 的问题；目标值经合法性校验（拒路径与特殊字符），空目标按非法值报错而非静默落回自动更新，安装后版本未变化时如实提示
+
+## [0.5.1] - 2026-09-02
+
+### Fixed
+
+- patch 与 migration 的 JSON 输出透传 bytecode 锚点状态（`bytecodeReplaceCount` / `bytecodeAnchorMissing`），自动化脚本可程序化判断字节码补丁是否命中，不再被"文本替换成功但运行时不变"的静默盲区误导
+
 ## [0.5.0] - 2026-08-30
 
 ### Added

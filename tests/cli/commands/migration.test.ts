@@ -414,6 +414,34 @@ describe('migration command', () => {
       expect(warning).toContain(`${process.platform}-${process.arch}`)
     })
 
+    it('exposes bytecode anchor status in migration results (JSON consumers can detect missing anchor)', async () => {
+      // applier 返回 bytecode 字段时，命令层 results[] 应逐条透传，使 JSON 输出可判断字节码补丁是否命中
+      writeVersions(tempDir, {
+        '2.1.177': { targets: [270000, 500000], patchedAt: '2026-06-15T10:00:00Z' }
+      })
+      const applier = makeApplierStub({
+        execute: (target) => ({
+          ok: true,
+          data: {
+            version: '2.1.250', targetTokens: target, sourceValue: '200000',
+            replaceCount: 1, binaryPath: `/fake/claude-${target}`, details: [],
+            bytecodeReplaceCount: 1, bytecodeAnchorMissing: true
+          }
+        })
+      })
+      const result = await migrationCommand([], {
+        homeDir: tempDir,
+        discoveryService: stubDiscovery('2.1.177'),
+        patchApplier: applier,
+        resolveLatest: async () => '2.1.250'
+      })
+      expect(result.success).toBe(true)
+      for (const entry of result.data?.results ?? []) {
+        expect(entry.bytecodeReplaceCount).toBe(1)
+        expect(entry.bytecodeAnchorMissing).toBe(true)
+      }
+    })
+
     it('dedupes bytecode anchor warning across targets (same version + platform)', async () => {
       writeVersions(tempDir, {
         '2.1.177': { targets: [270000, 500000], patchedAt: '2026-06-15T10:00:00Z' }

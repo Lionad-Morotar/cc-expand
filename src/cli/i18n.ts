@@ -32,6 +32,7 @@ export type I18nKey
     | 'command.selfUpdate.alreadyLatest'
     | 'command.selfUpdate.updated'
     | 'command.selfUpdate.stalledSummary'
+    | 'command.selfUpdate.explicitUnchanged'
     | 'error.invalidTarget'
     | 'error.unknownKey'
     | 'error.missingValue'
@@ -42,7 +43,9 @@ export type I18nKey
     | 'error.selfUpdate.enoent'
     | 'error.selfUpdate.generic'
     | 'error.selfUpdate.prereleaseChannelUnknown'
+    | 'error.selfUpdate.invalidTarget'
     | 'suggestion.selfUpdate.prereleaseChannelUnknown'
+    | 'suggestion.selfUpdate.invalidTarget'
     | 'suggestion.selfUpdate.unknownMethod'
     | 'suggestion.selfUpdate.eacces'
     | 'suggestion.selfUpdate.enoent'
@@ -123,6 +126,7 @@ const translations: Translations = {
     'command.selfUpdate.alreadyLatest': 'Already up to date ({version}).',
     'command.selfUpdate.updated': 'Updated from {from} to {to}. Restart `ccx` to take effect.',
     'command.selfUpdate.stalledSummary': 'Install command ran, but cc-expand is still {actual}',
+    'command.selfUpdate.explicitUnchanged': 'Install command ran, but cc-expand is still {version} (target: {target}). You may already be on this version.',
     'error.invalidTarget': 'Invalid value: {value}',
     'error.unknownKey': 'Unknown configuration key: {key}',
     'error.missingValue': '{flag} requires a value',
@@ -134,6 +138,8 @@ const translations: Translations = {
     'error.selfUpdate.generic': 'Update failed: {message}',
     'error.selfUpdate.prereleaseChannelUnknown': 'Cannot determine the latest {channel} version (npm query failed). Refusing to auto-update to avoid downgrading to stable.',
     'suggestion.selfUpdate.prereleaseChannelUnknown': 'Update manually: npm install -g cc-expand@{channel}',
+    'error.selfUpdate.invalidTarget': 'Invalid update target: {value}. Use a dist-tag (latest/alpha/beta) or an exact version like 0.5.1.',
+    'suggestion.selfUpdate.invalidTarget': 'Try `ccx self-update latest`',
     'suggestion.selfUpdate.unknownMethod': 'Declare explicitly via `ccx config set installMethod <npm|pnpm|yarn>`',
     'suggestion.selfUpdate.eacces': 'Configure npm prefix to a user directory (npm config set prefix ~/.npm-global), or use sudo (not recommended)',
     'suggestion.selfUpdate.enoent': 'Ensure the package manager is installed and in PATH',
@@ -169,7 +175,7 @@ const translations: Translations = {
     'help.command.patch.description': 'Patch or unpatch local Claude Code binary',
     'help.command.migration.description': 'Migrate existing patches to a target version',
     'help.command.list.description': 'List installed and patched versions',
-    'help.command.selfUpdate.description': 'Update cc-expand to the latest npm version',
+    'help.command.selfUpdate.description': 'Update cc-expand to the latest npm version, or to an explicit channel/version (e.g. `ccx self-update latest`)',
     'help.command.plugins.description': 'Manage plugins',
     // command option descriptions
     'help.command.supports.option.all': 'Show full list without pager',
@@ -211,6 +217,7 @@ const translations: Translations = {
     'command.selfUpdate.alreadyLatest': '已是最新版本（{version}）。',
     'command.selfUpdate.updated': '已从 {from} 更新到 {to}。下次运行 ccx 即生效。',
     'command.selfUpdate.stalledSummary': '安装命令已执行，但 cc-expand 仍为 {actual}',
+    'command.selfUpdate.explicitUnchanged': '安装命令已执行，但 cc-expand 仍为 {version}（目标：{target}），可能已处于该版本。',
     'error.invalidTarget': '无效的值：{value}',
     'error.unknownKey': '未知配置项：{key}',
     'error.missingValue': '{flag} 需要一个值',
@@ -222,6 +229,8 @@ const translations: Translations = {
     'error.selfUpdate.generic': '更新失败：{message}',
     'error.selfUpdate.prereleaseChannelUnknown': '无法确定 {channel} 通道的最新版本（npm 查询失败）。为避免降级到 stable，已中止自动更新。',
     'suggestion.selfUpdate.prereleaseChannelUnknown': '请手动更新：npm install -g cc-expand@{channel}',
+    'error.selfUpdate.invalidTarget': '无效的更新目标：{value}。请使用 dist-tag（latest/alpha/beta）或精确版本号（如 0.5.1）。',
+    'suggestion.selfUpdate.invalidTarget': '试试 `ccx self-update latest`',
     'suggestion.selfUpdate.unknownMethod': '请用 `ccx config set installMethod <npm|pnpm|yarn>` 显式声明',
     'suggestion.selfUpdate.eacces': '建议配置 npm prefix 到用户目录（npm config set prefix ~/.npm-global），或用 sudo（不推荐，可能破坏权限）',
     'suggestion.selfUpdate.enoent': '请确认对应的包管理器已安装并在 PATH 中',
@@ -257,7 +266,7 @@ const translations: Translations = {
     'help.command.patch.description': 'Patch 或取消 patch 本地 Claude Code binary',
     'help.command.migration.description': '将现有 patch 迁移到目标版本',
     'help.command.list.description': '列出已安装和已 patch 的版本',
-    'help.command.selfUpdate.description': '将 cc-expand 更新到最新 npm 版本',
+    'help.command.selfUpdate.description': '将 cc-expand 更新到最新 npm 版本，或安装显式通道/版本（如 `ccx self-update latest`）',
     'help.command.plugins.description': '管理插件',
     // command option descriptions
     'help.command.supports.option.all': '不使用分页显示完整列表',

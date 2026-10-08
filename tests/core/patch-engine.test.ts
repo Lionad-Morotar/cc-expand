@@ -189,6 +189,40 @@ describe('PatchEngine', () => {
       expect(buffer.toString('utf-8')).toContain('SHORT')
     })
 
+    it('patches bytes >= 0x80 byte-exactly (latin1 语义，bytecode 指令锚点场景)', () => {
+      // installed plugin 对 bytecode 指令流打锚点：search 含 0x85/0xf3/0xfb 等高位字节。
+      // JSON shard 里以 \u00XX 转义承载，引擎必须按 latin1 单字节编解码——utf8 会把
+      // U+0085 编成 C2 85 双字节，搜索/写入全部错位
+      const before = '\u0085R\u0007\u0011\u0006j\u0012\u001eóû'
+      const after = '\u0085R\u0007\u0011\u0004j\u0012\u001eóû'
+      const buffer = Buffer.from('noise' + before + 'tail', 'latin1')
+      const engine = new PatchEngine()
+      const patches = [{ search: before, sourceValue: '\u0006', target: { value: '\u0004' } }]
+      const result = engine.patch(buffer, patches, tokenGen(0))
+      expect(result.success).toBe(true)
+      expect(result.replaceCount).toBe(1)
+      // 字节级断言（不经过字符串往返，直接比对原始字节）
+      expect(buffer.toString('latin1')).toBe('noise' + after + 'tail')
+      expect(buffer.length).toBe(before.length + 'noise'.length + 'tail'.length)
+    })
+
+    it('rejects non-latin1 chars instead of silently truncating them (shard 误写字面量防线)', () => {
+      // latin1 写入会把 >U+00FF 字符截断为低字节（'中'→0x2D）：若 binary 中恰存在截断后的
+      // 模式，会在错误偏移写入且通过对称验证。入口校验须显式拒收，保持
+      // 「无法表达的字节序列」→ PATTERN_NOT_FOUND 级 fail-safe
+      const before = '\u0085R\u0007\u0011\u0006j\u0012\u001eóû'
+      const buffer = Buffer.from('noise' + before + 'tail', 'latin1')
+      const engine = new PatchEngine()
+      const patches = [
+        { search: 'noise中', sourceValue: '\u0006', target: { value: '\u0004' } }
+      ]
+      const result = engine.patch(buffer, patches, tokenGen(0))
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe(ErrorCode.INVALID_TARGET)
+      // buffer 不被触碰
+      expect(buffer.toString('latin1')).toBe('noise' + before + 'tail')
+    })
+
     it('uses injected targetGenerator when provided (overrides default encode)', () => {
       // ADR 0003 内核零 token 知识：generator 注入路径，绕过 encodeTokenLiteral
       const buffer = Buffer.from('header_Aj8=200000,Ij_=20000_trailer')

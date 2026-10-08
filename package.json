@@ -1,6 +1,6 @@
 {
   "name": "cc-expand",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Expand Claude Code capabilities via plugin-based binary patching",
   "bin": {
     "cc-expand": "dist/cli.js",
@@ -30,6 +30,9 @@
     "pattern:latest-check": "tsx scripts/latest-check.ts",
     "pattern:verify": "tsx scripts/pattern-verify.ts",
     "pattern:cleanup": "tsx scripts/cleanup-versions.ts",
+    "plugin:gen-silence": "tsx scripts/plugin-silence-gen.ts",
+    "plugin:upload-silence": "tsx scripts/oss-upload.ts --dir plugin-shards/silence-unrecognized-model --prefix plugins/silence-unrecognized-model/",
+    "plugin:verify-silence": "tsx scripts/oss-verify.ts --dir plugin-shards/silence-unrecognized-model --prefix plugins/silence-unrecognized-model/",
     "prebuild": "vitest run --exclude tests/integration",
     "prerelease": "pnpm run build",
     "release": "pnpm publish --config.registry=https://registry.npmjs.org --no-git-checks",

@@ -14,7 +14,7 @@ import { ChannelConfig } from '../../services/channel-config.js'
 import { ConfigService } from '../../services/config.js'
 import { UserConfigService } from '../../services/user-config.js'
 import { maintainShellShortcuts } from '../../services/shell-maintain.js'
-import { CcxError, ErrorCode } from '../../types/index.js'
+import { ErrorCode } from '../../types/index.js'
 import { t } from '../i18n.js'
 import { makeErrorResult, type CommandResult } from '../result.js'
 import { normalizeVersion } from '../../utils/version.js'
@@ -47,6 +47,10 @@ export interface PatchData {
   targetTokens: number
   sourceValue: string
   replaceCount: number
+  /** bytecode 常量池锚点替换次数（无锚点配置时为 0）；JSON 消费者据此判断字节码补丁是否命中 */
+  bytecodeReplaceCount?: number
+  /** bytecode 版本（2.1.246+）但当前 platform 无锚点配置：文本替换成功但运行时上下文窗口不变 */
+  bytecodeAnchorMissing?: boolean
   binaryPath: string
   details: Array<{ desc?: string, offset: number }>
   shortcutsUpdated: boolean
@@ -263,6 +267,8 @@ export async function patchCommand(
       targetTokens: applied.targetTokens,
       sourceValue: applied.sourceValue,
       replaceCount: applied.replaceCount,
+      bytecodeReplaceCount: applied.bytecodeReplaceCount,
+      ...(applied.bytecodeAnchorMissing ? { bytecodeAnchorMissing: applied.bytecodeAnchorMissing } : {}),
       binaryPath: applied.binaryPath,
       details: applied.details,
       shortcutsUpdated: !!autoMaintain,

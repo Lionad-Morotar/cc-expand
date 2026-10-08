@@ -36,6 +36,10 @@ export interface MigrationTargetResult {
   success: boolean
   binaryPath?: string
   replaceCount?: number
+  /** bytecode 常量池锚点替换次数（无锚点配置时为 0）；JSON 消费者据此判断字节码补丁是否命中 */
+  bytecodeReplaceCount?: number
+  /** bytecode 版本（2.1.246+）但当前 platform 无锚点配置：文本替换成功但运行时上下文窗口不变 */
+  bytecodeAnchorMissing?: boolean
   message?: string
 }
 
@@ -379,7 +383,9 @@ export async function migrationCommand(
         success: true,
         producedShortVer,
         binaryPath: outcome.data.binaryPath,
-        replaceCount: outcome.data.replaceCount
+        replaceCount: outcome.data.replaceCount,
+        bytecodeReplaceCount: outcome.data.bytecodeReplaceCount,
+        ...(outcome.data.bytecodeAnchorMissing ? { bytecodeAnchorMissing: outcome.data.bytecodeAnchorMissing } : {})
       })
     } else {
       failedCombos.push({ combo, message: outcome.error.message })
