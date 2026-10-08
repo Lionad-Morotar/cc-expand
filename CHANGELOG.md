@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-10-08
+
+### Fixed
+
+- 插件启用后，`cc` 类 shell 快捷方式按 token 数启动不再陷入"补丁成功却找不到产物"的失败循环：指定 token 数的精确档位缺失时自动回落到唯一插件变体（如 `32w-sil`）并提示回落结果，多个变体并存时列出候选要求显式指定
+
 ## [0.6.0] - 2026-10-06
 
 ### Added
