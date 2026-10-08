@@ -2,9 +2,9 @@
  * cc-expand run — 启动已 patch 的 Claude Code
  */
 import { spawn as defaultSpawn, type ChildProcess } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, readdirSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 import { ErrorCode } from '../../types/index.js'
 import { parseTokenCount } from '../../utils/parse-token-count.js'
 import { formatTokenCount } from '@cc-expand/plugin-context-expand'
@@ -14,6 +14,18 @@ import { makeErrorResult, type CommandResult } from '../result.js'
 export function getRunBinaryPath(target: string): string {
   const ext = process.platform === 'win32' ? '.exe' : ''
   return join(homedir(), '.cc-expand', 'bin', `claude-${target}${ext}`)
+}
+
+/**
+ * 列出 bin 目录下同 token 段的插件变体 binary（如 32w → claude-32w-sil）。
+ * 前缀必须带尾随 `-`：防止 claude-32w1k 这类同前缀异 token 段被误认为 32w 的变体。
+ */
+export function listVariantBinaries(shortVer: string, binDir: string): string[] {
+  if (!existsSync(binDir)) return []
+  const prefix = `claude-${shortVer}-`
+  return readdirSync(binDir)
+    .filter((f) => f.startsWith(prefix))
+    .map((f) => join(binDir, f))
 }
 
 /**
@@ -66,15 +78,30 @@ export async function runCommand(
   // targetTokens 从规范 shortVer 的 token 段反解（parse(format(n))===n 双向对称保证还原）
   const targetTokens = parseTokenCount(shortVer.split('-')[0])
   const target = shortVer
-  const binaryPath = getRunBinaryPath(shortVer)
+  let binaryPath = getRunBinaryPath(shortVer)
 
   if (!existsSync(binaryPath)) {
-    return makeErrorResult(
-      'run',
-      ErrorCode.BINARY_NOT_FOUND,
-      `Patched binary '${shortVer}' not found`,
-      `Run: ccx patch --target ${shortVer}`
-    )
+    // 精确 combo 缺失时回落到唯一插件变体（如 32w → 32w-sil）：插件启用后 patch 产物带后缀，
+    // 而 shell 快捷方式只传 token 段，无回落会让自愈 patch 与复查永久错位。多候选语义不明，列出报错。
+    const variants = listVariantBinaries(shortVer, dirname(binaryPath))
+    if (variants.length === 1) {
+      binaryPath = variants[0]!
+      console.error(`[ccx] claude-${shortVer} not found, using variant ${basename(binaryPath)}`)
+    } else if (variants.length > 1) {
+      return makeErrorResult(
+        'run',
+        ErrorCode.BINARY_NOT_FOUND,
+        `Patched binary '${shortVer}' not found, and multiple plugin variants exist: ${variants.map((p) => basename(p)).join(', ')}`,
+        `Run with an explicit combo (e.g. ccx run ${shortVer}-sil), or remove unwanted variants`
+      )
+    } else {
+      return makeErrorResult(
+        'run',
+        ErrorCode.BINARY_NOT_FOUND,
+        `Patched binary '${shortVer}' not found`,
+        `Run: ccx patch --target ${shortVer}`
+      )
+    }
   }
 
   // --print-binary：只输出路径，不 spawn。shell 快捷方式用它定位 binary 后再做版本校验。
