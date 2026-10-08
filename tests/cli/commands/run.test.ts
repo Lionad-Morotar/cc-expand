@@ -143,4 +143,56 @@ describe('run command', () => {
       console.log = originalLog
     }
   })
+
+  describe('variant fallback（精确 combo 缺失时回落到唯一插件变体）', () => {
+    it('falls back to the only plugin variant when exact combo binary is missing', async () => {
+      // 场景：silence 插件启用后 patch 产物是 claude-32w-sil，shell 快捷方式只有 token 段
+      createBinary('claude-32w-sil')
+      const child = fakeChild()
+      const promise = runCommand('320000', { exitOnChildExit: false, spawn: () => child })
+      child.emit('exit', 0)
+      const result = await promise
+
+      expect((result as { success: boolean }).success).toBe(true)
+      expect((result as { data?: { binaryPath: string } }).data?.binaryPath).toMatch(/claude-32w-sil$/)
+    })
+
+    it('falls back in --print-binary mode and keeps stdout path-only（cc() 消费方契约）', async () => {
+      createBinary('claude-32w-sil')
+      const logs: string[] = []
+      const errs: string[] = []
+      const originalLog = console.log
+      const originalErr = console.error
+      console.log = (msg: string) => logs.push(msg)
+      console.error = (msg: string) => errs.push(msg)
+      try {
+        const result = await runCommand('320000', { printBinary: true })
+        expect((result as { success: boolean }).success).toBe(true)
+        expect(logs).toHaveLength(1)
+        expect(logs[0]).toMatch(/claude-32w-sil$/)
+        expect(errs.join('\n')).toContain('claude-32w-sil')
+      } finally {
+        console.log = originalLog
+        console.error = originalErr
+      }
+    })
+
+    it('errors listing candidates when multiple variants exist（语义不明不猜测）', async () => {
+      createBinary('claude-32w-sil')
+      createBinary('claude-32w-flow')
+      const result = await runCommand('320000')
+
+      expect((result as { success: boolean }).success).toBe(false)
+      expect((result as { error?: { code: string } }).error?.code).toBe('BINARY_NOT_FOUND')
+      expect((result as { error?: { message: string } }).error?.message).toContain('claude-32w-flow')
+      expect((result as { error?: { message: string } }).error?.message).toContain('claude-32w-sil')
+    })
+
+    it('does not fall back across token segments sharing a prefix（32w ≠ 32w1k）', async () => {
+      createBinary('claude-32w1k')
+      const result = await runCommand('320000')
+
+      expect((result as { success: boolean }).success).toBe(false)
+    })
+  })
 })

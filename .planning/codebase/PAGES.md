@@ -17,7 +17,7 @@ bin 双注册（`cc-expand` 与 `ccx` 同指 `dist/cli.js`），子命令等价�
 | `setup` | `src/cli/commands/setup.ts` | 安装 shell 快捷方式（cc、c），`-y` 跳确认 |
 | `restore` | `src/cli/commands/restore.ts` | 恢复原始 binary |
 | `verify` | `src/cli/commands/verify.ts` | 检查 patch 状态 |
-| `run [combo]` | `src/cli/commands/run.ts` | 启动已 patch 的 Claude Code（`--print-binary`） |
+| `run [combo]` | `src/cli/commands/run.ts` | 启动已 patch 的 Claude Code（`--print-binary`）；精确 combo 缺失时回落唯一插件变体 |
 | `patch [action] [version] [combo]` | `src/cli/commands/patch.ts` | Patch 或取消 patch 本地 Claude Code binary（`-t <count>`、`-y`） |
 | `migration [version\|latest]` | `src/cli/commands/migration.ts` | 将现有 patch 迁移到目标版本（`--from`、`--dry-run`） |
 | `list` | `src/cli/commands/list.ts` | 列出已安装和已 patch 的版本（`--patched`、`--all`） |
