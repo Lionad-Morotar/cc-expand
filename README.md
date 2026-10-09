@@ -1,4 +1,4 @@
-![cc-expand cover](./assets/cover-banner.png)
+![cc-expand cover](./assets/context-breakthrough.webp)
 
 <h1 align="center">cc-expand</h1>
 
@@ -20,10 +20,13 @@ The most common use case is raising the context-window limit so longer conversat
 2. **Cap 1M models at a lower target** to stay in the optimal performance range,
    since quality drops noticeably past 256K/512K.
 
-| Before | After |
-|--------|-------|
-| 200K limit, ~110K free context | 270K limit, ~180K free context |
-| ![](https://mgear-image.oss-cn-shanghai.aliyuncs.com/image/other/20260610211249243.png) | ![](https://mgear-image.oss-cn-shanghai.aliyuncs.com/image/other/20260610211422491.png) |
+- **Before**: 200K limit, ~110K free context
+
+  ![before](https://mgear-image.oss-cn-shanghai.aliyuncs.com/image/other/20260610211249243.png)
+
+- **After**: 270K limit, ~180K free context
+
+  ![after](https://mgear-image.oss-cn-shanghai.aliyuncs.com/image/other/20260610211422491.png)
 
 > Model performance degrades over very long contexts. Image from the mimo-v2.5 pro blog.
 

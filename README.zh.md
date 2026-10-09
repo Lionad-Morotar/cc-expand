@@ -1,4 +1,4 @@
-![cc-expand cover](./assets/cover-banner.png)
+![cc-expand cover](./assets/context-breakthrough.webp)
 
 <h1 align="center">cc-expand</h1>
 
@@ -21,10 +21,13 @@ cc-expand 通过 patch Claude Code 二进制中的硬编码常量来改变其行
 1. **突破 200K 上下文窗口限制**：当模型支持 256K 时，Claude Code 原生 200K 上限会成为瓶颈。
 2. **把 1M 模型限制在更小区间**：模型在 256k、512k 之后性能下降明显，可以按需压低上限以保持在最佳性能区间。
 
-| 使用前 | 使用后 |
-|--------|--------|
-| 200K 限制，约 110K 可用上下文 | 270K 限制，约 180K 可用上下文 |
-| ![](https://mgear-image.oss-cn-shanghai.aliyuncs.com/image/other/20260610211249243.png) | ![](https://mgear-image.oss-cn-shanghai.aliyuncs.com/image/other/20260610211422491.png) |
+- **使用前**：200K 限制，约 110K 可用上下文
+
+  ![使用前](https://mgear-image.oss-cn-shanghai.aliyuncs.com/image/other/20260610211249243.png)
+
+- **使用后**：270K 限制，约 180K 可用上下文
+
+  ![使用后](https://mgear-image.oss-cn-shanghai.aliyuncs.com/image/other/20260610211422491.png)
 
 另外，长上下文场景下模型性能会下降。图片引用自 mimo-v2.5 pro blog。
 
