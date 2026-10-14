@@ -5,10 +5,12 @@ import { makeStandaloneGraph, makeMachO, wrapSectionData } from './helpers/binar
 import { PatchEngine } from '../../src/core/patch-engine.js'
 
 /**
- * guard 指令骨架：jnstricteq(0x52) lhs:arg2(0x07) rhs:const1(0x11) 跳转偏移(0x06)
- * + ret(0x6a) const2(0x12)，patch 把跳转偏移 06→04 使早退恒触发
+ * guard 指令骨架（基线一）：jnstricteq(0x52) lhs:arg2(0x07) rhs:const1(0x11)
+ * 跳转偏移(0x06) + ret(0x6a) const2(0x12)，patch 把跳转偏移 06→04 使早退恒触发
  */
 const SKELETON = Buffer.from([0x52, 0x07, 0x11, 0x06, 0x6a, 0x12])
+/** 基线二的骨架：JSC opcode 表插入新指令后操作码整体 +1，操作数槽位不变 */
+const SKELETON_V2 = Buffer.from([0x53, 0x07, 0x11, 0x06, 0x6b, 0x12])
 const SIGNATURE = 'unrecognized-model-signal:'
 
 /** 构造合成 binary：单模块 contents 含 signature，bytecode 由调用方给定 */
@@ -20,8 +22,8 @@ function makeBinary(bytecode: Buffer): Buffer {
 }
 
 /** 骨架前后加噪声字节，噪声可在其他模块/其他位置重复以逼出上下文扩展 */
-function seg(prefix: Buffer, suffix: Buffer): Buffer {
-  return Buffer.concat([prefix, SKELETON, suffix])
+function seg(prefix: Buffer, suffix: Buffer, skeleton: Buffer = SKELETON): Buffer {
+  return Buffer.concat([prefix, skeleton, suffix])
 }
 
 const tokenGen = (slot: number) => '0'.repeat(slot)
@@ -130,5 +132,35 @@ describe('discoverSilenceGuardCandidates', () => {
     const binary = makeBinary(Buffer.concat([g, noise, g, noise]))
 
     expect(() => discoverSilenceGuardCandidates(binary)).toThrow(/唯一/)
+  })
+
+  it('新基线骨架（操作码平移变体）产出候选，patch 槽位语义不变', () => {
+    const guardSeg = seg(Buffer.from([0x22, 0x85]), Buffer.from([0x1e, 0xf3, 0xfb, 0x99]), SKELETON_V2)
+    const binary = makeBinary(guardSeg)
+
+    const candidates = discoverSilenceGuardCandidates(binary)
+
+    expect(candidates).toHaveLength(1)
+    const c = candidates[0]
+    const skelIdx = c.search.indexOf(SKELETON_V2.toString('latin1'))
+    expect(skelIdx).toBeGreaterThanOrEqual(0)
+    expect(c.search.indexOf(c.sourceValue)).toBe(skelIdx + 3)
+    expect(c.sourceValue).toBe('\u0006')
+    expect(c.target).toEqual({ value: '\u0004' })
+    const copy = Buffer.from(binary)
+    const result = new PatchEngine().patch(copy, [c], tokenGen)
+    expect(result.success).toBe(true)
+    expect(result.replaceCount).toBe(1)
+    expect(copy[c.offset]).toBe(0x04)
+  })
+
+  it('两个基线骨架同时命中时 throw（搜索空间污染，无法判定基线）', () => {
+    const binary = makeBinary(Buffer.concat([
+      seg(Buffer.from([0xaa]), Buffer.from([0x01])),
+      Buffer.alloc(8),
+      seg(Buffer.from([0xbb]), Buffer.from([0x02]), SKELETON_V2),
+    ]))
+
+    expect(() => discoverSilenceGuardCandidates(binary)).toThrow(/基线/)
   })
 })
