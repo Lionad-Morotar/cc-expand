@@ -34,6 +34,13 @@ export interface BunModule {
   side: number
 }
 
+/**
+ * linked bytecode payload 的 region 数量：上游 bun_resolver::LINKED_BYTECODE_REGION_COUNT。
+ * 记录形如 [SP payload][u32 regionEnd × N]，末项恒等于 payload 长度——该等式是
+ * 记录有效性的唯一判据（bun 侧同样以 is_sorted + 末项 == length 校验）。
+ */
+const LINKED_BYTECODE_REGION_COUNT = 6
+
 export interface BuiltinBytecodeRecord {
   id: number
   bytes: Span
@@ -56,6 +63,18 @@ export interface StandaloneGraph {
   startupModuleCount?: number
   /** bit9：module_info 共享字符串表 */
   moduleInfoStringTable?: Span
+  /** bit11：预解析模块图 blob（JSC::PrelinkedModuleGraph 布局） */
+  prelinkedModuleGraph?: Span
+  /** bit12：RuntimeOptions 记录（u32 flags | u32 value） */
+  runtimeOptions?: { flags: number; value: number }
+  /**
+   * bit13：全模块共享的 linked bytecode payload（JSC::BytecodeLinkEncoder 编码）。
+   * 存在时模块表里的 bytecode 不再是各自独立 blob，而是该 payload 内的 cache entry
+   * 起点，"runs from its cache entry to the end of that payload"，长度字段无意义。
+   */
+  linkedBytecodePayload?: Span
+  /** bit13 的 region 终点表（相对 payload 起点，末项 == payload 长度） */
+  linkedBytecodeRegionEnds?: number[]
 }
 
 export interface Offsets {
@@ -128,6 +147,10 @@ export function parseStandaloneGraph(buffer: Buffer, section: BunSection): Stand
   let bytecodeStringTable: Span | undefined
   let startupModuleCount: number | undefined
   let moduleInfoStringTable: Span | undefined
+  let prelinkedModuleGraph: Span | undefined
+  let runtimeOptions: { flags: number; value: number } | undefined
+  let linkedBytecodePayload: Span | undefined
+  let linkedBytecodeRegionEnds: number[] | undefined
 
   if (has(5)) {
     const sp = { off: recAt, len: count * 4 }
@@ -169,6 +192,40 @@ export function parseStandaloneGraph(buffer: Buffer, section: BunSection): Stand
     moduleInfoStringTable = toAbs(section, sp)
     recAt += 8
   }
+  if (has(11)) {
+    // 预解析模块图：SP + u32 count + count×u32（file-table index per graph module）
+    if (recAt + 12 > payloadLen) throw new Error('standalone graph: prelinked_module_graph SP 越界')
+    const sp = { off: readU32(recAt), len: readU32(recAt + 4) }
+    const graphCount = readU32(recAt + 8)
+    recAt += 12
+    if (recAt + graphCount * 4 > payloadLen) throw new Error('standalone graph: prelinked_module_graph 索引越界')
+    checkSpan(buffer, section, sp, 'prelinked_module_graph')
+    prelinkedModuleGraph = toAbs(section, sp)
+    recAt += graphCount * 4
+  }
+  if (has(12)) {
+    if (recAt + 8 > payloadLen) throw new Error('standalone graph: runtime_options 越界')
+    runtimeOptions = { flags: readU32(recAt), value: readU32(recAt + 4) }
+    recAt += 8
+  }
+  if (has(13)) {
+    // linked payload：SP + region 终点表（末项必须等于 payload 长度，否则视为无效记录）
+    const REGION_COUNT = LINKED_BYTECODE_REGION_COUNT
+    const recordLen = (2 + REGION_COUNT) * 4
+    if (recAt + recordLen > payloadLen) throw new Error('standalone graph: linked_bytecode_payload 记录越界')
+    const sp = { off: readU32(recAt), len: readU32(recAt + 4) }
+    const ends = Array.from({ length: REGION_COUNT }, (_, i) => readU32(recAt + 8 + i * 4))
+    const valid =
+      sp.off + sp.len <= payloadLen &&
+      ends.every((e, i) => i === 0 || ends[i - 1] <= e) &&
+      ends[REGION_COUNT - 1] === sp.len
+    if (valid) {
+      checkSpan(buffer, section, sp, 'linked_bytecode_payload')
+      linkedBytecodePayload = toAbs(section, sp)
+      linkedBytecodeRegionEnds = ends
+    }
+    recAt += recordLen
+  }
 
   // 模块表（52B/条：6×SP + 4×u8）
   const modules: BunModule[] = []
@@ -194,6 +251,8 @@ export function parseStandaloneGraph(buffer: Buffer, section: BunSection): Stand
     })
   }
 
+  resolveBytecodeSpans(modules)
+
   checkSpan(buffer, section, offsets.compileExecArgvPtr, 'compile_exec_argv')
 
   return {
@@ -207,6 +266,53 @@ export function parseStandaloneGraph(buffer: Buffer, section: BunSection): Stand
     bytecodeStringTable,
     startupModuleCount,
     moduleInfoStringTable,
+    prelinkedModuleGraph,
+    runtimeOptions,
+    linkedBytecodePayload,
+    linkedBytecodeRegionEnds,
+  }
+}
+
+/**
+ * 收敛模块 bytecode 区间到「本模块自己的 cache entry」范围。两种布局都以
+ * 「起点排序后取相邻下一起点」为上界：
+ *
+ * 1. linked payload（flags bit13，2.1.310 起）：所有模块共用一个 payload，模块表里的
+ *    bytecode 是该 payload 内的 cache entry 起点，长度字段被写成「到 payload 末尾的剩余
+ *    字节」（2565/2565 模块实测），直接采用会让任一模块的区间覆盖其后全部 entry。
+ *    entry 在 payload 内互不重叠地铺排，故真实上界是下一个更晚的 entry 起点。
+ *
+ * 2. 逐模块 blob（历史布局）：长度字段即本 blob 长度，相邻 blob 间有对齐 padding，
+ *    min(长度, 起点差) 对旧布局恒等（2.1.306/307/308 实证 2385~2400 模块均为短于起点差）。
+ *
+ * 注意 entry chunk 不等于「该模块源码编译出的全部字节码」：linked 布局下共享函数
+ * （如 silence guard）落在 payload 的其他 region，需要整 payload 视角的消费者
+ * 直接用 linkedBytecodePayload 而不是本区间。
+ */
+function resolveBytecodeSpans(modules: BunModule[]): void {
+  const starts = [...new Set(modules.filter((m) => m.bytecode.len > 0).map((m) => m.bytecode.off))].sort(
+    (a, b) => a - b,
+  )
+  const nextStart = (off: number): number | undefined => {
+    let lo = 0
+    let hi = starts.length - 1
+    let found: number | undefined
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1
+      if (starts[mid] > off) {
+        found = starts[mid]
+        hi = mid - 1
+      } else {
+        lo = mid + 1
+      }
+    }
+    return found
+  }
+  for (const m of modules) {
+    if (m.bytecode.len === 0) continue
+    const next = nextStart(m.bytecode.off)
+    if (next === undefined) continue
+    m.bytecode = { off: m.bytecode.off, len: Math.min(m.bytecode.len, next - m.bytecode.off) }
   }
 }
 
