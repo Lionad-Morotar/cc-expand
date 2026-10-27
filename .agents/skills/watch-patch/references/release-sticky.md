@@ -92,15 +92,37 @@ end tell
 挤成窄条并在右下角截断（实证）。Stickies 会记住上次尺寸，故新便签常以旧尺寸出现，
 此步显式设置不可省。
 
-粘贴完成即流程结束，**不做贴后验证**（截图确认会抢焦点打断用户手头工作；偶发粘贴空白接受放行）。
+7. **落盘核验**：读文件判定，不要截图
+
+截图会抢焦点打断用户手头工作（`7afce42` 移除此步的理由），但便签正文在粘贴瞬间
+就已写入磁盘，读文件即可判定成没成，全程不碰 GUI：
+
+```bash
+D=~/Library/Containers/com.apple.Stickies/Data/Library/Stickies
+NEWEST=$(ls -td "$D"/*.rtfd 2>/dev/null | head -1)
+[ -n "$NEWEST" ] && [ -s "$NEWEST/TXT.rtf" ] && echo "OK $NEWEST" || echo "PASTE FAILED"
+```
+
+判定用「是否有新建的 .rtfd 且 TXT.rtf 非空」，不要用窗口数（见陷阱节首条）。
+失败则重跑第 3 步重写剪贴板、重新粘贴一次；连续两次失败才报警告放行。
+
+**非空不足以判定内容完整**。实测空白误报过 454 字节的 TXT.rtf（窗口建出但只贴进
+了残片），而 15~25 条的完整内容约 7.5KB。要更严格的判据就比字节数量级：
+第 3 步脚本会回显 `flat RTF bytes=N`，落盘 TXT.rtf 的字节数应与 N 同量级
+（实测 7539 对 7539，完全相等）。差一个数量级即视为未贴全，重贴。
 
 ## 陷阱
 
 * Stickies 无 AppleScript 对象模型（`make new note` 报 -2710，bundle 内无 .sdef），
   内容只能靠剪贴板经 GUI 灌入；窗口控制走 System Events
-* 粘贴失败的静默性是这个环节最大的坑：便签建出来但没有内容，退出时被自动丢弃，
-  下次检查只看得到「窗口没了」。若后续新增别的失败信号，优先往「内容是否写入」上想，
-  而不是「窗口是否存在」
+* 粘贴失败是静默的：便签建出来但内容是空的或只有残片，关窗后 rtfd 一并消失，
+  事后只看得到「窗口没了」。窗口数只证明窗口建出来了，不能当成功判据；
+  内容判据是 rtfd 落盘的字节数（见第 7 步）
+* 便签正文存于 `~/Library/Containers/com.apple.Stickies/Data/Library/Stickies/<UUID>.rtfd/TXT.rtf`，
+  粘贴瞬间即写入，不等退出。`.SavedStickiesState` 只存窗口元数据（Frame / StickyColor /
+  UUID 等），不含正文，别去那里找内容
+* rtfd 随便签窗口关闭被删除，所以第 7 步核验必须在贴完、关窗之前做。事后想复核内容
+  只能靠截图或重贴，这也是该核验值得做的原因
 * 关闭便签要 `keystroke "w"` 或 raise 后关，System Events 的 `close window` 不支持（报 -1708）
 * 无窗口时 Cmd+N 不生效（无处接收按键），Stickies 完全关掉后需重开应用拿回默认窗口
 * Stickies 可能钳制窗口坐标（如 y 强制贴菜单栏下沿），位置设置未完全生效不视为失败，不重试
