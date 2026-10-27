@@ -7,6 +7,10 @@
  * 必须多连上下文排除；任何不确定性一律 throw（fail loud），不降级产出。
  * 布局漂移下模块内可能出现多个同值 slot 且各自扩展均可唯一（唯一性失效），
  * 此时以「语义伴生」裁决：语义主项槽的右邻槽恒为源码中同组声明的伴生常量。
+ *
+ * 唯一性是双向的：verify 以目标值回查锚点，故锚点还必须在目标值形态下唯一——
+ * 2.1.310 实证源值形态 n=1 已唯一，但目标值 256000 的同样伴生另有一处巧合数据，
+ * verify 会判 AMBIGUOUS 拒绝（fail loud，不写坏字节）。故扩展时两个方向都要唯一。
  */
 import { Buffer } from 'node:buffer'
 import { extractBunSection } from './binary-sections.js'
@@ -115,18 +119,38 @@ function extendToUnique(
   sourceTokens: number,
   baseCount: number,
 ): string | null {
-  if (baseCount === 1) return TOKEN_PLACEHOLDER
+  // n=0 纯槽位：源值全 binary 唯一，且目标值形态在未 patch 的 binary 里完全不出现才可用。
+  // 目标值形态若另有巧合数据（2.1.310 实证：256000 在 binary 内 1287 处），patch 后
+  // verify 会命中 2 次判 AMBIGUOUS，故继续扩展伴生直到双向都干净
+  if (
+    baseCount === 1 &&
+    countOccurrencesCapped(buffer, tokenBytes(PROBE_TARGET_TOKENS)) === 0
+  ) {
+    return TOKEN_PLACEHOLDER
+  }
   for (let n = 1; n <= MAX_COMPANIONS; n++) {
     const total = SLOT_WIDTH + n * SLOT_WIDTH
     if (pos + total > bc.off + bc.len) return null
     const bytes = Buffer.alloc(total)
     bytes.writeUInt32LE(sourceTokens, 0)
     buffer.copy(bytes, SLOT_WIDTH, pos + SLOT_WIDTH, pos + total)
-    if (countOccurrencesCapped(buffer, bytes) === 1) {
+    if (countOccurrencesCapped(buffer, bytes) !== 1) continue
+    // 伴生不变、首槽换成写入值：该形态必须在本槽之外一处不占。patch 后槽位本身即
+    // 目标形态，verify 回查正好命中 1 次；若原本已有同形数据，回查即 2 次而失败
+    const patched = Buffer.from(bytes)
+    patched.writeUInt32LE(PROBE_TARGET_TOKENS, 0)
+    if (countOccurrencesCapped(buffer, patched) === 0) {
       return TOKEN_PLACEHOLDER + bytes.subarray(SLOT_WIDTH).toString('hex')
     }
   }
   return null
+}
+
+/** 4 字节 Int32 小端槽位编码（常量池 Kind::Int32 明文） */
+function tokenBytes(tokens: number): Buffer {
+  const buf = Buffer.alloc(SLOT_WIDTH)
+  buf.writeUInt32LE(tokens)
+  return buf
 }
 
 /**
