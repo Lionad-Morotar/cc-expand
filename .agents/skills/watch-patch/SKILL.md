@@ -13,14 +13,14 @@ description: 定时检索 Claude Code 新包，Patch 并发版
   如 `{ "version": "2.1.161", "platforms": [ "darwin-arm64" ]}`）
 * bytecodePlatforms: `versions.json` 每版本的 bytecode 锚点已实证平台列表（如 `["darwin-arm64"]`）；仅实证平台在列；2.1.246 之前版本该字段为 `[]` 或缺失（
   pattern:gen 对任意版本无条件写入，空数组属正常而非数据异常）
-* watch-patch: 即本技能，`<project-root>/.claude/skills/watch-patch/SKILL.md`
-* patch-steps: 如何针对新版本生成 pattern 的步骤 `<project-root>/.claude/skills/watch-patch/references/patch-steps.md`（核心已脚本化：
+* watch-patch: 即本技能，`<project-root>/.agents/skills/watch-patch/SKILL.md`
+* patch-steps: 如何针对新版本生成 pattern 的步骤 `<project-root>/.agents/skills/watch-patch/references/patch-steps.md`（核心已脚本化：
   `pnpm pattern:gen <version>` 内含文本锚点发现 + patch 模拟 + bytecode 锚点自动生成与实证（仅 ≥2.1.246 的 bytecode 版本），
   `pnpm pattern:upload <version>` 上传；同流程顺带生成 silence 插件 shard：`pnpm plugin:gen-silence <version>` +
   `pnpm plugin:upload-silence <version>`）
 * backoff level（退避级别）：轮询间隔档位 L0=30min / L1=60min / L2=120min / L3=240min（上限，4h）；`needWork=false` 升级（+1 封顶 L3），
   `needWork=true` 重置回 L0
-* release-sticky: 新版本处理完成后贴发布日志黄色桌面便签的步骤 `<project-root>/.claude/skills/watch-patch/references/release-sticky.md`（
+* release-sticky: 新版本处理完成后贴发布日志黄色桌面便签的步骤 `<project-root>/.agents/skills/watch-patch/references/release-sticky.md`（
   剪贴板脚本 `scripts/stickies_release_rtf.swift`，入参 blocks JSON）
 
 ## Workflow
