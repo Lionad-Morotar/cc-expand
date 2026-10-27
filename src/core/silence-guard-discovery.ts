@@ -11,6 +11,13 @@
  *
  * patch 语义：跳转偏移 06→04 使跳转目标落到紧随的 ret，相等与否都早退，告警恒不发。
  *
+ * 扫描域随 bytecode 布局分两级：逐模块 blob 布局（历史版本）只扫 signature 模块区间；
+ * linked payload 布局（flags bit13，2.1.310 起）扫整个共享 payload——该布局下模块表
+ * 的 bytecode 只是 entry 起点、长度一律写成「到 payload 末尾的剩余字节」（2565/2565
+ * 模块与 133 条 builtin 记录实测同一尾），且共享函数落在其他 region。放宽域不放松
+ * 判据：signature 仍唯一锁定模块、骨架基线仍须唯一、锚仍须全 binary 唯一，
+ * 候选归属由 generator 的 runtime 探活实证（2.1.310 实测 41 候选仅 1 个消音成功）。
+ *
  * 指令骨架字节是逐基线实测值：CC 的 bun 是内部 fork 且禁用了 bytecode dump env，
  * 无法同版差分重放；fork 的 JSC 基线更新会在 opcode 表插入新指令，使后续所有
  * 操作码编号整体平移（guard 指令布局与操作数槽位值不变）。因此骨架按基线注册为
@@ -22,7 +29,7 @@
  */
 import { Buffer } from 'node:buffer'
 import { extractBunSection } from './binary-sections.js'
-import { parseStandaloneGraph, readModuleContents } from './standalone-graph.js'
+import { parseStandaloneGraph, readModuleContents, type StandaloneGraph } from './standalone-graph.js'
 import { PatchEngine } from './patch-engine.js'
 
 /** 模块 signature：Yre 所在 chunk 的源文本锚（contents 区间，latin1 存储） */
@@ -54,7 +61,7 @@ export interface SilenceGuardCandidate {
   desc: string
   /** 跳转偏移字节的文件绝对偏移（探活 patch 的写入位置） */
   offset: number
-  /** 骨架起点在模块 bytecode 区间内的相对偏移（跨平台 blob 同构性对齐键） */
+  /** 骨架起点相对扫描域的偏移（域为 signature 模块 blob 或整个 linked payload） */
   offsetInModule: number
 }
 
@@ -72,12 +79,12 @@ export function discoverSilenceGuardCandidates(buffer: Buffer): SilenceGuardCand
     throw new Error(`silence guard: signature 命中 ${signatureHits.length} 个模块，无法确定目标`)
   }
   const module = signatureHits[0]
-  const bc = module.bytecode
-  if (bc.len === 0) {
+  if (module.bytecode.len === 0) {
     throw new Error('silence guard: 目标模块 bytecode 区间为空')
   }
+  const bc = resolveScanSpan(graph, module.bytecode)
 
-  // 骨架命中：仅统计完全落在模块 bytecode 区间内的出现，且要求恰好一个变体命中
+  // 骨架命中：仅统计完全落在扫描区间内的出现，且要求恰好一个变体命中
   // （多基线并存意味着模块被污染或注册表重叠，无法判定锚归属哪个基线语义）
   const matchedVariants = SKELETON_VARIANTS.map((skeleton) => ({
     skeleton,
@@ -126,7 +133,19 @@ export function discoverSilenceGuardCandidates(buffer: Buffer): SilenceGuardCand
   return candidates
 }
 
-/** 骨架在模块 bytecode 区间内的全部出现（越出区间边界的截断出现不计） */
+/**
+ * 骨架扫描区间。linked payload 布局（flags bit13，2.1.310 起）下各模块只持有自己的
+ * cache entry，共享函数（如本 guard）落在 payload 的其他 region——entry 与源码模块
+ * 不再一一对应，例如 2.1.310 的 signature 模块 entry 只有 1.0MB，而 guard 位于
+ * 同一 payload 内 12.2MB 处的一个共享 chunk（跨模块 41 个候选同形结构）。
+ * 故该布局下扫描整个 ordered payload；历史逐模块布局仍只扫目标模块区间。
+ * 候选由 runtime 探活选定（候选数多属正常，探活最多 6 次命中）。
+ */
+function resolveScanSpan(graph: StandaloneGraph, moduleSpan: { off: number; len: number }): { off: number; len: number } {
+  return graph.linkedBytecodePayload ?? moduleSpan
+}
+
+/** 骨架在扫描区间内的全部出现（越出区间边界的截断出现不计） */
 function scanSkeletonMatches(
   buffer: Buffer,
   bc: { off: number; len: number },
