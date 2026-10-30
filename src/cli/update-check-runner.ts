@@ -43,6 +43,9 @@ export function startUpdateCheck(currentVersion: string): Promise<UpdateInfo | n
 /**
  * await 检查 promise（带硬超时防卡死），发现新版时调用 hintWriter 打印提示。
  *
+ * 兜底定时器只用来给 npm 查询设上限，必须在两条胜出路径上都立即清理：否则检查早早返回后
+ * 它仍持有事件循环，令每个命令白等到 timeoutMs 才退出（实测 status 3.4s 中 3.0s 属此）。
+ *
  * @param checkPromise startUpdateCheck 返回的 promise
  * @param hintWriter 提示输出函数（cli/index.ts 注入 console.error）
  * @param timeoutMs 硬超时（测试注入用），默认 3 秒
@@ -52,10 +55,20 @@ export async function awaitUpdateCheckHint(
   hintWriter: (line: string) => void,
   timeoutMs: number = DEFAULT_HINT_TIMEOUT_MS
 ): Promise<void> {
-  const info = await Promise.race([
-    checkPromise,
-    new Promise<null>(resolve => setTimeout(() => resolve(null), timeoutMs))
-  ])
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timeoutFallback = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), timeoutMs)
+    const handle = timer as ReturnType<typeof setTimeout> & { unref?: () => void }
+    handle.unref?.()
+  })
+
+  let info: UpdateInfo | null
+  try {
+    info = await Promise.race([checkPromise, timeoutFallback])
+  } finally {
+    if (timer !== undefined) clearTimeout(timer)
+  }
+
   if (info?.hasUpdate) {
     hintWriter(
       t('update.hint.available', { current: info.currentVersion, latest: info.latestVersion })

@@ -75,4 +75,30 @@ describe('awaitUpdateCheckHint', () => {
     await awaitUpdateCheckHint(slowPromise, hintWriter, 10)
     expect(hintWriter).not.toHaveBeenCalled()
   })
+
+  it('检查先完成时返回后不残留兜底定时器（兜底不得延长进程寿命）', async () => {
+    vi.useFakeTimers()
+    try {
+      const hintWriter = vi.fn()
+      await awaitUpdateCheckHint(Promise.resolve(null), hintWriter, 3000)
+      expect(vi.getTimerCount()).toBe(0)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('超时分支触发后同样不残留定时器', async () => {
+    vi.useFakeTimers()
+    try {
+      const hintWriter = vi.fn()
+      const slowPromise = new Promise<null>(() => {}) // 永不 resolve
+      const pending = awaitUpdateCheckHint(slowPromise, hintWriter, 3000)
+      await vi.advanceTimersByTimeAsync(3000)
+      await pending
+      expect(vi.getTimerCount()).toBe(0)
+      expect(hintWriter).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })
