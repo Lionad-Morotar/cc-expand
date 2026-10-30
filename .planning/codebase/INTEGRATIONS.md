@@ -41,7 +41,7 @@
 **npm registry（包获取与版本源）：**
 - Claude Code 包下载：`npm pack @anthropic-ai/claude-code` → 读 `optionalDependencies` → `npm pack` 平台包 `@anthropic-ai/claude-code-{platform}-{arch}` → `tar` 解压提取二进制（`src/services/package.ts` 头注释与实现；`scripts/platform-artifacts.ts` 的 `downloadAndExtract`）
 - 走用户本机 `npm`（`execFile`，Windows 用 `npm.cmd` + `shell: true`，`src/services/package.ts` 的 `getNpmCommand` / `getNpmExecOptions`），因此自动尊重用户配置的镜像源——self-update 的检查与安装必须同源，避免镜像同步窗口误报（`src/services/latest-checker.ts` 头注释）
-- CLI 版本检查：`npm view <pkg>@<dist-tag> version --json`，4 秒超时即 kill；查询对象为 `cc-expand` 自身（self-update，按 latest/alpha 通道查对应 dist-tag，`src/services/update-check.ts:53-70`）与 `@anthropic-ai/claude-code`（supports/status）；检查结果带 TTL 缓存（`src/services/update-check.ts`）
+- CLI 版本检查：`npm view <pkg>@<dist-tag> version --json`，4 秒超时即 kill；查询对象为 `cc-expand` 自身（self-update，按 latest/alpha 通道查对应 dist-tag，`src/services/update-check.ts:53-70`，24h 节流）与 `@anthropic-ai/claude-code`（status/list 的迁移提示，`src/services/latest-cache.ts`，默认 10min TTL，`migration` 命令绕过缓存直查）
 - 维护侧版本检查：显式 `--registry https://registry.npmjs.org` 直查官方源，绕过 npmmirror 缓存延迟（`scripts/latest-check.ts:15-19`）
 - 发布：`pnpm publish --config.registry=https://registry.npmjs.org --no-git-checks`（根 `package.json` 的 `release` 脚本）
 
@@ -90,11 +90,12 @@
 
 ## 环境配置
 
-**环境变量（维护侧脚本必需；CLI 运行时仅一个可选覆盖项）：**
+**环境变量（维护侧脚本必需；CLI 运行时可选覆盖项）：**
 - `CC_EXPAND_NODE` — 可选，仅 CLI 运行时：node 版本守卫（`src/cli/guard-banner.js`）在当前 node 不支持 `require(esm)` 时按此路径优先探测可用 node 并重执行自身；未设置则自动尝试 fnm/volta/Homebrew 等默认安装位（macOS/Linux 路径），全部失败则报错退出
+- `CCX_LATEST_CACHE_TTL_MS` — 可选，仅 CLI 运行时：status/list 迁移提示所用的最新版查询缓存 TTL（`src/services/latest-cache.ts:46-53`；默认 600000 即 10 分钟，`0` 或负值表示禁用缓存每次直查，非数字回退默认值）。排查「迁移提示为何没及时更新」时可临时调小
 - `AccessKeyID` / `AccessKeySecret` — 阿里云 OSS 写凭据；从根目录 `.env` 加载（`scripts/oss-upload.ts:24-43`、`scripts/watch-patterns.ts`、`scripts/oss-verify.ts` 各自内联 `loadEnv()`，手写解析 `KEY=VALUE`，无 dotenv 依赖）；缺失时 fail loud（`process.exit(1)`）
 - `NUXT_APP_BASE_URL` — 官网构建 baseURL（`packages/website/nuxt.config.ts:4`，默认 `/`）
-- `XDG_CONFIG_HOME` — 可选，用户配置目录定位（`src/services/user-config.ts:31-43`；默认 `~/.config/cc-expand/config.json`，Windows 走 `appData`）
+- `XDG_CONFIG_HOME` — 可选，用户配置目录定位（`src/services/user-config.ts:31-43`；默认 `~/.config/cc-expand/config.json`，Windows 走 `appData`）；同时决定缓存文件位置（`latest-versions.json`、`update-check.json` 与该 config 同目录）
 
 **密钥位置：**
 - `.env`（仓根，84 字节，已被 `.gitignore` 排除）——OSS AccessKey 对；内容不读取、不入库
