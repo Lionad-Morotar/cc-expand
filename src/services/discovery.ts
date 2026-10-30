@@ -5,7 +5,7 @@
 import { execFile } from 'node:child_process'
 import { existsSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
-import { findAllInstallations } from './claude-discovery.js'
+import { findAllInstallations, type Installation } from './claude-discovery.js'
 import { CcxError, ErrorCode } from '../types/index.js'
 
 export interface DiscoveryOptions {
@@ -13,6 +13,12 @@ export interface DiscoveryOptions {
   npxCacheDirs?: string[]
   /** PATH 环境变量，默认 process.env.PATH */
   pathEnv?: string
+  /**
+   * 兜底安装扫描器（注入用），默认 claude-discovery.findAllInstallations。
+   * 该扫描走真实 home 下的硬编码路径表，测试注入空表才能断言"三处都没有"，
+   * 否则本机装了原生 claude 时"找不到二进制"用例会被机器状态左右。
+   */
+  installationScanner?: () => Promise<Installation[]>
 }
 
 const DEFAULT_NPX_DIRS = [
@@ -51,7 +57,8 @@ export class DiscoveryService {
     // 这张表覆盖了 npm/pnpm/yarn/bun/volta/fnm/nvm/nodenv/nvs/asdf/mise
     // 以及 macOS/Linux/Windows 的常见安装目录，还有原生安装路径。
     // 只取 native binary：npm-based 的 path 指向 cli.js，直接 execFile 会失败。
-    const installations = await findAllInstallations()
+    const scan = this.options.installationScanner ?? findAllInstallations
+    const installations = await scan()
     const native = installations.find(i => i.kind === 'native')
     if (native) {
       return native.path

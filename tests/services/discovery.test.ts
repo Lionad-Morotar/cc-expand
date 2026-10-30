@@ -64,8 +64,13 @@ describe('DiscoveryService', () => {
 
     it('should error when binary not found', async () => {
       // Arrange: empty PATH and empty NPX cache
+      // 兜底扫描注入空表：硬编码路径表会扫真实 home，本机装了原生 claude 时该用例会被环境左右，
+      // 注入后断言只依赖"三处都没有"，与机器状态解耦
       process.env.PATH = tempDir
-      const service = new DiscoveryService({ npxCacheDirs: [join(tempDir, 'empty')] })
+      const service = new DiscoveryService({
+        npxCacheDirs: [join(tempDir, 'empty')],
+        installationScanner: async () => []
+      })
 
       // Act & Assert
       let caught: CcxError | undefined
