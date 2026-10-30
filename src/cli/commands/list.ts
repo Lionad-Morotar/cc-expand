@@ -1,13 +1,13 @@
 /**
  * cc-expand list — 列出已安装和已 patch 的版本
  * 当存在已 patch 版本且 npm latest 更新时，next 建议 migration。
- * latest 查询用 queryLatestVersion（execFile timeout 自动 kill），不阻塞进程退出。
+ * latest 查询走 LatestCacheService（TTL 缓存），缓存未命中时才 execFile 查 registry。
  */
 import { readdirSync, existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { ConfigService } from '../../services/config.js'
-import { queryLatestVersion } from '../../services/latest-checker.js'
+import { LatestCacheService } from '../../services/latest-cache.js'
 import { isVersionGreater } from '../../utils/version.js'
 import { extractCombos } from '../../utils/patched-combos.js'
 import { t } from '../i18n.js'
@@ -30,7 +30,7 @@ export interface ListOptions {
   patchedOnly?: boolean
   /** 注入 ConfigService（测试用），默认基于 homeDir 新建 */
   configService?: ConfigService
-  /** 解析 latest（注入以避免网络）；缺省用 queryLatestVersion */
+  /** 解析 latest（注入以避免网络）；缺省用 LatestCacheService（TTL 缓存） */
   latestResolver?: (v: string) => Promise<string | undefined>
 }
 
@@ -94,7 +94,7 @@ export async function listCommand(
   const topVersion = versions[0]?.version
   const hasPatched = versions.some(v => v.patched)
   if (hasPatched && topVersion) {
-    const resolver = options?.latestResolver ?? (() => queryLatestVersion())
+    const resolver = options?.latestResolver ?? (() => new LatestCacheService().getLatest())
     let latest: string | undefined
     try {
       latest = await resolver('latest')

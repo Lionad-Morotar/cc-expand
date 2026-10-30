@@ -1,7 +1,7 @@
 /**
  * cc-expand status — 显示当前 patch 状态
  * 当检测到 npm 有新版本且当前版本已 patch 时，在 next 步骤建议 migration，
- * 引导用户走更短的升级路径。latest 查询用 queryLatestVersion（execFile timeout 自动 kill），
+ * 引导用户走更短的升级路径。latest 查询走 LatestCacheService（TTL 缓存 + execFile timeout），
  * 失败/超时静默返回 undefined，绝不破坏主输出或阻塞进程退出。
  */
 import { homedir } from 'node:os'
@@ -9,7 +9,7 @@ import { join } from 'node:path'
 import { DiscoveryService } from '../../services/discovery.js'
 import { ConfigService } from '../../services/config.js'
 import { ChannelConfig, type ChannelConfigData } from '../../services/channel-config.js'
-import { queryLatestVersion } from '../../services/latest-checker.js'
+import { LatestCacheService } from '../../services/latest-cache.js'
 import { readShortcutState } from '../../services/shell-profile.js'
 import { isVersionGreater } from '../../utils/version.js'
 import { extractCombos } from '../../utils/patched-combos.js'
@@ -21,7 +21,7 @@ export interface StatusOptions {
   discoveryService?: DiscoveryService
   configService?: ConfigService
   homeDir?: string
-  /** 解析 latest 版本（注入以避免网络）；缺省用 queryLatestVersion */
+  /** 解析 latest 版本（注入以避免网络）；缺省用 LatestCacheService（TTL 缓存） */
   latestResolver?: (v: string) => Promise<string | undefined>
 }
 
@@ -56,7 +56,7 @@ async function buildMigrationHint(
   patchedVersions: Record<string, { targets?: number[], patchedAt: string }>
 ): Promise<string[] | undefined> {
   if (!patchedInfo) return undefined
-  const resolver = options?.latestResolver ?? (() => queryLatestVersion())
+  const resolver = options?.latestResolver ?? (() => new LatestCacheService().getLatest())
   let latest: string | undefined
   try {
     latest = await resolver('latest')
