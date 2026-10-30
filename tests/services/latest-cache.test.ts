@@ -133,6 +133,18 @@ describe('LatestCacheService', () => {
     )
   })
 
+  it('缓存文件是 JSON 数组时按无缓存处理，写入后条目仍能命中', async () => {
+    // typeof [] === 'object'，若闸门放行数组，写入会被 JSON.stringify 静默丢弃，缓存从此永久 miss
+    writeFileSync(cachePath, '[]')
+    const resolver = vi.fn().mockResolvedValue('2.1.314')
+    const service = new LatestCacheService({ cachePath, resolver })
+
+    await expect(service.getLatest('@anthropic-ai/claude-code')).resolves.toBe('2.1.314')
+    await expect(service.getLatest('@anthropic-ai/claude-code')).resolves.toBe('2.1.314')
+
+    expect(resolver).toHaveBeenCalledOnce()
+  })
+
   it('不同包名各自独立缓存，互不覆盖', async () => {
     const resolver = vi.fn(async (name: string) => (name === 'cc-expand' ? '0.6.1' : '2.1.314'))
     const service = new LatestCacheService({ cachePath, resolver })
@@ -145,5 +157,68 @@ describe('LatestCacheService', () => {
     const cached = JSON.parse(readFileSync(cachePath, 'utf-8'))
     expect(cached['cc-expand'].version).toBe('0.6.1')
     expect(cached['@anthropic-ai/claude-code'].version).toBe('2.1.314')
+  })
+})
+
+describe('LatestCacheService 的 CCX_LATEST_CACHE_TTL_MS 覆盖', () => {
+  let tempDir: string
+  let cachePath: string
+
+  beforeEach(() => {
+    tempDir = mkdtempSync(join(tmpdir(), 'cc-expand-latest-ttl-'))
+    cachePath = join(tempDir, 'latest-versions.json')
+    writeFileSync(
+      cachePath,
+      JSON.stringify({
+        '@anthropic-ai/claude-code': {
+          checkedAt: new Date('2026-10-30T00:00:00.000Z').toISOString(),
+          version: '2.1.314'
+        }
+      })
+    )
+  })
+
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true })
+    vi.unstubAllEnvs()
+  })
+
+  it('未设置时回退默认 10 分钟，5 分钟内的条目算命中', async () => {
+    vi.stubEnv('CCX_LATEST_CACHE_TTL_MS', '')
+    const resolver = vi.fn().mockResolvedValue('2.1.320')
+    const service = new LatestCacheService({
+      cachePath,
+      resolver,
+      now: () => Date.parse('2026-10-30T00:05:00.000Z')
+    })
+
+    await expect(service.getLatest('@anthropic-ai/claude-code')).resolves.toBe('2.1.314')
+    expect(resolver).not.toHaveBeenCalled()
+  })
+
+  it('设置为 60 秒后，5 分钟前的条目算过期并重新解析', async () => {
+    vi.stubEnv('CCX_LATEST_CACHE_TTL_MS', '60000')
+    const resolver = vi.fn().mockResolvedValue('2.1.320')
+    const service = new LatestCacheService({
+      cachePath,
+      resolver,
+      now: () => Date.parse('2026-10-30T00:05:00.000Z')
+    })
+
+    await expect(service.getLatest('@anthropic-ai/claude-code')).resolves.toBe('2.1.320')
+    expect(resolver).toHaveBeenCalledOnce()
+  })
+
+  it('非法值（NaN）回退默认而不是禁用缓存', async () => {
+    vi.stubEnv('CCX_LATEST_CACHE_TTL_MS', 'abc')
+    const resolver = vi.fn().mockResolvedValue('2.1.320')
+    const service = new LatestCacheService({
+      cachePath,
+      resolver,
+      now: () => Date.parse('2026-10-30T00:05:00.000Z')
+    })
+
+    await expect(service.getLatest('@anthropic-ai/claude-code')).resolves.toBe('2.1.314')
+    expect(resolver).not.toHaveBeenCalled()
   })
 })

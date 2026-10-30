@@ -93,15 +93,10 @@ export class LatestCacheService {
 
   /** 读取单个包的缓存条目；文件缺失、损坏或字段不全时返回 null（静默降级） */
   private readEntry(packageName: string): LatestCacheEntry | null {
-    try {
-      if (!existsSync(this.cachePath)) return null
-      const state = JSON.parse(readFileSync(this.cachePath, 'utf-8')) as LatestCacheState
-      const entry = state?.[packageName]
-      if (!entry?.checkedAt || !entry.version) return null
-      return entry
-    } catch {
-      return null
-    }
+    // 与 readState 共用同一份读取与降级逻辑，避免两处对同一损坏文件给出不一致判定
+    const entry = this.readState()[packageName]
+    if (!entry?.checkedAt || !entry.version) return null
+    return entry
   }
 
   /** 判断条目是否仍在 TTL 窗口内 */
@@ -124,12 +119,15 @@ export class LatestCacheService {
     }
   }
 
-  /** 读取整份缓存状态；损坏时以空状态重写，不阻塞主流程 */
+  /** 读取整份缓存状态；缺失或损坏（含 JSON 数组形态）时以空状态返回，不阻塞主流程 */
   private readState(): LatestCacheState {
     try {
       if (!existsSync(this.cachePath)) return {}
-      const parsed = JSON.parse(readFileSync(this.cachePath, 'utf-8')) as LatestCacheState
-      return parsed && typeof parsed === 'object' ? parsed : {}
+      const parsed: unknown = JSON.parse(readFileSync(this.cachePath, 'utf-8'))
+      // 数组同样满足 typeof === 'object'，放行会让 writeEntry 的赋值被 JSON.stringify 丢弃，
+      // 缓存从此永久 miss 且无错误信号，故显式排除
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
+      return parsed as LatestCacheState
     } catch {
       return {}
     }
